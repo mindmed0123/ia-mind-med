@@ -69,7 +69,22 @@ serve(async (req) => {
     
     // Prepare form data for OpenAI
     const formData = new FormData();
-    formData.append('file', audioBlob, 'audio.webm');
+    
+    // Determine file extension based on content type or URL
+    let fileName = 'audio.webm';
+    if (audio_url.includes('.opus')) {
+      fileName = 'audio.opus';
+    } else if (audio_url.includes('.mp3')) {
+      fileName = 'audio.mp3';
+    } else if (audio_url.includes('.wav')) {
+      fileName = 'audio.wav';
+    } else if (audio_url.includes('.m4a')) {
+      fileName = 'audio.m4a';
+    } else if (audio_url.includes('.ogg')) {
+      fileName = 'audio.ogg';
+    }
+    
+    formData.append('file', audioBlob, fileName);
     formData.append('model', 'whisper-1');
     formData.append('response_format', 'verbose_json'); // Get timestamps
     formData.append('language', 'pt');
