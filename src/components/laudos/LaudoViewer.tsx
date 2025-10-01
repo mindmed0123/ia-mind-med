@@ -128,28 +128,87 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
             </CardContent>
           </Card>
 
-          {laudo.hypotheses && laudo.hypotheses.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Hipóteses Diagnósticas</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {laudo.hypotheses.map((hip: any, idx: number) => (
-                  <div key={idx} className="border rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge className={getProbabilityColor(hip.probabilidade)}>
-                        {hip.probabilidade}
+        <TabsContent value="hipoteses" className="space-y-4">
+          {laudo.hypotheses?.mais_provavel || laudo.hypotheses?.menos_provavel ? (
+            <>
+              {laudo.hypotheses.mais_provavel && (
+                <Card className="border-primary">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">🎯 Mais Provável</CardTitle>
+                      <Badge variant="destructive">
+                        {laudo.hypotheses.mais_provavel.probabilidade}
                       </Badge>
-                      <span className="font-medium">{hip.descricao}</span>
                     </div>
-                    {hip.justificativa && (
-                      <p className="text-sm text-muted-foreground">{hip.justificativa}</p>
+                    <p className="text-xl font-semibold mt-2">{laudo.hypotheses.mais_provavel.descricao}</p>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {laudo.hypotheses.mais_provavel.racional && (
+                      <div>
+                        <h4 className="font-medium mb-1">Racional</h4>
+                        <p className="text-sm text-muted-foreground">{laudo.hypotheses.mais_provavel.racional}</p>
+                      </div>
                     )}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+                    {laudo.hypotheses.mais_provavel.achados_suporte?.length > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-1">Achados de Suporte</h4>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                          {laudo.hypotheses.mais_provavel.achados_suporte.map((achado: string, i: number) => (
+                            <li key={i}>• {achado}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {laudo.hypotheses.mais_provavel.proximos_passos?.length > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-1">Próximos Passos</h4>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                          {laudo.hypotheses.mais_provavel.proximos_passos.map((passo: string, i: number) => (
+                            <li key={i}>• {passo}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {laudo.hypotheses.menos_provavel && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">🔍 Diferencial (Menos Provável)</CardTitle>
+                      <Badge variant="secondary">
+                        {laudo.hypotheses.menos_provavel.probabilidade}
+                      </Badge>
+                    </div>
+                    <p className="text-xl font-semibold mt-2">{laudo.hypotheses.menos_provavel.descricao}</p>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {laudo.hypotheses.menos_provavel.racional && (
+                      <div>
+                        <h4 className="font-medium mb-1">Racional</h4>
+                        <p className="text-sm text-muted-foreground">{laudo.hypotheses.menos_provavel.racional}</p>
+                      </div>
+                    )}
+                    {laudo.hypotheses.menos_provavel.achados_suporte?.length > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-1">Achados de Suporte</h4>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                          {laudo.hypotheses.menos_provavel.achados_suporte.map((achado: string, i: number) => (
+                            <li key={i}>• {achado}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhuma hipótese disponível</p>
           )}
+        </TabsContent>
 
           {laudo.conducts && laudo.conducts.length > 0 && (
             <Card>

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { AudioUploader } from "@/components/audio/AudioUploader";
 
 interface LaudoFormProps {
   onLaudoGenerated: (laudoId: string) => void;
@@ -16,26 +17,20 @@ interface LaudoFormProps {
 export const LaudoForm = ({ onLaudoGenerated }: LaudoFormProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [laudoId, setLaudoId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
-    // Patient data
     iniciais: "",
     sexo: "",
     idade: "",
-    
-    // Clinical data
     specialty: "",
     chief_complaint: "",
     transcript: "",
-    
-    // Vitals
     pa: "",
     fc: "",
     fr: "",
     temp: "",
     spo2: "",
-    
-    // Other clinical info
     meds: "",
     allergies: "",
     exam_findings: "",
@@ -46,6 +41,52 @@ export const LaudoForm = ({ onLaudoGenerated }: LaudoFormProps) => {
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleAudioUploadComplete = async (url: string, path: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: newLaudo, error: createError } = await supabase
+        .from('laudos')
+        .insert({
+          user_id: user.id,
+          title: `Laudo com áudio - ${new Date().toLocaleString('pt-BR')}`,
+          source_audio_url: url,
+          status: 'draft',
+          audio_processing_status: 'pending',
+          transcript_status: 'pending',
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      const { error: transcribeError } = await supabase.functions.invoke('transcribe-audio', {
+        body: {
+          audio_url: url,
+          laudo_id: newLaudo.id,
+          mode: 'complete',
+        },
+      });
+
+      if (transcribeError) throw transcribeError;
+
+      toast({
+        title: "Áudio enviado!",
+        description: "A transcrição será processada automaticamente.",
+      });
+
+      setLaudoId(newLaudo.id);
+    } catch (error: any) {
+      console.error('Error processing audio:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao processar áudio",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -66,23 +107,26 @@ export const LaudoForm = ({ onLaudoGenerated }: LaudoFormProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Create laudo record first
-      const { data: laudo, error: laudoError } = await supabase
-        .from('laudos')
-        .insert({
-          user_id: user.id,
-          title: `Laudo - ${formData.iniciais || 'Paciente'} - ${new Date().toLocaleDateString()}`,
-          specialty: formData.specialty,
-          status: 'processing',
-        })
-        .select()
-        .single();
+      let currentLaudoId = laudoId;
 
-      if (laudoError) throw laudoError;
+      if (!currentLaudoId) {
+        const { data: laudo, error: laudoError } = await supabase
+          .from('laudos')
+          .insert({
+            user_id: user.id,
+            title: `Laudo - ${formData.iniciais || 'Paciente'} - ${new Date().toLocaleDateString()}`,
+            specialty: formData.specialty,
+            status: 'processing',
+          })
+          .select()
+          .single();
 
-      // Prepare data for AI
+        if (laudoError) throw laudoError;
+        currentLaudoId = laudo.id;
+      }
+
       const payload = {
-        laudo_id: laudo.id,
+        laudo_id: currentLaudoId,
         patient: {
           iniciais: formData.iniciais,
           sexo: formData.sexo,
@@ -108,26 +152,22 @@ export const LaudoForm = ({ onLaudoGenerated }: LaudoFormProps) => {
           nao_diagnostico_definitivo: true,
           evitar_alucinacao: true,
         },
+        mode: 'complete',
       };
 
-      // Call edge function
       const { data, error } = await supabase.functions.invoke('generate-laudo', {
         body: payload,
       });
 
       if (error) throw error;
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
+      if (data.error) throw new Error(data.error);
 
       toast({
         title: "Laudo gerado com sucesso!",
         description: "O laudo foi processado pela IA e está pronto para visualização",
       });
 
-      onLaudoGenerated(laudo.id);
-
+      onLaudoGenerated(currentLaudoId);
     } catch (error: any) {
       console.error('Erro ao gerar laudo:', error);
       toast({
@@ -142,6 +182,18 @@ export const LaudoForm = ({ onLaudoGenerated }: LaudoFormProps) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Upload de Áudio (Opcional)</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Envie um áudio da consulta para transcrição automática
+          </p>
+        </CardHeader>
+        <CardContent>
+          <AudioUploader onUploadComplete={handleAudioUploadComplete} />
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Dados do Paciente</CardTitle>
@@ -229,7 +281,7 @@ export const LaudoForm = ({ onLaudoGenerated }: LaudoFormProps) => {
               id="transcript"
               value={formData.transcript}
               onChange={(e) => handleChange('transcript', e.target.value)}
-              placeholder="Cole aqui a transcrição completa da consulta..."
+              placeholder="Cole aqui a transcrição ou aguarde o processamento do áudio..."
               rows={8}
               required
             />

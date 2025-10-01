@@ -48,10 +48,11 @@ serve(async (req) => {
       historico,
       hipoteses_previas,
       regras_produto,
-      laudo_id
+      laudo_id,
+      mode = 'complete'
     } = await req.json();
 
-    const systemPrompt = `Você é um redator médico assistivo. Gere **laudo estruturado** em PT-BR, **sem diagnóstico definitivo**, descrevendo incertezas. Jamais invente dados ausentes; sinalize como 'não informado'. Adote tom técnico conciso. Mantenha **conformidade LGPD**: não inclua identificadores além das iniciais/idade/sexo fornecidos. Proponha **hipóteses diferenciais** com justificativas. Liste **condutas** e **exames complementares** razoáveis, citando **red flags**. Sugerir **CID-10** quando apropriado (indicativo). Finalize com **disclaimer**: 'Conteúdo gerado por IA para apoio; não substitui avaliação clínica'. Se a transcrição for pobre/ruidosa, peça dados adicionais.`;
+    const systemPrompt = `Você é um assistente clínico em PT-BR. Gere **laudos estruturados** sem diagnóstico definitivo, explicitando incertezas. Sempre produza **duas hipóteses**: **Mais provável** e **Menos provável (diferencial)**. Para cada hipótese, liste: **racional** (com base na transcrição e dados informados), **achados de suporte**, **achados que contrariam**, **fatores de risco**, **probabilidade (Alta/Média/Baixa)** e **próximos passos** (condutas e exames). Liste **red flags**, **lacunas de dados** (perguntas que faltam) e **CID‑10 sugeridos** (indicativos). Se algo não estiver na transcrição/dados, marque **"não informado"** (não invente). Inclua **disclaimer**: "Conteúdo gerado por IA para apoio; não substitui avaliação clínica presencial e julgamento médico." Siga **LGPD by design**: restrinja identificadores a iniciais/idade/sexo; não registre dados sensíveis desnecessários; minimize. Evite alucinações.`;
 
     const userPrompt = `
 **DADOS DO PACIENTE:**
@@ -89,16 +90,20 @@ ${hipoteses_previas?.length ? hipoteses_previas.map((h: string) => `- ${h}`).joi
 
 **INSTRUÇÕES DE FORMATAÇÃO:**
 Retorne um JSON estruturado com os seguintes campos:
-1. resumo_clinico: string - Resumo objetivo do caso
-2. hipoteses: array - Lista de hipóteses com {descricao, probabilidade (Alta/Média/Baixa), justificativa}
-3. condutas: array - Lista de condutas recomendadas
-4. exames_complementares: array - Lista de exames sugeridos
-5. red_flags: array - Sinais de alerta importantes
-6. cid10_sugeridos: array - Códigos CID-10 sugeridos com descrição
-7. texto_laudo_md: string - Laudo completo em Markdown formatado com seções
-8. texto_paciente_md: string - Resumo em linguagem acessível ao paciente
-9. avisos_legais: string - Disclaimer padrão
-10. referencias: array - Referências bibliográficas se aplicável
+1. dados_paciente: object - {iniciais, sexo, idade, especialidade}
+2. resumo_clinico: string - Resumo objetivo do caso
+3. hipoteses: object com:
+   - mais_provavel: {descricao, probabilidade, racional, achados_suporte[], achados_contra[], fatores_risco[], proximos_passos[], trechos_timestamp[]}
+   - menos_provavel: {descricao, probabilidade, racional, achados_suporte[], achados_contra[], fatores_risco[], proximos_passos[], trechos_timestamp[]}
+4. condutas_recomendadas: array - Lista de condutas recomendadas
+5. exames_sugeridos: array - Lista de exames sugeridos
+6. red_flags: array - Sinais de alerta importantes
+7. lacunas_dados: array - Perguntas/dados que faltam
+8. cid10_sugeridos: array - Códigos CID-10 sugeridos
+9. texto_laudo_md: string - Laudo completo em Markdown
+10. texto_paciente_md: string - Resumo acessível ao paciente
+11. avisos_legais: string - Disclaimer padrão
+12. referencias: array - Referências se aplicável
 
 IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
 `;
@@ -183,7 +188,7 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
     const { error: updateError } = await supabase
       .from('laudos')
       .update({
-        patient_data: patient,
+        patient_data: laudoData.dados_paciente || patient,
         clinical_context: {
           specialty,
           chief_complaint,
@@ -197,8 +202,8 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
         },
         summary: { resumo_clinico: laudoData.resumo_clinico },
         hypotheses: laudoData.hipoteses,
-        conducts: laudoData.condutas,
-        complementary_exams: laudoData.exames_complementares,
+        conducts: laudoData.condutas_recomendadas,
+        complementary_exams: laudoData.exames_sugeridos,
         red_flags: laudoData.red_flags,
         cid10_codes: laudoData.cid10_sugeridos,
         report_markdown: laudoData.texto_laudo_md,
@@ -212,6 +217,8 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
           latency_ms: latencyMs,
           finish_reason: finishReason,
         },
+        generation_mode: mode,
+        last_update_type: mode === 'delta' ? 'patient_data' : 'complete',
         status: 'completed',
         updated_at: new Date().toISOString(),
       })

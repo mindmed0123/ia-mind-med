@@ -2,3 +2,6 @@ project_id = "zwebwrbbrcmajkuptpwq"
 
 [functions.generate-laudo]
 verify_jwt = true
+
+[functions.transcribe-audio]
+verify_jwt = true

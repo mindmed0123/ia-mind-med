@@ -24,8 +24,10 @@ export type Database = {
           complementary_exams: Json | null
           conducts: Json | null
           created_at: string
+          generation_mode: string | null
           hypotheses: Json | null
           id: string
+          last_update_type: string | null
           legal_disclaimer: string | null
           patient_data: Json | null
           patient_markdown: string | null
@@ -38,6 +40,8 @@ export type Database = {
           summary: Json | null
           title: string
           transcript: Json | null
+          transcript_segments: Json | null
+          transcript_status: string | null
           updated_at: string
           user_id: string
         }
@@ -50,8 +54,10 @@ export type Database = {
           complementary_exams?: Json | null
           conducts?: Json | null
           created_at?: string
+          generation_mode?: string | null
           hypotheses?: Json | null
           id?: string
+          last_update_type?: string | null
           legal_disclaimer?: string | null
           patient_data?: Json | null
           patient_markdown?: string | null
@@ -64,6 +70,8 @@ export type Database = {
           summary?: Json | null
           title: string
           transcript?: Json | null
+          transcript_segments?: Json | null
+          transcript_status?: string | null
           updated_at?: string
           user_id: string
         }
@@ -76,8 +84,10 @@ export type Database = {
           complementary_exams?: Json | null
           conducts?: Json | null
           created_at?: string
+          generation_mode?: string | null
           hypotheses?: Json | null
           id?: string
+          last_update_type?: string | null
           legal_disclaimer?: string | null
           patient_data?: Json | null
           patient_markdown?: string | null
@@ -90,6 +100,8 @@ export type Database = {
           summary?: Json | null
           title?: string
           transcript?: Json | null
+          transcript_segments?: Json | null
+          transcript_status?: string | null
           updated_at?: string
           user_id?: string
         }

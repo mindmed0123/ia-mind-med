@@ -13,6 +13,7 @@ import Contato from "./pages/Contato";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NovoLaudo from "./pages/NovoLaudo";
+import AoVivo from "./pages/AoVivo";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,11 +32,11 @@ const App = () => (
             <Route path="/precos" element={<Precos />} />
             <Route path="/integracoes" element={<Integracoes />} />
             <Route path="/contato" element={<Contato />} />
-            <Route path="/auth" element={<Auth />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/novo-laudo" element={<NovoLaudo />} />
-        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-        <Route path="*" element={<NotFound />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/novo-laudo" element={<NovoLaudo />} />
+          <Route path="/ao-vivo" element={<AoVivo />} />
+          <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>

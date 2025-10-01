@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, LogOut, FileAudio, FileText, Settings } from "lucide-react";
+import { Activity, LogOut, FileAudio, FileText, Settings, Mic } from "lucide-react";
 import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
@@ -175,14 +175,25 @@ const Dashboard = () => {
         </div>
 
         <div className="mb-6">
-          <Button 
-            onClick={() => navigate("/novo-laudo")} 
-            size="lg"
-            className="w-full md:w-auto"
-          >
-            <FileText className="w-5 h-5 mr-2" />
-            Gerar Novo Laudo com IA
-          </Button>
+          <div className="grid grid-cols-2 gap-4">
+            <Button 
+              onClick={() => navigate("/novo-laudo")} 
+              size="lg"
+              className="w-full"
+            >
+              <FileText className="w-5 h-5 mr-2" />
+              Novo Laudo
+            </Button>
+            <Button
+              onClick={() => navigate("/ao-vivo")}
+              size="lg"
+              variant="secondary"
+              className="w-full"
+            >
+              <Mic className="w-5 h-5 mr-2" />
+              Atendimento ao Vivo
+            </Button>
+          </div>
         </div>
 
         <Card className="shadow-large">
