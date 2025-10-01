@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,8 +7,11 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity, Mail, Lock, User } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Auth = () => {
+  const navigate = useNavigate();
+  const { signIn, signUp, user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [signupData, setSignupData] = useState({
@@ -18,25 +21,37 @@ const Auth = () => {
     confirmPassword: "",
   });
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Validação básica
     if (!loginData.email || !loginData.password) {
       toast.error("Preencha todos os campos");
       setIsLoading(false);
       return;
     }
 
-    // Em produção, aqui faria a autenticação real via Supabase
     try {
-      // Simulação
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success("Login realizado com sucesso!");
-      // Redirecionar para dashboard
-      // navigate("/dashboard");
-    } catch (error) {
+      const { error } = await signIn(loginData.email, loginData.password);
+      
+      if (error) {
+        if (error.message.includes("Invalid login credentials")) {
+          toast.error("Email ou senha incorretos");
+        } else {
+          toast.error("Erro ao fazer login: " + error.message);
+        }
+      } else {
+        toast.success("Login realizado com sucesso!");
+        navigate("/dashboard");
+      }
+    } catch (error: any) {
       toast.error("Erro ao fazer login. Tente novamente.");
     } finally {
       setIsLoading(false);
@@ -71,13 +86,24 @@ const Auth = () => {
       return;
     }
 
-    // Em produção, aqui faria o cadastro real via Supabase
     try {
-      // Simulação
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success("Cadastro realizado! Verifique seu email.");
-      // Redirecionar para login ou dashboard
-    } catch (error) {
+      const { error } = await signUp(
+        signupData.email,
+        signupData.password,
+        signupData.name
+      );
+      
+      if (error) {
+        if (error.message.includes("already registered")) {
+          toast.error("Este email já está cadastrado");
+        } else {
+          toast.error("Erro ao criar conta: " + error.message);
+        }
+      } else {
+        toast.success("Conta criada com sucesso! Redirecionando...");
+        navigate("/dashboard");
+      }
+    } catch (error: any) {
       toast.error("Erro ao criar conta. Tente novamente.");
     } finally {
       setIsLoading(false);
@@ -86,7 +112,7 @@ const Auth = () => {
 
   const handleGoogleLogin = () => {
     toast.info("Login com Google em breve!");
-    // Em produção, integrar com Supabase Auth
+    // Em produção, integrar com Supabase Auth Google
   };
 
   return (
