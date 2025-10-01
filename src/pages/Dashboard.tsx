@@ -80,6 +80,7 @@ const Dashboard = () => {
         },
         headers: {
           Authorization: `Bearer ${accessToken}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
       });
 
@@ -93,14 +94,13 @@ const Dashboard = () => {
       console.error('Error invoking transcribe-audio:', error, error?.context);
       const status = error?.context?.status || error?.status;
       const body = error?.context?.body ?? error?.body;
-      const bodyText = typeof body === 'string' ? body : body ? JSON.stringify(body) : '';
-      const message = error?.message || (status ? `Erro ${status}` : 'Erro desconhecido');
-
-      const description = [message, bodyText].filter(Boolean).join(' - ');
+      const parsedBody = typeof body === 'string' ? body : body ? (body.error || JSON.stringify(body)) : '';
+      const ctxError = error?.context?.error;
+      const message = ctxError || parsedBody || error?.message || 'Tente novamente';
 
       toast({
         title: status === 401 ? 'Sessão expirada' : 'Erro ao processar',
-        description: description || 'Tente novamente',
+        description: message,
         variant: 'destructive',
       });
     }
