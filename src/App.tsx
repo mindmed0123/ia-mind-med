@@ -13,7 +13,6 @@ import Contato from "./pages/Contato";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NovoLaudo from "./pages/NovoLaudo";
-import AoVivo from "./pages/AoVivo";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,7 +34,6 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/novo-laudo" element={<NovoLaudo />} />
-          <Route path="/ao-vivo" element={<AoVivo />} />
           <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

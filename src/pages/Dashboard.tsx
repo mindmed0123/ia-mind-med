@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, LogOut, FileAudio, FileText, Settings, Mic } from "lucide-react";
+import { Activity, LogOut, FileAudio, FileText, Settings } from "lucide-react";
 import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,28 +42,48 @@ const Dashboard = () => {
   };
 
   const handleAudioUploadComplete = async (url: string, path: string) => {
-    const { error } = await supabase
-      .from('laudos')
-      .insert({
-        user_id: user?.id,
-        title: `Áudio ${new Date().toLocaleDateString()}`,
-        source_audio_url: url,
-        status: 'draft',
-        audio_processing_status: 'pending',
+    try {
+      // Create laudo
+      const { data: newLaudo, error: createError } = await supabase
+        .from('laudos')
+        .insert({
+          user_id: user?.id,
+          title: `Laudo com áudio - ${new Date().toLocaleString('pt-BR')}`,
+          source_audio_url: url,
+          status: 'draft',
+          audio_processing_status: 'processing',
+          transcript_status: 'processing',
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      toast({
+        title: "Processando áudio...",
+        description: "A transcrição e geração do laudo serão automáticas",
       });
 
-    if (error) {
+      // Start transcription
+      const { error: transcribeError } = await supabase.functions.invoke('transcribe-audio', {
+        body: {
+          audio_url: url,
+          laudo_id: newLaudo.id,
+          mode: 'complete',
+        },
+      });
+
+      if (transcribeError) throw transcribeError;
+
+      // Redirect to edit page
+      navigate(`/novo-laudo?id=${newLaudo.id}`);
+    } catch (error: any) {
+      console.error('Error:', error);
       toast({
-        title: "Erro ao salvar",
-        description: "Não foi possível registrar o áudio",
+        title: "Erro ao processar",
+        description: error.message || "Tente novamente",
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Áudio enviado!",
-        description: "Seu áudio foi salvo e está pronto para transcrição",
-      });
-      loadStats();
     }
   };
 
@@ -175,25 +195,14 @@ const Dashboard = () => {
         </div>
 
         <div className="mb-6">
-          <div className="grid grid-cols-2 gap-4">
-            <Button 
-              onClick={() => navigate("/novo-laudo")} 
-              size="lg"
-              className="w-full"
-            >
-              <FileText className="w-5 h-5 mr-2" />
-              Novo Laudo
-            </Button>
-            <Button
-              onClick={() => navigate("/ao-vivo")}
-              size="lg"
-              variant="secondary"
-              className="w-full"
-            >
-              <Mic className="w-5 h-5 mr-2" />
-              Atendimento ao Vivo
-            </Button>
-          </div>
+          <Button 
+            onClick={() => navigate("/novo-laudo")} 
+            size="lg"
+            className="w-full md:w-auto"
+          >
+            <FileText className="w-5 h-5 mr-2" />
+            Gerar Novo Laudo com IA
+          </Button>
         </div>
 
         <Card className="shadow-large">
