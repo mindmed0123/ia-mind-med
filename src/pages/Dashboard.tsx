@@ -1,19 +1,71 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity, LogOut, FileAudio, FileText, Settings } from "lucide-react";
+import { AudioUploader } from "@/components/audio/AudioUploader";
+import { AudioRecorder } from "@/components/audio/AudioRecorder";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Dashboard = () => {
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [transcriptionCount, setTranscriptionCount] = useState(0);
+  const [laudosCount, setLaudosCount] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) {
       navigate("/auth");
     }
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      loadStats();
+    }
+  }, [user]);
+
+  const loadStats = async () => {
+    const { data, error } = await supabase
+      .from('laudos')
+      .select('*', { count: 'exact', head: false })
+      .eq('user_id', user?.id);
+
+    if (!error && data) {
+      setLaudosCount(data.length);
+      setTranscriptionCount(data.filter(l => l.transcript).length);
+    }
+  };
+
+  const handleAudioUploadComplete = async (url: string, path: string) => {
+    const { error } = await supabase
+      .from('laudos')
+      .insert({
+        user_id: user?.id,
+        title: `Áudio ${new Date().toLocaleDateString()}`,
+        source_audio_url: url,
+        status: 'draft',
+        audio_processing_status: 'pending',
+      });
+
+    if (error) {
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível registrar o áudio",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Áudio enviado!",
+        description: "Seu áudio foi salvo e está pronto para transcrição",
+      });
+      loadStats();
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -83,7 +135,7 @@ const Dashboard = () => {
                   <FileAudio className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">0</p>
+                  <p className="text-2xl font-bold">{transcriptionCount}</p>
                   <p className="text-sm text-muted-foreground">Transcrições</p>
                 </div>
               </div>
@@ -97,7 +149,7 @@ const Dashboard = () => {
                   <FileText className="w-6 h-6 text-accent" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">0</p>
+                  <p className="text-2xl font-bold">{laudosCount}</p>
                   <p className="text-sm text-muted-foreground">Laudos gerados</p>
                 </div>
               </div>
@@ -124,20 +176,28 @@ const Dashboard = () => {
 
         <Card className="shadow-large">
           <CardContent className="pt-6">
-            <h2 className="text-xl font-semibold mb-4">Começar agora</h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              <Button className="gradient-primary h-auto py-6 flex-col">
-                <FileAudio className="w-8 h-8 mb-2" />
-                <span className="text-base font-semibold">Nova transcrição</span>
-                <span className="text-xs opacity-90">Grave ou envie um áudio</span>
-              </Button>
+            <h2 className="text-xl font-semibold mb-6">Nova transcrição</h2>
+            
+            <Tabs defaultValue="upload" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="upload">
+                  <FileAudio className="w-4 h-4 mr-2" />
+                  Enviar arquivo
+                </TabsTrigger>
+                <TabsTrigger value="record">
+                  <FileAudio className="w-4 h-4 mr-2" />
+                  Gravar áudio
+                </TabsTrigger>
+              </TabsList>
               
-              <Button variant="outline" className="h-auto py-6 flex-col">
-                <FileText className="w-8 h-8 mb-2" />
-                <span className="text-base font-semibold">Meus laudos</span>
-                <span className="text-xs">Ver histórico completo</span>
-              </Button>
-            </div>
+              <TabsContent value="upload">
+                <AudioUploader onUploadComplete={handleAudioUploadComplete} />
+              </TabsContent>
+              
+              <TabsContent value="record">
+                <AudioRecorder onRecordingComplete={handleAudioUploadComplete} />
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 

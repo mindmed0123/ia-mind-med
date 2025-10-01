@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       laudos: {
         Row: {
+          audio_processing_status: string | null
           created_at: string
           id: string
           pdf_url: string | null
@@ -29,6 +30,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          audio_processing_status?: string | null
           created_at?: string
           id?: string
           pdf_url?: string | null
@@ -42,6 +44,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          audio_processing_status?: string | null
           created_at?: string
           id?: string
           pdf_url?: string | null
