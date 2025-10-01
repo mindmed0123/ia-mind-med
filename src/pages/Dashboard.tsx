@@ -65,7 +65,7 @@ const Dashboard = () => {
       });
 
       // Start transcription
-      const { error: transcribeError } = await supabase.functions.invoke('transcribe-audio', {
+      const { data: transcribeData, error: transcribeError } = await supabase.functions.invoke('transcribe-audio', {
         body: {
           audio_url: url,
           audio_path: path,
@@ -74,15 +74,21 @@ const Dashboard = () => {
         },
       });
 
+      console.log('transcribe-audio result:', { transcribeData, transcribeError });
+
       if (transcribeError) throw transcribeError;
 
       // Redirect to edit page
       navigate(`/novo-laudo?id=${newLaudo.id}`);
     } catch (error: any) {
-      console.error('Error:', error);
+      console.error('Error:', error, error?.context);
+      const detailedMsg =
+        (error?.context && (error.context.body?.error || error.context.error || error.context.body)) ||
+        error?.message ||
+        'Tente novamente';
       toast({
         title: "Erro ao processar",
-        description: error.message || "Tente novamente",
+        description: typeof detailedMsg === 'string' ? detailedMsg : JSON.stringify(detailedMsg),
         variant: "destructive",
       });
     }
