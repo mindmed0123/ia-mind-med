@@ -90,15 +90,18 @@ const Dashboard = () => {
       // Redirect to edit page
       navigate(`/novo-laudo?id=${newLaudo.id}`);
     } catch (error: any) {
-      console.error('Error:', error, error?.context);
-      const detailedMsg =
-        (error?.context && (error.context.body?.error || error.context.error || error.context.body)) ||
-        error?.message ||
-        'Tente novamente';
+      console.error('Error invoking transcribe-audio:', error, error?.context);
+      const status = error?.context?.status || error?.status;
+      const body = error?.context?.body ?? error?.body;
+      const bodyText = typeof body === 'string' ? body : body ? JSON.stringify(body) : '';
+      const message = error?.message || (status ? `Erro ${status}` : 'Erro desconhecido');
+
+      const description = [message, bodyText].filter(Boolean).join(' - ');
+
       toast({
-        title: "Erro ao processar",
-        description: typeof detailedMsg === 'string' ? detailedMsg : JSON.stringify(detailedMsg),
-        variant: "destructive",
+        title: status === 401 ? 'Sessão expirada' : 'Erro ao processar',
+        description: description || 'Tente novamente',
+        variant: 'destructive',
       });
     }
   };
