@@ -26,14 +26,25 @@ serve(async (req) => {
       });
     }
 
+    // Extract JWT from "Bearer <token>"
+    const jwtMatch = authHeader.match(/^Bearer\s+(.+)$/);
+    if (!jwtMatch) {
+      console.error('transcribe-audio: Invalid Authorization header format');
+      return new Response(JSON.stringify({ error: 'Formato de autorização inválido' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const jwt = jwtMatch[1];
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: authHeader } }
     });
 
-    console.log('transcribe-audio: Getting user');
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    console.log('transcribe-audio: Getting user with JWT');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(jwt);
     
     if (userError) {
       console.error('transcribe-audio: Auth error:', userError);
