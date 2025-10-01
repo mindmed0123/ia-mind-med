@@ -1,1 +1,4 @@
 project_id = "zwebwrbbrcmajkuptpwq"
+
+[functions.generate-laudo]
+verify_jwt = true

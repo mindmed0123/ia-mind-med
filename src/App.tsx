@@ -12,6 +12,7 @@ import Integracoes from "./pages/Integracoes";
 import Contato from "./pages/Contato";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import NovoLaudo from "./pages/NovoLaudo";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,9 +32,10 @@ const App = () => (
             <Route path="/integracoes" element={<Integracoes />} />
             <Route path="/contato" element={<Contato />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/novo-laudo" element={<NovoLaudo />} />
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>

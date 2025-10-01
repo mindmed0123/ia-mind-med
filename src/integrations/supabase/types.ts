@@ -16,10 +16,22 @@ export type Database = {
     Tables: {
       laudos: {
         Row: {
+          ai_model: string | null
+          ai_usage: Json | null
           audio_processing_status: string | null
+          cid10_codes: Json | null
+          clinical_context: Json | null
+          complementary_exams: Json | null
+          conducts: Json | null
           created_at: string
+          hypotheses: Json | null
           id: string
+          legal_disclaimer: string | null
+          patient_data: Json | null
+          patient_markdown: string | null
           pdf_url: string | null
+          red_flags: Json | null
+          report_markdown: string | null
           source_audio_url: string | null
           specialty: string | null
           status: string | null
@@ -30,10 +42,22 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_model?: string | null
+          ai_usage?: Json | null
           audio_processing_status?: string | null
+          cid10_codes?: Json | null
+          clinical_context?: Json | null
+          complementary_exams?: Json | null
+          conducts?: Json | null
           created_at?: string
+          hypotheses?: Json | null
           id?: string
+          legal_disclaimer?: string | null
+          patient_data?: Json | null
+          patient_markdown?: string | null
           pdf_url?: string | null
+          red_flags?: Json | null
+          report_markdown?: string | null
           source_audio_url?: string | null
           specialty?: string | null
           status?: string | null
@@ -44,10 +68,22 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_model?: string | null
+          ai_usage?: Json | null
           audio_processing_status?: string | null
+          cid10_codes?: Json | null
+          clinical_context?: Json | null
+          complementary_exams?: Json | null
+          conducts?: Json | null
           created_at?: string
+          hypotheses?: Json | null
           id?: string
+          legal_disclaimer?: string | null
+          patient_data?: Json | null
+          patient_markdown?: string | null
           pdf_url?: string | null
+          red_flags?: Json | null
+          report_markdown?: string | null
           source_audio_url?: string | null
           specialty?: string | null
           status?: string | null

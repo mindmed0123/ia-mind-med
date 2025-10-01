@@ -174,6 +174,17 @@ const Dashboard = () => {
           </Card>
         </div>
 
+        <div className="mb-6">
+          <Button 
+            onClick={() => navigate("/novo-laudo")} 
+            size="lg"
+            className="w-full md:w-auto"
+          >
+            <FileText className="w-5 h-5 mr-2" />
+            Gerar Novo Laudo com IA
+          </Button>
+        </div>
+
         <Card className="shadow-large">
           <CardContent className="pt-6">
             <h2 className="text-xl font-semibold mb-6">Nova transcrição</h2>
