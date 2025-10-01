@@ -14,7 +14,136 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      laudos: {
+        Row: {
+          created_at: string
+          id: string
+          pdf_url: string | null
+          source_audio_url: string | null
+          specialty: string | null
+          status: string | null
+          summary: Json | null
+          title: string
+          transcript: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pdf_url?: string | null
+          source_audio_url?: string | null
+          specialty?: string | null
+          status?: string | null
+          summary?: Json | null
+          title: string
+          transcript?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pdf_url?: string | null
+          source_audio_url?: string | null
+          specialty?: string | null
+          status?: string | null
+          summary?: Json | null
+          title?: string
+          transcript?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "laudos_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          crm: string | null
+          email: string
+          full_name: string | null
+          id: string
+          specialty: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          crm?: string | null
+          email: string
+          full_name?: string | null
+          id: string
+          specialty?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          crm?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          specialty?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string
+          current_period_start: string
+          id: string
+          plan: Database["public"]["Enums"]["plan_type"]
+          remaining_starter_credits: number | null
+          status: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string
+          current_period_start?: string
+          id?: string
+          plan?: Database["public"]["Enums"]["plan_type"]
+          remaining_starter_credits?: number | null
+          status?: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string
+          current_period_start?: string
+          id?: string
+          plan?: Database["public"]["Enums"]["plan_type"]
+          remaining_starter_credits?: number | null
+          status?: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +152,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      plan_type: "STARTER" | "PRO" | "CLINIC"
+      subscription_status: "ACTIVE" | "PAST_DUE" | "CANCELED" | "TRIALING"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +280,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      plan_type: ["STARTER", "PRO", "CLINIC"],
+      subscription_status: ["ACTIVE", "PAST_DUE", "CANCELED", "TRIALING"],
+    },
   },
 } as const
