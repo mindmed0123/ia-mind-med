@@ -35,10 +35,10 @@ serve(async (req) => {
       });
     }
 
-    const { audio_url, laudo_id, mode = 'complete' } = await req.json();
+    const { audio_url, audio_path, laudo_id, mode = 'complete' } = await req.json();
 
-    if (!audio_url || !laudo_id) {
-      return new Response(JSON.stringify({ error: 'audio_url e laudo_id são obrigatórios' }), {
+    if ((!audio_url && !audio_path) || !laudo_id) {
+      return new Response(JSON.stringify({ error: 'Forneça audio_path (preferido) ou audio_url e o laudo_id' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -59,31 +59,43 @@ serve(async (req) => {
       throw new Error('API_keys não configurada');
     }
 
-    // Download audio from storage
-    const audioResponse = await fetch(audio_url);
-    if (!audioResponse.ok) {
-      throw new Error('Falha ao baixar áudio');
+    // Baixar áudio (preferir storage path)
+    let audioBlob: Blob;
+    let fileName = 'audio.webm';
+
+    if (audio_path) {
+      const { data: blob, error: downloadError } = await supabase
+        .storage
+        .from('audio-files')
+        .download(audio_path);
+
+      if (downloadError || !blob) {
+        console.error('Erro ao baixar do storage:', downloadError);
+        throw new Error('Falha ao baixar áudio do storage');
+      }
+
+      audioBlob = blob as Blob;
+      const ext = (audio_path.split('.').pop() || 'webm').toLowerCase();
+      fileName = `audio.${ext}`;
+    } else if (audio_url) {
+      const audioResponse = await fetch(audio_url);
+      if (!audioResponse.ok) {
+        throw new Error('Falha ao baixar áudio via URL');
+      }
+      audioBlob = await audioResponse.blob();
+
+      // Determine file extension based on URL
+      if (audio_url.includes('.opus')) fileName = 'audio.opus';
+      else if (audio_url.includes('.mp3')) fileName = 'audio.mp3';
+      else if (audio_url.includes('.wav')) fileName = 'audio.wav';
+      else if (audio_url.includes('.m4a')) fileName = 'audio.m4a';
+      else if (audio_url.includes('.ogg')) fileName = 'audio.ogg';
+    } else {
+      throw new Error('Nenhuma fonte de áudio fornecida');
     }
 
-    const audioBlob = await audioResponse.blob();
-    
     // Prepare form data for OpenAI
     const formData = new FormData();
-    
-    // Determine file extension based on content type or URL
-    let fileName = 'audio.webm';
-    if (audio_url.includes('.opus')) {
-      fileName = 'audio.opus';
-    } else if (audio_url.includes('.mp3')) {
-      fileName = 'audio.mp3';
-    } else if (audio_url.includes('.wav')) {
-      fileName = 'audio.wav';
-    } else if (audio_url.includes('.m4a')) {
-      fileName = 'audio.m4a';
-    } else if (audio_url.includes('.ogg')) {
-      fileName = 'audio.ogg';
-    }
-    
     formData.append('file', audioBlob, fileName);
     formData.append('model', 'whisper-1');
     formData.append('response_format', 'verbose_json'); // Get timestamps

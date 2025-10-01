@@ -68,6 +68,7 @@ const Dashboard = () => {
       const { error: transcribeError } = await supabase.functions.invoke('transcribe-audio', {
         body: {
           audio_url: url,
+          audio_path: path,
           laudo_id: newLaudo.id,
           mode: 'complete',
         },
