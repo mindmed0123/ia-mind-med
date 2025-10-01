@@ -86,13 +86,13 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Laudo Gerado por IA</CardTitle>
-            <div className="flex gap-2">
-              <Badge variant="outline">{laudo.ai_model || 'google/gemini-2.5-pro'}</Badge>
-              <Badge variant="outline" className="capitalize">{laudo.status}</Badge>
+            <div className="flex items-center justify-between">
+              <CardTitle>Laudo Gerado por IA</CardTitle>
+              <div className="flex gap-2">
+                <Badge variant="outline">{laudo.ai_model || 'gpt-5'}</Badge>
+                <Badge variant="outline" className="capitalize">{laudo.status}</Badge>
+              </div>
             </div>
-          </div>
           {laudo.patient_data && (
             <div className="text-sm text-muted-foreground mt-2">
               Paciente: {laudo.patient_data.iniciais} • {laudo.patient_data.sexo} • {laudo.patient_data.idade} anos
@@ -284,7 +284,7 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
             <CardContent className="space-y-4">
               <div>
                 <h4 className="font-medium mb-2">Modelo de IA</h4>
-                <p className="text-sm text-muted-foreground">{laudo.ai_model || 'google/gemini-2.5-pro'}</p>
+                <p className="text-sm text-muted-foreground">{laudo.ai_model || 'gpt-5'}</p>
               </div>
 
               {laudo.ai_usage && (

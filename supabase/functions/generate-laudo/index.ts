@@ -103,27 +103,27 @@ Retorne um JSON estruturado com os seguintes campos:
 IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
 `;
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY não configurada');
+    const OPENAI_API_KEY = Deno.env.get('API_keys');
+    if (!OPENAI_API_KEY) {
+      throw new Error('API_keys não configurada');
     }
 
     const startTime = Date.now();
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
+        model: 'gpt-5',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.3,
-        max_tokens: 4000,
+        max_completion_tokens: 4000,
       }),
     });
 
@@ -204,7 +204,7 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
         report_markdown: laudoData.texto_laudo_md,
         patient_markdown: laudoData.texto_paciente_md,
         legal_disclaimer: laudoData.avisos_legais,
-        ai_model: 'google/gemini-2.5-pro',
+        ai_model: 'gpt-5',
         ai_usage: {
           prompt_tokens: usage?.prompt_tokens,
           completion_tokens: usage?.completion_tokens,
@@ -225,7 +225,7 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
 
     console.log('Laudo gerado com sucesso:', {
       laudo_id,
-      model: 'google/gemini-2.5-pro',
+      model: 'gpt-5',
       tokens: usage?.total_tokens,
       latency_ms: latencyMs,
       finish_reason: finishReason,
@@ -235,7 +235,7 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
       success: true,
       laudo: laudoData,
       metadata: {
-        model: 'google/gemini-2.5-pro',
+        model: 'gpt-5',
         usage,
         latency_ms: latencyMs,
         finish_reason: finishReason,
