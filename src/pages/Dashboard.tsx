@@ -64,13 +64,22 @@ const Dashboard = () => {
         description: "A transcrição e geração do laudo serão automáticas",
       });
 
-      // Start transcription
+      // Start transcription - ensure auth header is included
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        throw new Error('Sessão inválida. Faça login novamente.');
+      }
+
       const { data: transcribeData, error: transcribeError } = await supabase.functions.invoke('transcribe-audio', {
         body: {
           audio_url: url,
           audio_path: path,
           laudo_id: newLaudo.id,
           mode: 'complete',
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
         },
       });
 
