@@ -12,15 +12,19 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-    try {
-      const authHeader = req.headers.get('Authorization');
-      console.log('transcribe-audio hasAuthHeader:', !!authHeader);
-      if (!authHeader) {
-        return new Response(JSON.stringify({ error: 'Não autorizado: header ausente' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+  try {
+    console.log('transcribe-audio: Starting request');
+    
+    const authHeader = req.headers.get('Authorization');
+    console.log('transcribe-audio: Has auth header:', !!authHeader);
+    
+    if (!authHeader) {
+      console.error('transcribe-audio: Missing Authorization header');
+      return new Response(JSON.stringify({ error: 'Não autorizado: header ausente' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -28,14 +32,26 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } }
     });
 
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        console.error('auth.getUser failed:', userError);
-        return new Response(JSON.stringify({ error: 'Usuário não autenticado' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    console.log('transcribe-audio: Getting user');
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError) {
+      console.error('transcribe-audio: Auth error:', userError);
+      return new Response(JSON.stringify({ error: 'Erro ao autenticar: ' + userError.message }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    if (!user) {
+      console.error('transcribe-audio: No user found');
+      return new Response(JSON.stringify({ error: 'Usuário não encontrado' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('transcribe-audio: User authenticated:', user.id);
 
     const { audio_url, audio_path, laudo_id, mode = 'complete' } = await req.json();
 
