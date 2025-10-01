@@ -54,9 +54,9 @@ serve(async (req) => {
       .eq('id', laudo_id)
       .eq('user_id', user.id);
 
-    const OPENAI_API_KEY = Deno.env.get('API_keys');
+    const OPENAI_API_KEY = Deno.env.get('API_keys') || Deno.env.get('API_key') || Deno.env.get('OPENAI_API_KEY');
     if (!OPENAI_API_KEY) {
-      throw new Error('API_keys não configurada');
+      throw new Error('Chave da OpenAI não configurada');
     }
 
     // Baixar áudio (preferir storage path)

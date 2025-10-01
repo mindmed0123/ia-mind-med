@@ -108,9 +108,9 @@ Retorne um JSON estruturado com os seguintes campos:
 IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
 `;
 
-    const OPENAI_API_KEY = Deno.env.get('API_keys');
+    const OPENAI_API_KEY = Deno.env.get('API_keys') || Deno.env.get('API_key') || Deno.env.get('OPENAI_API_KEY');
     if (!OPENAI_API_KEY) {
-      throw new Error('API_keys não configurada');
+      throw new Error('Chave da OpenAI não configurada');
     }
 
     const startTime = Date.now();
