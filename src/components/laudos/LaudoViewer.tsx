@@ -88,10 +88,7 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
         <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Laudo Gerado por IA</CardTitle>
-              <div className="flex gap-2">
-                <Badge variant="outline">{laudo.ai_model || 'gpt-5'}</Badge>
-                <Badge variant="outline" className="capitalize">{laudo.status}</Badge>
-              </div>
+              <Badge variant="outline" className="capitalize">{laudo.status}</Badge>
             </div>
           {laudo.patient_data && (
             <div className="text-sm text-muted-foreground mt-2">
