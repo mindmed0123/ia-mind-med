@@ -124,6 +124,7 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
     }
 
     const startTime = Date.now();
+    let modelUsed = 'gpt-5';
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -171,12 +172,43 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
     const data = await response.json();
     console.log('OpenAI response structure:', JSON.stringify(data, null, 2));
     
-    const content = data.choices?.[0]?.message?.content;
-    const usage = data.usage;
-    const finishReason = data.choices?.[0]?.finish_reason;
+    let content = data.choices?.[0]?.message?.content;
+    let usage = data.usage;
+    let finishReason = data.choices?.[0]?.finish_reason;
+
+    if (!content || finishReason === 'length') {
+      console.warn('Primary model returned empty/length-capped output. Falling back to gpt-5-mini with stricter limits.');
+      const fallbackResp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-5-mini',
+          messages: [
+            { role: 'system', content: systemPrompt + ' Seja conciso. Limite texto_laudo_md a 700 palavras e texto_paciente_md a 150 palavras. Retorne APENAS JSON válido.' },
+            { role: 'user', content: userPrompt }
+          ],
+          max_completion_tokens: 2000,
+        }),
+      });
+
+      if (fallbackResp.ok) {
+        const fallbackData = await fallbackResp.json();
+        console.log('Fallback response structure:', JSON.stringify(fallbackData, null, 2));
+        content = fallbackData.choices?.[0]?.message?.content;
+        usage = fallbackData.usage;
+        finishReason = fallbackData.choices?.[0]?.finish_reason;
+        modelUsed = 'gpt-5-mini';
+      } else {
+        const fbErr = await fallbackResp.text();
+        console.error('Fallback model error:', fallbackResp.status, fbErr);
+      }
+    }
 
     if (!content) {
-      console.error('Empty AI response. Full data:', JSON.stringify(data, null, 2));
+      console.error('Empty AI response after fallback.');
       throw new Error('Resposta vazia da IA. Verifique se a API key está configurada corretamente.');
     }
 
@@ -221,7 +253,7 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
         report_markdown: laudoData.texto_laudo_md,
         patient_markdown: laudoData.texto_paciente_md,
         legal_disclaimer: laudoData.avisos_legais,
-        ai_model: 'gpt-5',
+        ai_model: modelUsed,
         ai_usage: {
           prompt_tokens: usage?.prompt_tokens,
           completion_tokens: usage?.completion_tokens,
@@ -244,7 +276,7 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
 
     console.log('Laudo gerado com sucesso:', {
       laudo_id,
-      model: 'gpt-5',
+      model: modelUsed,
       tokens: usage?.total_tokens,
       latency_ms: latencyMs,
       finish_reason: finishReason,
@@ -254,7 +286,7 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
       success: true,
       laudo: laudoData,
       metadata: {
-        model: 'gpt-5',
+        model: modelUsed,
         usage,
         latency_ms: latencyMs,
         finish_reason: finishReason,
