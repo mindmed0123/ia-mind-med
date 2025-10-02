@@ -1,7 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -93,9 +92,9 @@ serve(async (req) => {
       .eq('id', laudo_id)
       .eq('user_id', user.id);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('Lovable AI não configurada');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    if (!OPENAI_API_KEY) {
+      throw new Error('OpenAI API key não configurada');
     }
 
     // Baixar áudio (preferir storage path)
@@ -176,9 +175,13 @@ serve(async (req) => {
       throw new Error('Nenhuma fonte de áudio fornecida');
     }
 
-    // Convert audio to base64 for Gemini (efficient encoding)
-    const arrayBuffer = await audioBlob.arrayBuffer();
-    const base64Audio = encodeBase64(new Uint8Array(arrayBuffer));
+    // Prepare FormData for Whisper API
+    const formData = new FormData();
+    formData.append('file', audioBlob, fileName);
+    formData.append('model', 'whisper-1');
+    formData.append('language', 'pt');
+    formData.append('response_format', 'verbose_json');
+    formData.append('timestamp_granularities[]', 'segment');
 
     const startTime = Date.now();
 
@@ -186,33 +189,12 @@ serve(async (req) => {
     const timeoutId = setTimeout(() => ac.abort('timeout'), 120000);
     let transcribeResponse: Response;
     try {
-      transcribeResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      transcribeResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
         },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: 'Transcreva este áudio em português brasileiro. Retorne APENAS a transcrição do texto falado, sem comentários adicionais. Inclua pontuação adequada.'
-                },
-                {
-                  type: 'input_audio',
-                  input_audio: {
-                    data: base64Audio,
-                    format: mimeType.split('/')[1] || 'mp3'
-                  }
-                }
-              ]
-            }
-          ]
-        }),
+        body: formData,
         signal: ac.signal,
       });
     } finally {
@@ -223,7 +205,7 @@ serve(async (req) => {
 
     if (!transcribeResponse.ok) {
       const errorText = await transcribeResponse.text();
-      console.error('Lovable AI transcription error:', transcribeResponse.status, errorText);
+      console.error('OpenAI Whisper transcription error:', transcribeResponse.status, errorText);
       
       await supabase
         .from('laudos')
@@ -256,30 +238,24 @@ serve(async (req) => {
     }
 
     const transcriptionData = await transcribeResponse.json();
-    const transcriptText = transcriptionData.choices?.[0]?.message?.content || '';
+    const transcriptText = transcriptionData.text || '';
     
     if (!transcriptText) {
-      throw new Error('Transcrição vazia retornada pela IA');
+      throw new Error('Transcrição vazia retornada pela API');
     }
 
-    // Split text into approximate segments (since Gemini doesn't provide timestamps)
-    const words = transcriptText.split(' ');
-    const segmentSize = 20; // words per segment
-    const segments = [];
-    for (let i = 0; i < words.length; i += segmentSize) {
-      const segmentWords = words.slice(i, i + segmentSize);
-      segments.push({
-        text: segmentWords.join(' '),
-        start: i * 0.5, // approximate timing
-        end: (i + segmentWords.length) * 0.5,
-        confidence: 0.85,
-      });
-    }
+    // Use Whisper's segments if available
+    const segments = (transcriptionData.segments || []).map((seg: any) => ({
+      text: seg.text,
+      start: seg.start,
+      end: seg.end,
+      confidence: seg.no_speech_prob ? 1 - seg.no_speech_prob : 0.9,
+    }));
 
     const fullTranscript = {
       text: transcriptText,
-      language: 'pt',
-      duration: words.length * 0.5,
+      language: transcriptionData.language || 'pt',
+      duration: transcriptionData.duration || 0,
       segments,
     };
 
