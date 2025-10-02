@@ -91,6 +91,7 @@ serve(async (req) => {
     // Baixar áudio (preferir storage path)
     let audioBlob: Blob;
     let fileName = 'audio.webm';
+    let mimeType = 'audio/webm';
 
     if (audio_path) {
       const { data: blob, error: downloadError } = await supabase
@@ -103,9 +104,23 @@ serve(async (req) => {
         throw new Error('Falha ao baixar áudio do storage');
       }
 
-      audioBlob = blob as Blob;
       const ext = (audio_path.split('.').pop() || 'webm').toLowerCase();
       fileName = `audio.${ext}`;
+      
+      // Map extensions to MIME types
+      const mimeMap: Record<string, string> = {
+        'webm': 'audio/webm',
+        'mp3': 'audio/mpeg',
+        'wav': 'audio/wav',
+        'm4a': 'audio/mp4',
+        'ogg': 'audio/ogg',
+        'flac': 'audio/flac',
+      };
+      mimeType = mimeMap[ext] || 'audio/webm';
+      
+      // Create new blob with correct MIME type
+      audioBlob = new Blob([blob], { type: mimeType });
+      console.log(`Audio downloaded: ${fileName}, type: ${mimeType}`);
     } else if (audio_url) {
       const audioResponse = await fetch(audio_url);
       if (!audioResponse.ok) {
