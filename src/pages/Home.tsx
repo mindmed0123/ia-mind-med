@@ -123,7 +123,7 @@ const Home = () => {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up" style={{ animationDelay: "0.2s" }}>
             <Link to="/auth">
-              <PremiumButton className="bg-white text-primary hover:bg-white/90 shadow-xl text-lg px-8 py-6">
+              <PremiumButton className="!bg-white !text-primary hover:!bg-white/90 shadow-xl text-lg px-8 py-6 font-semibold">
                 🔵 Quero testar agora
               </PremiumButton>
             </Link>
