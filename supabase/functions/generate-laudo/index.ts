@@ -12,6 +12,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let currentLaudoId: string | null = null;
+
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -61,6 +63,8 @@ serve(async (req) => {
       laudo_id,
       mode = 'complete'
     } = await req.json();
+    
+    currentLaudoId = laudo_id;
 
     const systemPrompt = `Você é um assistente clínico em PT-BR. Gere **laudos estruturados** sem diagnóstico definitivo, explicitando incertezas. Sempre produza **duas hipóteses**: **Mais provável** e **Menos provável (diferencial)**. Para cada hipótese, liste: **racional** (com base na transcrição e dados informados), **achados de suporte**, **achados que contrariam**, **fatores de risco**, **probabilidade (Alta/Média/Baixa)** e **próximos passos** (condutas e exames). Liste **red flags**, **lacunas de dados** (perguntas que faltam) e **CID‑10 sugeridos** (indicativos). Se algo não estiver na transcrição/dados, marque **"não informado"** (não invente). Inclua **disclaimer**: "Conteúdo gerado por IA para apoio; não substitui avaliação clínica presencial e julgamento médico." Siga **LGPD by design**: restrinja identificadores a iniciais/idade/sexo; não registre dados sensíveis desnecessários; minimize. Evite alucinações.`;
 
@@ -126,21 +130,38 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
     const startTime = Date.now();
     let modelUsed = 'gpt-5';
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-5',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        max_completion_tokens: 16000
-      }),
-    });
+    // Add 180 second timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 180000);
+
+    let response;
+    try {
+      response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-5',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          max_completion_tokens: 16000
+        }),
+        signal: controller.signal,
+      });
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        console.error('OpenAI request timeout after 180s');
+        throw new Error('Tempo limite de geração excedido. Tente novamente.');
+      }
+      throw fetchError;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     const latencyMs = Date.now() - startTime;
 
@@ -220,7 +241,47 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
       laudoData = JSON.parse(cleanContent);
     } catch (parseError) {
       console.error('Erro ao parsear JSON:', parseError);
-      throw new Error('Formato de resposta inválido da IA');
+      console.error('Content length:', content?.length);
+      console.error('First 500 chars:', content?.substring(0, 500));
+      console.error('Last 500 chars:', content?.substring(content.length - 500));
+      
+      // Try one more time with mini model and reduced output
+      console.log('Attempting recovery with gpt-5-mini...');
+      const recoveryResp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-5-mini',
+          messages: [
+            { role: 'system', content: systemPrompt + ' CRÍTICO: Seja MUITO conciso. Máximo 500 palavras em texto_laudo_md. Retorne APENAS JSON válido.' },
+            { role: 'user', content: userPrompt }
+          ],
+          max_completion_tokens: 6000
+        }),
+      });
+      
+      if (recoveryResp.ok) {
+        const recoveryData = await recoveryResp.json();
+        const recoveryContent = recoveryData.choices?.[0]?.message?.content;
+        if (recoveryContent) {
+          const cleanRecovery = recoveryContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          try {
+            laudoData = JSON.parse(cleanRecovery);
+            modelUsed = 'gpt-5-mini (recovery)';
+            console.log('Recovery successful with mini model');
+          } catch (retryError) {
+            console.error('Recovery parse also failed:', retryError);
+            throw new Error('Formato de resposta inválido da IA após tentativa de recuperação');
+          }
+        } else {
+          throw new Error('Resposta vazia na tentativa de recuperação');
+        }
+      } else {
+        throw new Error('Formato de resposta inválido da IA e falha na recuperação');
+      }
     }
 
     // Add legal disclaimer if not present
@@ -297,6 +358,29 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
 
   } catch (error) {
     console.error('Erro na função generate-laudo:', error);
+    
+    // Try to update laudo status to error
+    try {
+      const authHeader = req.headers.get('Authorization');
+      if (authHeader && currentLaudoId) {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseKey, {
+          global: { headers: { Authorization: authHeader } }
+        });
+        
+        await supabase
+          .from('laudos')
+          .update({ 
+            status: 'error',
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', currentLaudoId);
+      }
+    } catch (updateError) {
+      console.error('Failed to update laudo error status:', updateError);
+    }
+    
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : 'Erro desconhecido'
     }), {
