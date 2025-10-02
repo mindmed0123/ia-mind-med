@@ -87,9 +87,7 @@ const Home = () => {
           animationDelay: "0.2s"
         }}>
             <Link to="/auth">
-              <PremiumButton className="shadow-xl text-lg px-8 py-6 font-semibold text-slate-50 bg-[#00b7ff]/[0.31]">
-                🔵 Quero testar agora
-              </PremiumButton>
+              
             </Link>
           </div>
         </div>
