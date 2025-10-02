@@ -1,106 +1,66 @@
 import { Link } from "react-router-dom";
 import { PremiumButton, OutlinePremiumButton } from "@/components/ui/button-variants";
-import {
-  FileAudio,
-  FileText,
-  FileCheck,
-  Shield,
-  Zap,
-  Target,
-  CheckCircle2,
-  MessageCircle,
-  Clock,
-  Brain,
-  Sparkles,
-  Stethoscope,
-  Users,
-  TrendingUp,
-  AlertCircle,
-  BarChart3,
-  Flame,
-  Timer,
-} from "lucide-react";
+import { FileAudio, FileText, FileCheck, Shield, Zap, Target, CheckCircle2, MessageCircle, Clock, Brain, Sparkles, Stethoscope, Users, TrendingUp, AlertCircle, BarChart3, Flame, Timer } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-
 const Home = () => {
-  const howItWorks = [
-    {
-      icon: FileAudio,
-      title: "Escuta em tempo real",
-      description: "Nossa IA capta e transcreve automaticamente toda a consulta com precisão médica",
-    },
-    {
-      icon: FileText,
-      title: "Organiza laudos estruturados",
-      description: "Transforma a conversa em laudos prontos, com todos os dados organizados",
-    },
-    {
-      icon: Brain,
-      title: "Sugere diagnósticos",
-      description: "Dois diagnósticos: o mais provável e uma alternativa clínica",
-    },
-    {
-      icon: FileCheck,
-      title: "Integra com PEP",
-      description: "Copie direto para seu prontuário eletrônico de forma segura",
-    },
-  ];
-
-  const benefits = [
-    {
-      icon: Clock,
-      title: "40% menos tempo",
-      description: "Economize até 40% do tempo gasto em prontuários",
-    },
-    {
-      icon: Users,
-      title: "Atenda mais pacientes",
-      description: "Sem aumentar sua carga horária ou comprometer qualidade",
-    },
-    {
-      icon: Target,
-      title: "Menos erros clínicos",
-      description: "Laudos estruturados reduzem riscos de falhas",
-    },
-    {
-      icon: Shield,
-      title: "LGPD by design",
-      description: "Proteção máxima de dados sensíveis e compliance total",
-    },
-    {
-      icon: Brain,
-      title: "Mais clareza",
-      description: "Diagnósticos organizados aumentam sua confiança clínica",
-    },
-    {
-      icon: Sparkles,
-      title: "Menos burocracia",
-      description: "Foque no que realmente importa: cuidar de pacientes",
-    },
-  ];
-
-  const testimonials = [
-    {
-      icon: TrendingUp,
-      stat: "2x",
-      label: "mais foco no paciente durante a consulta",
-    },
-    {
-      icon: Brain,
-      stat: "100%",
-      label: "mais clareza e confiança nos diagnósticos",
-    },
-    {
-      icon: BarChart3,
-      stat: "40%",
-      label: "redução do estresse e sobrecarga mental",
-    },
-  ];
-
-  return (
-    <div className="min-h-screen">
+  const howItWorks = [{
+    icon: FileAudio,
+    title: "Escuta em tempo real",
+    description: "Nossa IA capta e transcreve automaticamente toda a consulta com precisão médica"
+  }, {
+    icon: FileText,
+    title: "Organiza laudos estruturados",
+    description: "Transforma a conversa em laudos prontos, com todos os dados organizados"
+  }, {
+    icon: Brain,
+    title: "Sugere diagnósticos",
+    description: "Dois diagnósticos: o mais provável e uma alternativa clínica"
+  }, {
+    icon: FileCheck,
+    title: "Integra com PEP",
+    description: "Copie direto para seu prontuário eletrônico de forma segura"
+  }];
+  const benefits = [{
+    icon: Clock,
+    title: "40% menos tempo",
+    description: "Economize até 40% do tempo gasto em prontuários"
+  }, {
+    icon: Users,
+    title: "Atenda mais pacientes",
+    description: "Sem aumentar sua carga horária ou comprometer qualidade"
+  }, {
+    icon: Target,
+    title: "Menos erros clínicos",
+    description: "Laudos estruturados reduzem riscos de falhas"
+  }, {
+    icon: Shield,
+    title: "LGPD by design",
+    description: "Proteção máxima de dados sensíveis e compliance total"
+  }, {
+    icon: Brain,
+    title: "Mais clareza",
+    description: "Diagnósticos organizados aumentam sua confiança clínica"
+  }, {
+    icon: Sparkles,
+    title: "Menos burocracia",
+    description: "Foque no que realmente importa: cuidar de pacientes"
+  }];
+  const testimonials = [{
+    icon: TrendingUp,
+    stat: "2x",
+    label: "mais foco no paciente durante a consulta"
+  }, {
+    icon: Brain,
+    stat: "100%",
+    label: "mais clareza e confiança nos diagnósticos"
+  }, {
+    icon: BarChart3,
+    stat: "40%",
+    label: "redução do estresse e sobrecarga mental"
+  }];
+  return <div className="min-h-screen">
       <Navbar />
 
       {/* Hero Section */}
@@ -115,15 +75,19 @@ const Home = () => {
             O Maior Inimigo do Burnout Médico
           </h1>
 
-          <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto text-balance animate-fade-up leading-relaxed" style={{ animationDelay: "0.1s" }}>
+          <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto text-balance animate-fade-up leading-relaxed" style={{
+          animationDelay: "0.1s"
+        }}>
             Transforme suas consultas em laudos completos com inteligência artificial auditável, 
             reduza até <strong className="text-white font-bold">40% da burocracia clínica</strong> e foque no que 
             realmente importa: <strong className="text-white font-bold">seus pacientes</strong>.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up" style={{ animationDelay: "0.2s" }}>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up" style={{
+          animationDelay: "0.2s"
+        }}>
             <Link to="/auth">
-              <PremiumButton className="!bg-white !text-primary hover:!bg-white/90 shadow-xl text-lg px-8 py-6 font-semibold">
+              <PremiumButton className="shadow-xl text-lg px-8 py-6 font-semibold text-slate-50 bg-[#00b7ff]/[0.31]">
                 🔵 Quero testar agora
               </PremiumButton>
             </Link>
@@ -168,12 +132,9 @@ const Home = () => {
           </div>
 
           <div className="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-            {howItWorks.map((item, index) => (
-              <Card
-                key={index}
-                className="shadow-soft hover:shadow-medium transition-smooth border-2 animate-fade-up"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
+            {howItWorks.map((item, index) => <Card key={index} className="shadow-soft hover:shadow-medium transition-smooth border-2 animate-fade-up" style={{
+            animationDelay: `${index * 0.1}s`
+          }}>
                 <CardContent className="pt-6">
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -188,8 +149,7 @@ const Home = () => {
                     </div>
                   </div>
                 </CardContent>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </div>
       </section>
@@ -202,12 +162,9 @@ const Home = () => {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {benefits.map((benefit, index) => (
-              <Card
-                key={index}
-                className="shadow-soft hover:shadow-medium transition-smooth text-center animate-fade-up"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
+            {benefits.map((benefit, index) => <Card key={index} className="shadow-soft hover:shadow-medium transition-smooth text-center animate-fade-up" style={{
+            animationDelay: `${index * 0.1}s`
+          }}>
                 <CardContent className="pt-6">
                   <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                     <benefit.icon className="w-8 h-8 text-primary" />
@@ -215,8 +172,7 @@ const Home = () => {
                   <h3 className="text-lg font-semibold mb-2">{benefit.title}</h3>
                   <p className="text-muted-foreground">{benefit.description}</p>
                 </CardContent>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </div>
       </section>
@@ -232,19 +188,15 @@ const Home = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <Card
-                key={index}
-                className="shadow-soft hover:shadow-medium transition-smooth text-center animate-fade-up border-2"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
+            {testimonials.map((testimonial, index) => <Card key={index} className="shadow-soft hover:shadow-medium transition-smooth text-center animate-fade-up border-2" style={{
+            animationDelay: `${index * 0.1}s`
+          }}>
                 <CardContent className="pt-6">
                   <testimonial.icon className="w-12 h-12 text-primary mx-auto mb-4" />
                   <div className="text-5xl font-bold text-primary mb-3">{testimonial.stat}</div>
                   <p className="text-lg text-muted-foreground">{testimonial.label}</p>
                 </CardContent>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </div>
       </section>
@@ -402,8 +354,6 @@ const Home = () => {
       </section>
 
       <Footer />
-    </div>
-  );
+    </div>;
 };
-
 export default Home;
