@@ -169,12 +169,15 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
     }
 
     const data = await response.json();
+    console.log('OpenAI response structure:', JSON.stringify(data, null, 2));
+    
     const content = data.choices?.[0]?.message?.content;
     const usage = data.usage;
     const finishReason = data.choices?.[0]?.finish_reason;
 
     if (!content) {
-      throw new Error('Resposta vazia da IA');
+      console.error('Empty AI response. Full data:', JSON.stringify(data, null, 2));
+      throw new Error('Resposta vazia da IA. Verifique se a API key está configurada corretamente.');
     }
 
     // Parse JSON from AI response

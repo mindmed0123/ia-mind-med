@@ -102,7 +102,7 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
       </Card>
 
       <Tabs defaultValue="resumo" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="laudo">
             <FileText className="w-4 h-4 mr-2" />
@@ -112,8 +112,6 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
             <User className="w-4 h-4 mr-2" />
             Paciente
           </TabsTrigger>
-          <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
-          <TabsTrigger value="json">JSON</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumo" className="space-y-4">
@@ -331,79 +329,6 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
               <div className="prose prose-sm max-w-none dark:prose-invert">
                 <ReactMarkdown>{laudo.patient_markdown || 'Resumo não disponível'}</ReactMarkdown>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="detalhes">
-          <Card>
-            <CardHeader>
-              <CardTitle>Detalhes Técnicos</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h4 className="font-medium mb-2">Modelo de IA</h4>
-                <p className="text-sm text-muted-foreground">{laudo.ai_model || 'gpt-5'}</p>
-              </div>
-
-              {laudo.ai_usage && (
-                <>
-                  <Separator />
-                  <div>
-                    <h4 className="font-medium mb-2">Uso de Tokens</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Prompt</p>
-                        <p className="font-mono">{laudo.ai_usage.prompt_tokens || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Resposta</p>
-                        <p className="font-mono">{laudo.ai_usage.completion_tokens || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Total</p>
-                        <p className="font-mono">{laudo.ai_usage.total_tokens || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Latência</p>
-                        <p className="font-mono">{laudo.ai_usage.latency_ms || 0}ms</p>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <Separator />
-              <div>
-                <h4 className="font-medium mb-2">Timestamps</h4>
-                <div className="space-y-1 text-sm">
-                  <p><span className="text-muted-foreground">Criado:</span> {new Date(laudo.created_at).toLocaleString('pt-BR')}</p>
-                  <p><span className="text-muted-foreground">Atualizado:</span> {new Date(laudo.updated_at).toLocaleString('pt-BR')}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="json">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Dados Estruturados (JSON)</CardTitle>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyToClipboard(JSON.stringify(laudo, null, 2))}
-                >
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copiar
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs">
-                <code>{JSON.stringify(laudo, null, 2)}</code>
-              </pre>
             </CardContent>
           </Card>
         </TabsContent>
