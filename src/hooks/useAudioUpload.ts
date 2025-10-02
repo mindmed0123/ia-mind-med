@@ -8,16 +8,12 @@ const MAX_DURATION = 30 * 60; // 30 minutes in seconds
 const ALLOWED_FORMATS = [
   'audio/webm',
   'audio/ogg',
-  'audio/opus',
-  'audio/mpeg',
+  'audio/mpeg', // .mp3
   'audio/mp3',
   'audio/wav',
   'audio/x-wav',
-  'audio/mp4',
-  'audio/x-m4a',
-  'audio/aac',
+  'audio/mp4', // .m4a / .mp4 audio
   'audio/flac',
-  'audio/amr'
 ];
 
 interface UploadResult {
@@ -45,7 +41,7 @@ export const useAudioUpload = () => {
     if (!ALLOWED_FORMATS.includes(file.type)) {
       toast({
         title: "Formato não suportado",
-        description: "Formato de áudio não suportado. Use webm, ogg, opus, mp3, wav, m4a, aac, flac ou amr.",
+        description: "Formato de áudio não suportado. Use webm, ogg, mp3, wav, m4a, flac ou mp4.",
         variant: "destructive",
       });
       return false;

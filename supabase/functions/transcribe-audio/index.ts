@@ -126,14 +126,42 @@ serve(async (req) => {
       if (!audioResponse.ok) {
         throw new Error('Falha ao baixar áudio via URL');
       }
-      audioBlob = await audioResponse.blob();
+      const originalBlob = await audioResponse.blob();
 
-      // Determine file extension based on URL
-      if (audio_url.includes('.opus')) fileName = 'audio.opus';
-      else if (audio_url.includes('.mp3')) fileName = 'audio.mp3';
-      else if (audio_url.includes('.wav')) fileName = 'audio.wav';
-      else if (audio_url.includes('.m4a')) fileName = 'audio.m4a';
-      else if (audio_url.includes('.ogg')) fileName = 'audio.ogg';
+      // Infer extension and MIME type
+      const contentType = audioResponse.headers.get('content-type') || '';
+      let ext = 'webm';
+      if (audio_url.match(/\.(mp3)(\?.*)?$/i)) ext = 'mp3';
+      else if (audio_url.match(/\.(wav)(\?.*)?$/i)) ext = 'wav';
+      else if (audio_url.match(/\.(m4a)(\?.*)?$/i)) ext = 'm4a';
+      else if (audio_url.match(/\.(ogg|oga)(\?.*)?$/i)) ext = 'ogg';
+      else if (audio_url.match(/\.(flac)(\?.*)?$/i)) ext = 'flac';
+      else if (audio_url.match(/\.(mp4)(\?.*)?$/i)) ext = 'mp4';
+      else if (audio_url.match(/\.(webm)(\?.*)?$/i)) ext = 'webm';
+
+      const mimeMap: Record<string, string> = {
+        'webm': 'audio/webm',
+        'mp3': 'audio/mpeg',
+        'wav': 'audio/wav',
+        'm4a': 'audio/mp4',
+        'ogg': 'audio/ogg',
+        'flac': 'audio/flac',
+        'mp4': 'audio/mp4',
+      };
+      mimeType = contentType && contentType.startsWith('audio/') ? contentType : (mimeMap[ext] || 'audio/webm');
+      fileName = `audio.${ext}`;
+
+      const allowedMimes = new Set(['audio/webm','audio/ogg','audio/mpeg','audio/mp3','audio/wav','audio/x-wav','audio/mp4','audio/flac']);
+      if (!allowedMimes.has(mimeType)) {
+        return new Response(JSON.stringify({ error: 'Formato de áudio não suportado. Use webm, ogg, mp3, wav, m4a, flac ou mp4.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Normalize blob with correct MIME
+      audioBlob = new Blob([originalBlob], { type: mimeType });
+      console.log(`Audio fetched from URL: ${fileName}, type: ${mimeType}`);
     } else {
       throw new Error('Nenhuma fonte de áudio fornecida');
     }

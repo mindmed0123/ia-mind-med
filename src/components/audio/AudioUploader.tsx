@@ -48,7 +48,7 @@ export const AudioUploader = ({ onUploadComplete }: AudioUploaderProps) => {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".webm,.ogg,.mp3,.wav,.m4a,.aac,.flac,.amr,audio/*"
+              accept=".webm,.ogg,.mp3,.wav,.m4a,.flac,.mp4"
               onChange={handleFileSelect}
               className="hidden"
               id="audio-upload"
@@ -117,7 +117,7 @@ export const AudioUploader = ({ onUploadComplete }: AudioUploaderProps) => {
           )}
 
           <div className="text-xs text-muted-foreground space-y-1">
-            <p>• Formatos aceitos: webm, ogg, mp3, wav, m4a, aac, flac, amr</p>
+            <p>• Formatos aceitos: webm, ogg, mp3, wav, m4a, flac, mp4</p>
             <p>• Tamanho máximo: 100 MB</p>
             <p>• Duração máxima: 30 minutos</p>
           </div>
