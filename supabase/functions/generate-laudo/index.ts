@@ -21,13 +21,23 @@ serve(async (req) => {
       });
     }
 
+    // Extract JWT from "Bearer <token>"
+    const jwtMatch = authHeader.match(/^Bearer\s+(.+)$/);
+    if (!jwtMatch) {
+      return new Response(JSON.stringify({ error: 'Formato de autorização inválido' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const jwt = jwtMatch[1];
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_PUBLISHABLE_KEY')!;
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: authHeader } }
     });
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabase.auth.getUser(jwt);
     if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Usuário não autenticado' }), {
         status: 401,
@@ -127,7 +137,6 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        temperature: 0.3,
         max_completion_tokens: 4000,
       }),
     });
