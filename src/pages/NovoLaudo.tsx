@@ -20,6 +20,7 @@ const NovoLaudo = () => {
   const [isGeneratingLaudo, setIsGeneratingLaudo] = useState(false);
   const [patientData, setPatientData] = useState<any>(null);
   const [transcript, setTranscript] = useState("");
+  const [hasShownSuccessToast, setHasShownSuccessToast] = useState(false);
 
   useEffect(() => {
     if (laudoId) {
@@ -79,7 +80,7 @@ const NovoLaudo = () => {
         setTranscript(transcriptData.text);
         
         // Auto-generate laudo when transcription is ready and not already generated
-        if (data.transcript_status === 'completed' && data.status !== 'completed') {
+        if (data.transcript_status === 'completed' && data.status !== 'completed' && !isGeneratingLaudo) {
           handleGenerateLaudo(transcriptData.text);
         }
       }
@@ -131,10 +132,13 @@ const NovoLaudo = () => {
 
       if (error) throw error;
 
-      toast({
-        title: 'Laudo gerado!',
-        description: 'O laudo foi gerado com sucesso',
-      });
+      if (!hasShownSuccessToast) {
+        toast({
+          title: 'Laudo gerado!',
+          description: 'O laudo foi gerado com sucesso',
+        });
+        setHasShownSuccessToast(true);
+      }
 
       await loadLaudo();
     } catch (error: any) {
