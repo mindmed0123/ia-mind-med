@@ -70,24 +70,25 @@ const Dashboard = () => {
         description: "A transcrição e geração do laudo serão automáticas",
       });
 
-      // Start transcription - ensure fresh auth token
-      console.log('Getting auth session...');
+      // Navigate to laudo page immediately so user can see progress
+      navigate(`/novo-laudo?id=${newLaudo.id}`);
+
+      // Start transcription in background - ensure fresh auth token
       const { data: initial } = await supabase.auth.getSession();
       let accessToken = initial?.session?.access_token;
       if (!accessToken) {
         console.error('No access token found');
-        throw new Error('Sessão inválida. Faça login novamente.');
+        return; // Don't throw, just log - user is already on laudo page
       }
-      console.log('Access token obtained');
+      
       // Try to refresh session to avoid expired token issues
       const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
       if (!refreshError && refreshed?.session?.access_token) {
         accessToken = refreshed.session.access_token;
-        console.log('Session refreshed');
       }
 
-      console.log('Invoking transcribe-audio function...');
-      const { data: transcribeData, error: transcribeError } = await supabase.functions.invoke('transcribe-audio', {
+      // Invoke transcribe-audio (errors will be handled on the laudo page)
+      await supabase.functions.invoke('transcribe-audio', {
         body: {
           audio_url: url,
           audio_path: path,
@@ -99,13 +100,6 @@ const Dashboard = () => {
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
       });
-
-      console.log('transcribe-audio result:', { transcribeData, transcribeError });
-
-      if (transcribeError) throw transcribeError;
-
-      // Redirect to edit page
-      navigate(`/novo-laudo?id=${newLaudo.id}`);
     } catch (error: any) {
       console.error('Error invoking transcribe-audio:', error, error?.context);
       const status = error?.context?.status || error?.status;
