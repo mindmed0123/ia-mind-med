@@ -179,7 +179,7 @@ const Home = () => {
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="mb-4 text-4xl md:text-5xl font-bold">Prova Social / Validação</h2>
+            
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               📊 Médicos que testaram a MindMed relatam:
             </p>
@@ -218,10 +218,10 @@ const Home = () => {
               <div className="text-center mb-8">
                 <div className="mb-4">
                   <span className="text-6xl font-bold text-primary">R$ 99,90</span>
-                  <span className="text-2xl text-muted-foreground">/mês</span>
+                  <span className="text-2xl text-muted-foreground"></span>
                 </div>
                 <p className="text-muted-foreground">
-                  Inclui <strong className="text-foreground">10 consultas gratuitas</strong> de teste
+                  Inclui <strong className="text-foreground">10 consultas </strong> de teste
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
                   Após o período inicial, planos completos a partir de R$ 299,00/mês
