@@ -12,6 +12,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let currentLaudoId: string | null = null;
+  let currentUserId: string | null = null;
+
   try {
     console.log('transcribe-audio: Starting request');
     
@@ -64,7 +67,11 @@ serve(async (req) => {
 
     console.log('transcribe-audio: User authenticated:', user.id);
 
+    currentUserId = user.id;
+
     const { audio_url, audio_path, laudo_id, mode = 'complete' } = await req.json();
+
+    currentLaudoId = laudo_id;
 
     if ((!audio_url && !audio_path) || !laudo_id) {
       return new Response(JSON.stringify({ error: 'Forneça audio_path (preferido) ou audio_url e o laudo_id' }), {
@@ -175,13 +182,21 @@ serve(async (req) => {
 
     const startTime = Date.now();
 
-    const transcribeResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: formData,
-    });
+    const ac = new AbortController();
+    const timeoutId = setTimeout(() => ac.abort('timeout'), 120000);
+    let transcribeResponse: Response;
+    try {
+      transcribeResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: formData,
+        signal: ac.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     const latencyMs = Date.now() - startTime;
 
@@ -275,6 +290,27 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Erro na função transcribe-audio:', error);
+
+    // Garantir que o laudo não fique travado em "processing"
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      if (currentLaudoId && currentUserId) {
+        await supabase
+          .from('laudos')
+          .update({
+            transcript_status: 'error',
+            audio_processing_status: 'error',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', currentLaudoId)
+          .eq('user_id', currentUserId);
+      }
+    } catch (updateErr) {
+      console.error('Falha ao marcar laudo como erro após exceção:', updateErr);
+    }
+
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : 'Erro desconhecido'
     }), {
