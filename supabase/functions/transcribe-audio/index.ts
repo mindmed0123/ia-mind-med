@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -71,7 +72,9 @@ serve(async (req) => {
 
     currentUserId = user.id;
 
-    const { audio_url, audio_path, laudo_id, mode = 'complete' } = await req.json();
+    const { audio_url, audio_path, laudo_id, mode = 'fast' } = await req.json();
+
+    const selectedModel = mode === 'fast' ? 'google/gemini-2.5-flash-lite' : 'google/gemini-2.5-flash';
 
     currentLaudoId = laudo_id;
 
@@ -175,9 +178,9 @@ serve(async (req) => {
       throw new Error('Nenhuma fonte de áudio fornecida');
     }
 
-    // Convert audio to base64 for Gemini
+    // Convert audio to base64 for Gemini (efficient encoding)
     const arrayBuffer = await audioBlob.arrayBuffer();
-    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const base64Audio = encodeBase64(new Uint8Array(arrayBuffer));
 
     const startTime = Date.now();
 
@@ -192,7 +195,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: selectedModel,
           messages: [
             {
               role: 'user',

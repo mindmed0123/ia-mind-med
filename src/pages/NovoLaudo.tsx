@@ -125,7 +125,7 @@ const NovoLaudo = () => {
           contexto_clinico: patientData?.contexto_clinico || '',
           historico: patientData?.historico || '',
           laudo_id: laudoId,
-          mode: 'complete',
+          mode: 'fast',
         },
       });
 
@@ -163,7 +163,7 @@ const NovoLaudo = () => {
       const sourceUrl = laudo?.source_audio_url;
       if (!sourceUrl) throw new Error('Áudio de origem não encontrado.');
       const { error } = await supabase.functions.invoke('transcribe-audio', {
-        body: { audio_url: sourceUrl, laudo_id: laudoId, mode: 'complete' },
+        body: { audio_url: sourceUrl, laudo_id: laudoId, mode: 'fast' },
         headers: { Authorization: `Bearer ${accessToken}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
       });
       if (error) throw error;

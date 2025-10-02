@@ -61,9 +61,11 @@ serve(async (req) => {
       hipoteses_previas,
       regras_produto,
       laudo_id,
-      mode = 'complete'
+      mode = 'fast'
     } = await req.json();
-    
+
+    const selectedModel = mode === 'fast' ? 'google/gemini-2.5-flash-lite' : 'google/gemini-2.5-flash';
+
     currentLaudoId = laudo_id;
 
     const systemPrompt = `Você é um assistente clínico em PT-BR. Gere **laudos estruturados** sem diagnóstico definitivo, explicitando incertezas. Sempre produza **duas hipóteses**: **Mais provável** e **Menos provável (diferencial)**. Para cada hipótese, liste: **racional** (com base na transcrição e dados informados), **achados de suporte**, **achados que contrariam**, **fatores de risco**, **probabilidade (Alta/Média/Baixa)** e **próximos passos** (condutas e exames). Liste **red flags**, **lacunas de dados** (perguntas que faltam) e **CID‑10 sugeridos** (indicativos). Se algo não estiver na transcrição/dados, marque **"não informado"** (não invente). Inclua **disclaimer**: "Conteúdo gerado por IA para apoio; não substitui avaliação clínica presencial e julgamento médico." Siga **LGPD by design**: restrinja identificadores a iniciais/idade/sexo; não registre dados sensíveis desnecessários; minimize. Evite alucinações.`;
@@ -128,7 +130,7 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
     }
 
     const startTime = Date.now();
-    let modelUsed = 'google/gemini-2.5-flash';
+    let modelUsed = selectedModel;
 
     // Add 180 second timeout
     const controller = new AbortController();
@@ -143,7 +145,7 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: selectedModel,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
