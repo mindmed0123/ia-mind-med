@@ -86,9 +86,11 @@ const Home = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up" style={{
           animationDelay: "0.2s"
         }}>
-            <Link to="/auth">
-              
-            </Link>
+            <a href="https://buy.stripe.com/14A00l9fw75kb86fIYco001" target="_blank" rel="noopener noreferrer">
+              <PremiumButton className="!bg-white !text-primary hover:!bg-white/90 shadow-xl text-lg px-8 py-6">
+                🔵 Quero testar agora
+              </PremiumButton>
+            </a>
           </div>
         </div>
       </section>
@@ -251,11 +253,11 @@ const Home = () => {
                 </li>
               </ul>
 
-              <Link to="/auth" className="block">
+              <a href="https://buy.stripe.com/14A00l9fw75kb86fIYco001" target="_blank" rel="noopener noreferrer" className="block">
                 <PremiumButton className="w-full text-lg py-6">
                   🔵 Comece agora e revolucione sua rotina clínica
                 </PremiumButton>
-              </Link>
+              </a>
             </CardContent>
           </Card>
 
@@ -304,11 +306,11 @@ const Home = () => {
                 </div>
               </div>
 
-              <Link to="/auth" className="block">
+              <a href="https://buy.stripe.com/14A00l9fw75kb86fIYco001" target="_blank" rel="noopener noreferrer" className="block">
                 <PremiumButton className="w-full text-lg py-6 shadow-xl">
                   🔵 Quero ser um early adopter agora!
                 </PremiumButton>
-              </Link>
+              </a>
 
               <p className="text-center text-sm text-muted-foreground mt-4">
                 <Timer className="w-4 h-4 inline mr-1" />
@@ -332,11 +334,11 @@ const Home = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/auth">
+            <a href="https://buy.stripe.com/14A00l9fw75kb86fIYco001" target="_blank" rel="noopener noreferrer">
               <PremiumButton className="bg-white text-primary hover:bg-white/90 shadow-xl text-lg px-8 py-6">
                 🔵 Quero testar agora
               </PremiumButton>
-            </Link>
+            </a>
             <a href="https://wa.me/55XXXXXXXXXXX" target="_blank" rel="noopener noreferrer">
               <OutlinePremiumButton className="border-2 border-white text-white hover:bg-white hover:text-primary text-lg px-8 py-6">
                 <MessageCircle className="w-5 h-5 mr-2" />
