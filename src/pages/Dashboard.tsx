@@ -42,8 +42,10 @@ const Dashboard = () => {
   };
 
   const handleAudioUploadComplete = async (url: string, path: string) => {
+    console.log('handleAudioUploadComplete called with:', { url, path, userId: user?.id });
     try {
       // Create laudo
+      console.log('Creating laudo entry...');
       const { data: newLaudo, error: createError } = await supabase
         .from('laudos')
         .insert({
@@ -57,7 +59,11 @@ const Dashboard = () => {
         .select()
         .single();
 
-      if (createError) throw createError;
+      if (createError) {
+        console.error('Error creating laudo:', createError);
+        throw createError;
+      }
+      console.log('Laudo created successfully:', newLaudo.id);
 
       toast({
         title: "Processando áudio...",
@@ -65,17 +71,22 @@ const Dashboard = () => {
       });
 
       // Start transcription - ensure fresh auth token
+      console.log('Getting auth session...');
       const { data: initial } = await supabase.auth.getSession();
       let accessToken = initial?.session?.access_token;
       if (!accessToken) {
+        console.error('No access token found');
         throw new Error('Sessão inválida. Faça login novamente.');
       }
+      console.log('Access token obtained');
       // Try to refresh session to avoid expired token issues
       const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
       if (!refreshError && refreshed?.session?.access_token) {
         accessToken = refreshed.session.access_token;
+        console.log('Session refreshed');
       }
 
+      console.log('Invoking transcribe-audio function...');
       const { data: transcribeData, error: transcribeError } = await supabase.functions.invoke('transcribe-audio', {
         body: {
           audio_url: url,
