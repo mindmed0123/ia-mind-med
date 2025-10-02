@@ -118,26 +118,27 @@ Retorne um JSON estruturado com os seguintes campos:
 IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
 `;
 
-    const AI_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!AI_KEY) {
-      throw new Error('Chave da IA não configurada');
+    const openAIApiKey = Deno.env.get('API_key');
+    if (!openAIApiKey) {
+      throw new Error('Chave da OpenAI não configurada');
     }
 
     const startTime = Date.now();
-    let modelUsed = 'google/gemini-2.5-flash';
+    let modelUsed = 'gpt-5';
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${AI_KEY}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-5',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
-        ]
+        ],
+        max_completion_tokens: 16000
       }),
     });
 
@@ -176,19 +177,20 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
     let finishReason = data.choices?.[0]?.finish_reason;
 
     if (!content || finishReason === 'length') {
-      console.warn('Primary model returned empty/length-capped output. Falling back to gemini-2.5-flash-lite with stricter limits.');
-      const fallbackResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      console.warn('Primary model returned empty/length-capped output. Falling back to gpt-5-mini with stricter limits.');
+      const fallbackResp = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${AI_KEY}`,
+          'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash-lite',
+          model: 'gpt-5-mini',
           messages: [
             { role: 'system', content: systemPrompt + ' Seja conciso. Limite texto_laudo_md a 700 palavras e texto_paciente_md a 150 palavras. Retorne APENAS JSON válido.' },
             { role: 'user', content: userPrompt }
-          ]
+          ],
+          max_completion_tokens: 8000
         }),
       });
 
