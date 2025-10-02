@@ -92,9 +92,9 @@ serve(async (req) => {
       .eq('id', laudo_id)
       .eq('user_id', user.id);
 
-    const OPENAI_API_KEY = Deno.env.get('API_keys') || Deno.env.get('API_key') || Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      throw new Error('Chave da OpenAI não configurada');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('Lovable AI não configurada');
     }
 
     // Baixar áudio (preferir storage path)
@@ -175,12 +175,9 @@ serve(async (req) => {
       throw new Error('Nenhuma fonte de áudio fornecida');
     }
 
-    // Prepare form data for OpenAI
-    const formData = new FormData();
-    formData.append('file', audioBlob, fileName);
-    formData.append('model', 'whisper-1');
-    formData.append('response_format', 'verbose_json'); // Get timestamps
-    formData.append('language', 'pt');
+    // Convert audio to base64 for Gemini
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
 
     const startTime = Date.now();
 
@@ -188,12 +185,33 @@ serve(async (req) => {
     const timeoutId = setTimeout(() => ac.abort('timeout'), 120000);
     let transcribeResponse: Response;
     try {
-      transcribeResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      transcribeResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
         },
-        body: formData,
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: 'Transcreva este áudio em português brasileiro. Retorne APENAS a transcrição do texto falado, sem comentários adicionais. Inclua pontuação adequada.'
+                },
+                {
+                  type: 'input_audio',
+                  input_audio: {
+                    data: base64Audio,
+                    format: mimeType.split('/')[1] || 'mp3'
+                  }
+                }
+              ]
+            }
+          ]
+        }),
         signal: ac.signal,
       });
     } finally {
@@ -204,7 +222,7 @@ serve(async (req) => {
 
     if (!transcribeResponse.ok) {
       const errorText = await transcribeResponse.text();
-      console.error('OpenAI transcription error:', transcribeResponse.status, errorText);
+      console.error('Lovable AI transcription error:', transcribeResponse.status, errorText);
       
       await supabase
         .from('laudos')
@@ -237,19 +255,30 @@ serve(async (req) => {
     }
 
     const transcriptionData = await transcribeResponse.json();
+    const transcriptText = transcriptionData.choices?.[0]?.message?.content || '';
     
-    // Process segments with timestamps
-    const segments = transcriptionData.segments?.map((seg: any) => ({
-      text: seg.text,
-      start: seg.start,
-      end: seg.end,
-      confidence: seg.avg_logprob ? Math.exp(seg.avg_logprob) : 0.95,
-    })) || [];
+    if (!transcriptText) {
+      throw new Error('Transcrição vazia retornada pela IA');
+    }
+
+    // Split text into approximate segments (since Gemini doesn't provide timestamps)
+    const words = transcriptText.split(' ');
+    const segmentSize = 20; // words per segment
+    const segments = [];
+    for (let i = 0; i < words.length; i += segmentSize) {
+      const segmentWords = words.slice(i, i + segmentSize);
+      segments.push({
+        text: segmentWords.join(' '),
+        start: i * 0.5, // approximate timing
+        end: (i + segmentWords.length) * 0.5,
+        confidence: 0.85,
+      });
+    }
 
     const fullTranscript = {
-      text: transcriptionData.text,
-      language: transcriptionData.language,
-      duration: transcriptionData.duration,
+      text: transcriptText,
+      language: 'pt',
+      duration: words.length * 0.5,
       segments,
     };
 

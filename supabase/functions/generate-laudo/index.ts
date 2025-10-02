@@ -122,13 +122,13 @@ Retorne um JSON estruturado com os seguintes campos:
 IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
 `;
 
-    const openAIApiKey = Deno.env.get('API_key');
-    if (!openAIApiKey) {
-      throw new Error('Chave da OpenAI não configurada');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      throw new Error('Lovable AI não configurada');
     }
 
     const startTime = Date.now();
-    let modelUsed = 'gpt-5';
+    let modelUsed = 'google/gemini-2.5-flash';
 
     // Add 180 second timeout
     const controller = new AbortController();
@@ -136,19 +136,19 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
 
     let response;
     try {
-      response = await fetch('https://api.openai.com/v1/chat/completions', {
+      response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
+          'Authorization': `Bearer ${lovableApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-5',
+          model: 'google/gemini-2.5-flash',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
           ],
-          max_completion_tokens: 16000
+          max_tokens: 16000
         }),
         signal: controller.signal,
       });
@@ -198,20 +198,20 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
     let finishReason = data.choices?.[0]?.finish_reason;
 
     if (!content || finishReason === 'length') {
-      console.warn('Primary model returned empty/length-capped output. Falling back to gpt-5-mini with stricter limits.');
-      const fallbackResp = await fetch('https://api.openai.com/v1/chat/completions', {
+      console.warn('Primary model returned empty/length-capped output. Falling back to gemini-2.5-flash-lite with stricter limits.');
+      const fallbackResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
+          'Authorization': `Bearer ${lovableApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-5-mini',
+          model: 'google/gemini-2.5-flash-lite',
           messages: [
             { role: 'system', content: systemPrompt + ' Seja conciso. Limite texto_laudo_md a 700 palavras e texto_paciente_md a 150 palavras. Retorne APENAS JSON válido.' },
             { role: 'user', content: userPrompt }
           ],
-          max_completion_tokens: 8000
+          max_tokens: 8000
         }),
       });
 
@@ -221,7 +221,7 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
         content = fallbackData.choices?.[0]?.message?.content;
         usage = fallbackData.usage;
         finishReason = fallbackData.choices?.[0]?.finish_reason;
-        modelUsed = 'gpt-5-mini';
+        modelUsed = 'google/gemini-2.5-flash-lite';
       } else {
         const fbErr = await fallbackResp.text();
         console.error('Fallback model error:', fallbackResp.status, fbErr);
@@ -245,21 +245,21 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
       console.error('First 500 chars:', content?.substring(0, 500));
       console.error('Last 500 chars:', content?.substring(content.length - 500));
       
-      // Try one more time with mini model and reduced output
-      console.log('Attempting recovery with gpt-5-mini...');
-      const recoveryResp = await fetch('https://api.openai.com/v1/chat/completions', {
+      // Try one more time with lite model and reduced output
+      console.log('Attempting recovery with gemini-2.5-flash-lite...');
+      const recoveryResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
+          'Authorization': `Bearer ${lovableApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-5-mini',
+          model: 'google/gemini-2.5-flash-lite',
           messages: [
             { role: 'system', content: systemPrompt + ' CRÍTICO: Seja MUITO conciso. Máximo 500 palavras em texto_laudo_md. Retorne APENAS JSON válido.' },
             { role: 'user', content: userPrompt }
           ],
-          max_completion_tokens: 6000
+          max_tokens: 6000
         }),
       });
       
@@ -270,8 +270,8 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
           const cleanRecovery = recoveryContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
           try {
             laudoData = JSON.parse(cleanRecovery);
-            modelUsed = 'gpt-5-mini (recovery)';
-            console.log('Recovery successful with mini model');
+            modelUsed = 'google/gemini-2.5-flash-lite (recovery)';
+            console.log('Recovery successful with lite model');
           } catch (retryError) {
             console.error('Recovery parse also failed:', retryError);
             throw new Error('Formato de resposta inválido da IA após tentativa de recuperação');
