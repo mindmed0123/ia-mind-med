@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -21,6 +21,7 @@ const NovoLaudo = () => {
   const [patientData, setPatientData] = useState<any>(null);
   const [transcript, setTranscript] = useState("");
   const [hasShownSuccessToast, setHasShownSuccessToast] = useState(false);
+  const hasTriggeredGeneration = useRef(false);
 
   useEffect(() => {
     if (laudoId) {
@@ -80,7 +81,13 @@ const NovoLaudo = () => {
         setTranscript(transcriptData.text);
         
         // Auto-generate laudo when transcription is ready and not already generated
-        if (data.transcript_status === 'completed' && data.status !== 'completed' && !isGeneratingLaudo) {
+        if (
+          data.transcript_status === 'completed' && 
+          data.status !== 'completed' && 
+          !isGeneratingLaudo && 
+          !hasTriggeredGeneration.current
+        ) {
+          hasTriggeredGeneration.current = true;
           handleGenerateLaudo(transcriptData.text);
         }
       }
