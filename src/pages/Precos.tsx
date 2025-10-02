@@ -21,7 +21,7 @@ const Precos = () => {
         "Suporte por email",
         "LGPD by design",
       ],
-      cta: "Começar teste grátis",
+      cta: "Começar agora",
       ctaLink: "/auth",
       highlighted: false,
     },
@@ -40,7 +40,7 @@ const Precos = () => {
         "Treinamento personalizado",
         "Templates customizados",
       ],
-      cta: "Começar teste grátis",
+      cta: "Começar agora",
       ctaLink: "/auth",
       highlighted: true,
       badge: "Mais popular",
@@ -74,7 +74,7 @@ const Precos = () => {
     },
     {
       q: "Como funciona o período de teste?",
-      a: "Teste grátis por 14 dias em qualquer plano, sem cartão de crédito. Explore todos os recursos sem compromisso.",
+      a: "Faça 10 consultas testes em qualquer plano, sem cartão de crédito. Explore todos os recursos sem compromisso.",
     },
     {
       q: "Posso cancelar a qualquer momento?",
@@ -99,11 +99,11 @@ const Precos = () => {
         <div className="container mx-auto text-center max-w-4xl">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
             <Sparkles className="w-4 h-4" />
-            14 dias grátis • Sem cartão de crédito
+            Faça 10 consultas testes • Sem cartão de crédito
           </div>
           <h1 className="mb-6">Planos que cabem no seu bolso</h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Escolha o plano ideal para sua realidade. Comece grátis, sem compromisso.
+            Escolha o plano ideal para sua realidade. Sem compromisso.
           </p>
         </div>
       </section>

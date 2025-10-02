@@ -93,7 +93,7 @@ const Home = () => {
         <div className="container mx-auto text-center max-w-4xl">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 animate-fade-in">
             <Sparkles className="w-4 h-4" />
-            LGPD by design | HIPAA-ready
+            Faça 10 consultas testes • LGPD by design
           </div>
 
           <h1 className="mb-6 text-balance animate-fade-up">
@@ -109,7 +109,7 @@ const Home = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up" style={{ animationDelay: "0.2s" }}>
             <Link to="/auth">
               <PremiumButton>
-                Testar agora
+                Começar agora
               </PremiumButton>
             </Link>
             <a href="https://wa.me/55XXXXXXXXXXX" target="_blank" rel="noopener noreferrer">
@@ -121,7 +121,7 @@ const Home = () => {
           </div>
 
           <p className="text-sm text-muted-foreground mt-6">
-            Teste grátis por 14 dias • Sem cartão de crédito
+            10 consultas para testar • Sem cartão de crédito
           </p>
         </div>
       </section>
@@ -280,6 +280,146 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Preços */}
+      <section className="py-20 px-4 bg-muted/30">
+        <div className="container mx-auto max-w-7xl">
+          <div className="text-center mb-16">
+            <h2 className="mb-4">Planos que cabem no seu bolso</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Escolha o plano ideal para sua realidade
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card className="shadow-medium transition-smooth hover:shadow-large">
+              <CardContent className="pt-6">
+                <h3 className="text-2xl font-bold mb-2">Starter</h3>
+                <div className="mb-4">
+                  <span className="text-4xl font-bold">R$ 99,90</span>
+                  <span className="text-muted-foreground">/mês</span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Perfeito para médicos iniciantes
+                </p>
+                <ul className="space-y-3 mb-6">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">10 consultas incluídas/mês</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">Transcrição em tempo real</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">Laudos prontos para PEP</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">LGPD by design</span>
+                  </li>
+                </ul>
+                <Link to="/auth" className="block">
+                  <OutlinePremiumButton className="w-full">
+                    Começar agora
+                  </OutlinePremiumButton>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-medium transition-smooth hover:shadow-large border-2 border-primary scale-105">
+              <CardContent className="pt-6">
+                <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold mb-4">
+                  <Sparkles className="w-3 h-3" />
+                  Mais popular
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Pro</h3>
+                <div className="mb-4">
+                  <span className="text-4xl font-bold">R$ 299,00</span>
+                  <span className="text-muted-foreground">/mês</span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Para médicos com alta demanda
+                </p>
+                <ul className="space-y-3 mb-6">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">Consultas ilimitadas*</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">Integração com PEP</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">Prioridade no suporte</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">Templates customizados</span>
+                  </li>
+                </ul>
+                <Link to="/auth" className="block">
+                  <PremiumButton className="w-full">
+                    Começar agora
+                  </PremiumButton>
+                </Link>
+                <p className="text-xs text-muted-foreground mt-4 text-center">
+                  *Uso justo: até 200 consultas/mês
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-medium transition-smooth hover:shadow-large">
+              <CardContent className="pt-6">
+                <h3 className="text-2xl font-bold mb-2">Clínicas</h3>
+                <div className="mb-4">
+                  <span className="text-4xl font-bold">Sob consulta</span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Solução completa para clínicas
+                </p>
+                <ul className="space-y-3 mb-6">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">Múltiplos usuários</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">Integração full PEP</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">Suporte dedicado 24/7</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">Personalização total</span>
+                  </li>
+                </ul>
+                <a
+                  href="https://wa.me/55XXXXXXXXXXX"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <OutlinePremiumButton className="w-full">
+                    <MessageCircle className="w-5 h-5 mr-2" />
+                    Falar com consultor
+                  </OutlinePremiumButton>
+                </a>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="text-center mt-12">
+            <Link to="/precos" className="text-primary hover:underline font-medium">
+              Ver todos os detalhes dos planos →
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Final */}
       <section className="py-20 px-4 gradient-primary text-white">
         <div className="container mx-auto max-w-4xl text-center">
@@ -294,7 +434,7 @@ const Home = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/auth">
               <PremiumButton className="bg-white text-primary hover:bg-white/90">
-                Começar teste grátis
+                Começar agora
               </PremiumButton>
             </Link>
             <a href="https://wa.me/55XXXXXXXXXXX" target="_blank" rel="noopener noreferrer">
