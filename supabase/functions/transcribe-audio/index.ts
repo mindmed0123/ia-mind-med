@@ -74,8 +74,6 @@ serve(async (req) => {
 
     const { audio_url, audio_path, laudo_id, mode = 'fast' } = await req.json();
 
-    const selectedModel = mode === 'fast' ? 'google/gemini-2.5-flash-lite' : 'google/gemini-2.5-flash';
-
     currentLaudoId = laudo_id;
 
     if ((!audio_url && !audio_path) || !laudo_id) {
@@ -195,7 +193,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: selectedModel,
+          model: 'google/gemini-2.5-flash',
           messages: [
             {
               role: 'user',
