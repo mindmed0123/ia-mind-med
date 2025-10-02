@@ -198,7 +198,25 @@ serve(async (req) => {
         .eq('id', laudo_id)
         .eq('user_id', user.id);
 
-      throw new Error(`Erro na transcrição: ${transcribeResponse.status}`);
+      let clientStatus = transcribeResponse.status;
+      let message = 'Erro na transcrição do áudio';
+      try {
+        const parsed = JSON.parse(errorText);
+        const err = parsed?.error;
+        if (err?.code === 'insufficient_quota' || err?.type === 'insufficient_quota') {
+          clientStatus = 402;
+          message = 'Créditos insuficientes na API de transcrição.';
+        } else if (err?.message) {
+          message = err.message;
+        }
+      } catch (_) {
+        // ignore parse errors
+      }
+
+      return new Response(JSON.stringify({ error: message, provider_status: transcribeResponse.status }), {
+        status: clientStatus,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const transcriptionData = await transcribeResponse.json();

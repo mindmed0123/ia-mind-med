@@ -67,7 +67,7 @@ const NovoLaudo = () => {
 
     const { data } = await supabase
       .from('laudos')
-      .select('transcript_status, transcript, audio_processing_status, status')
+      .select('transcript_status, transcript, audio_processing_status, status, source_audio_url')
       .eq('id', laudoId)
       .single();
 
@@ -84,10 +84,8 @@ const NovoLaudo = () => {
         }
       }
       
-      // Update laudo state
-      if (data.status === 'completed') {
-        setLaudo(data);
-      }
+      // Update laudo state with latest statuses
+      setLaudo(data);
     }
   };
 
@@ -151,6 +149,36 @@ const NovoLaudo = () => {
     }
   };
 
+  const retryTranscription = async () => {
+    if (!laudoId) return;
+    try {
+      setIsProcessing(true);
+      const { data: initial } = await supabase.auth.getSession();
+      let accessToken = initial?.session?.access_token;
+      if (!accessToken) throw new Error('Sessão expirada. Faça login novamente.');
+      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+      if (!refreshError && refreshed?.session?.access_token) {
+        accessToken = refreshed.session.access_token;
+      }
+      const sourceUrl = laudo?.source_audio_url;
+      if (!sourceUrl) throw new Error('Áudio de origem não encontrado.');
+      const { error } = await supabase.functions.invoke('transcribe-audio', {
+        body: { audio_url: sourceUrl, laudo_id: laudoId, mode: 'complete' },
+        headers: { Authorization: `Bearer ${accessToken}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+      });
+      if (error) throw error;
+      toast({ title: 'Reprocessando áudio...', description: 'Tentando novamente a transcrição.' });
+    } catch (err: any) {
+      const status = err?.context?.status || err?.status;
+      let description = err?.message || 'Falha ao reenviar transcrição';
+      if (status === 429) description = 'Limite de uso atingido. Aguarde alguns minutos ou verifique seus créditos.';
+      if (status === 402) description = 'Créditos insuficientes na API de transcrição.';
+      toast({ title: 'Erro', description, variant: 'destructive' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handlePatientDataChange = async (data: any) => {
     setPatientData(data);
     
@@ -176,8 +204,10 @@ const NovoLaudo = () => {
             {laudo?.status === 'completed' ? 'Editar Laudo' : 'Novo Laudo com IA'}
           </h1>
           <p className="text-muted-foreground mt-2">
-            {isProcessing 
+            {isProcessing
               ? 'Processando transcrição do áudio...'
+              : (laudo?.transcript_status === 'error' || laudo?.audio_processing_status === 'error')
+              ? 'Falha na transcrição do áudio'
               : laudo?.status === 'completed'
               ? 'Laudo gerado - edite os dados do paciente para atualizar'
               : 'Preencha os dados e gere o laudo estruturado'
@@ -197,6 +227,19 @@ const NovoLaudo = () => {
                   </p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        )}
+        {laudo && (laudo.transcript_status === 'error' || laudo.audio_processing_status === 'error') && (
+          <Card className="mb-6 border-destructive">
+            <CardContent className="pt-6">
+              <p className="font-medium text-destructive">Falha na transcrição do áudio.</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Limite de uso/ créditos da API pode ter sido atingido. Tente novamente mais tarde.
+              </p>
+              <Button onClick={retryTranscription} className="mt-4">
+                Tentar novamente
+              </Button>
             </CardContent>
           </Card>
         )}
