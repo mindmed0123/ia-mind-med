@@ -14,11 +14,13 @@ serve(async (req) => {
 
   let currentLaudoId: string | null = null;
   let currentUserId: string | null = null;
+  let currentAuthHeader: string | null = null;
 
   try {
     console.log('transcribe-audio: Starting request');
     
     const authHeader = req.headers.get('Authorization');
+    currentAuthHeader = authHeader;
     console.log('transcribe-audio: Has auth header:', !!authHeader);
     
     if (!authHeader) {
@@ -295,7 +297,9 @@ serve(async (req) => {
     try {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
       const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-      const supabase = createClient(supabaseUrl, supabaseKey);
+      const supabase = createClient(supabaseUrl, supabaseKey, {
+        global: currentAuthHeader ? { headers: { Authorization: currentAuthHeader } } : undefined,
+      });
       if (currentLaudoId && currentUserId) {
         await supabase
           .from('laudos')
