@@ -121,7 +121,7 @@ const Home = () => {
           <div className="text-center mb-16">
             <h2 className="mb-6 text-4xl md:text-5xl font-bold">A Solução</h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              A <strong className="text-primary">MindMed Scribe Pro</strong> foi criada para devolver ao médico 
+              A <strong className="text-primary">MindMed</strong> foi criada para devolver ao médico 
               o que lhe pertence: <strong className="text-foreground">tempo, clareza e qualidade de vida</strong>.
             </p>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto mt-4">
@@ -181,7 +181,7 @@ const Home = () => {
           <div className="text-center mb-16">
             <h2 className="mb-4 text-4xl md:text-5xl font-bold">Prova Social / Validação</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              📊 Médicos que testaram a MindMed Scribe Pro relatam:
+              📊 Médicos que testaram a MindMed relatam:
             </p>
           </div>
 
