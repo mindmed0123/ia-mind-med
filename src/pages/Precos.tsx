@@ -22,8 +22,9 @@ const Precos = () => {
         "LGPD by design",
       ],
       cta: "Começar agora",
-      ctaLink: "/auth",
+      ctaLink: "https://buy.stripe.com/14A00l9fw75kb86fIYco001",
       highlighted: false,
+      isStripe: true,
     },
     {
       name: "Pro",
@@ -41,8 +42,9 @@ const Precos = () => {
         "Templates customizados",
       ],
       cta: "Começar agora",
-      ctaLink: "/auth",
+      ctaLink: "https://buy.stripe.com/8x2cN7ezQ89ob86eEUco000",
       highlighted: true,
+      isStripe: true,
       badge: "Mais popular",
     },
     {
@@ -155,6 +157,21 @@ const Precos = () => {
                         <MessageCircle className="w-5 h-5 mr-2" />
                         {plan.cta}
                       </OutlinePremiumButton>
+                    </a>
+                  ) : plan.isStripe ? (
+                    <a
+                      href={plan.ctaLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block"
+                    >
+                      {plan.highlighted ? (
+                        <PremiumButton className="w-full">{plan.cta}</PremiumButton>
+                      ) : (
+                        <OutlinePremiumButton className="w-full">
+                          {plan.cta}
+                        </OutlinePremiumButton>
+                      )}
                     </a>
                   ) : (
                     <Link to={plan.ctaLink}>
