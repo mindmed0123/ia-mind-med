@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { AnonymizeDialog } from "@/components/laudos/AnonymizeDialog";
+import { EditorTutorial } from "@/components/laudos/EditorTutorial";
 import { 
   Save, 
   CheckCircle, 
@@ -63,6 +65,14 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
   
   const debouncedSections = useDebounce(sections, 5000);
   const hasLoadedInitialData = useRef(false);
+
+  // Show tutorial on first visit
+  useEffect(() => {
+    const hasSeenTutorial = localStorage.getItem('editor_tutorial_seen');
+    if (!hasSeenTutorial) {
+      setShowTutorial(true);
+    }
+  }, []);
 
   // Load initial data
   useEffect(() => {
@@ -172,15 +182,38 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
 
       if (error) throw error;
 
-      // Em produção, converter HTML para PDF no cliente
-      // Por enquanto, mostrar mensagem de sucesso
-      toast({
-        title: "PDF gerado!",
-        description: "O documento está pronto para download.",
-      });
-      
-      // Aqui você pode implementar download do PDF
-      console.log('PDF data:', data);
+      if (data?.html && data?.verifyToken) {
+        // Importar dinamicamente as funções de PDF
+        const { generatePdf, downloadPdf, uploadPdfToStorage } = await import('@/lib/pdf-generator');
+        
+        const baseUrl = window.location.origin;
+        const verifyUrl = `${baseUrl}/api/verify-pdf/${laudoId}?token=${data.verifyToken}`;
+        
+        // Gerar PDF no cliente
+        const pdfBlob = await generatePdf({
+          html: data.html,
+          fileName: data.fileName,
+          verifyUrl
+        });
+
+        // Upload para storage
+        const filePath = `reports/${laudoId}/exports/${Date.now()}.pdf`;
+        const signedUrl = await uploadPdfToStorage(pdfBlob, filePath, supabase);
+
+        // Atualizar laudo com URL do PDF
+        await supabase
+          .from('laudos')
+          .update({ pdf_url: signedUrl })
+          .eq('id', laudoId);
+
+        // Download automático
+        downloadPdf(pdfBlob, data.fileName);
+
+        toast({
+          title: "PDF gerado!",
+          description: "O documento foi gerado e está pronto para uso.",
+        });
+      }
     } catch (error: any) {
       console.error('Erro ao exportar PDF:', error);
       toast({
@@ -257,6 +290,15 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
 
   return (
     <div className="space-y-6">
+      {/* Tutorial */}
+      <EditorTutorial
+        show={showTutorial}
+        onComplete={() => {
+          setShowTutorial(false);
+          localStorage.setItem('editor_tutorial_seen', 'true');
+        }}
+      />
+      
       {/* Header */}
       <Card>
         <CardHeader>
@@ -545,6 +587,17 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
 
       {/* Actions */}
       <div className="flex gap-2 justify-end">
+        {sections.identificacao?.nome && (
+          <AnonymizeDialog
+            laudoId={laudoId}
+            patientName={sections.identificacao.nome}
+            onAnonymized={() => {
+              // Recarregar dados
+              window.location.reload();
+            }}
+          />
+        )}
+        
         <Button
           variant="outline"
           size="lg"

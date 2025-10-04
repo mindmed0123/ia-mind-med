@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity, LogOut, FileAudio, FileText, Settings } from "lucide-react";
 import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
+import { LgpdConsent } from "@/components/consent/LgpdConsent";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -138,6 +139,9 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
+      {/* LGPD Consent Dialog */}
+      {user && <LgpdConsent userId={user.id} />}
+      
       {/* Header */}
       <header className="bg-background/80 backdrop-blur-lg border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
