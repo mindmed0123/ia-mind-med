@@ -182,6 +182,10 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          lgpd_consent_date: string | null
+          lgpd_consent_given: boolean | null
+          lgpd_consent_ip: string | null
+          lgpd_consent_version: string | null
           specialty: string | null
           updated_at: string
         }
@@ -191,6 +195,10 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          lgpd_consent_date?: string | null
+          lgpd_consent_given?: boolean | null
+          lgpd_consent_ip?: string | null
+          lgpd_consent_version?: string | null
           specialty?: string | null
           updated_at?: string
         }
@@ -200,6 +208,10 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          lgpd_consent_date?: string | null
+          lgpd_consent_given?: boolean | null
+          lgpd_consent_ip?: string | null
+          lgpd_consent_version?: string | null
           specialty?: string | null
           updated_at?: string
         }

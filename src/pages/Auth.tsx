@@ -8,6 +8,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity, Mail, Lock, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { z } from "zod";
+
+// Validation schemas for secure authentication
+const emailSchema = z.string()
+  .email({ message: "Email inválido" })
+  .max(255, { message: "Email muito longo" })
+  .trim()
+  .toLowerCase();
+
+const passwordSchema = z.string()
+  .min(8, { message: "Senha deve ter no mínimo 8 caracteres" })
+  .max(128, { message: "Senha muito longa" })
+  .regex(/[A-Z]/, { message: "Senha deve conter pelo menos uma letra maiúscula" })
+  .regex(/[a-z]/, { message: "Senha deve conter pelo menos uma letra minúscula" })
+  .regex(/[0-9]/, { message: "Senha deve conter pelo menos um número" });
+
+const nameSchema = z.string()
+  .min(3, { message: "Nome deve ter no mínimo 3 caracteres" })
+  .max(100, { message: "Nome muito longo" })
+  .trim();
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -32,20 +52,29 @@ const Auth = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    if (!loginData.email || !loginData.password) {
-      toast.error("Preencha todos os campos");
+    // Validate email
+    const emailResult = emailSchema.safeParse(loginData.email);
+    if (!emailResult.success) {
+      toast.error(emailResult.error.errors[0].message);
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate password (minimum requirements for login)
+    if (!loginData.password || loginData.password.length < 6) {
+      toast.error("Senha deve ter no mínimo 6 caracteres");
       setIsLoading(false);
       return;
     }
 
     try {
-      const { error } = await signIn(loginData.email, loginData.password);
+      const { error } = await signIn(emailResult.data, loginData.password);
       
       if (error) {
         if (error.message.includes("Invalid login credentials")) {
           toast.error("Email ou senha incorretos");
         } else {
-          toast.error("Erro ao fazer login: " + error.message);
+          toast.error("Erro ao fazer login");
         }
       } else {
         toast.success("Login realizado com sucesso!");
@@ -62,14 +91,26 @@ const Auth = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Validações
-    if (
-      !signupData.name ||
-      !signupData.email ||
-      !signupData.password ||
-      !signupData.confirmPassword
-    ) {
-      toast.error("Preencha todos os campos");
+    // Validate full name
+    const nameResult = nameSchema.safeParse(signupData.name);
+    if (!nameResult.success) {
+      toast.error(nameResult.error.errors[0].message);
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate email
+    const emailResult = emailSchema.safeParse(signupData.email);
+    if (!emailResult.success) {
+      toast.error(emailResult.error.errors[0].message);
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate password
+    const passwordResult = passwordSchema.safeParse(signupData.password);
+    if (!passwordResult.success) {
+      toast.error(passwordResult.error.errors[0].message);
       setIsLoading(false);
       return;
     }
@@ -80,24 +121,18 @@ const Auth = () => {
       return;
     }
 
-    if (signupData.password.length < 6) {
-      toast.error("A senha deve ter no mínimo 6 caracteres");
-      setIsLoading(false);
-      return;
-    }
-
     try {
       const { error } = await signUp(
-        signupData.email,
+        emailResult.data,
         signupData.password,
-        signupData.name
+        nameResult.data
       );
       
       if (error) {
         if (error.message.includes("already registered")) {
           toast.error("Este email já está cadastrado");
         } else {
-          toast.error("Erro ao criar conta: " + error.message);
+          toast.error("Erro ao criar conta");
         }
       } else {
         toast.success("Conta criada com sucesso! Redirecionando...");
@@ -294,7 +329,7 @@ const Auth = () => {
                       />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Mínimo 6 caracteres
+                      Mínimo 8 caracteres, incluindo maiúscula, minúscula e número
                     </p>
                   </div>
 

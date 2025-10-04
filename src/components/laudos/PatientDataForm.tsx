@@ -7,6 +7,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Save } from 'lucide-react';
 import { useDebounce } from '@/hooks/use-debounce';
+import { z } from 'zod';
+import { toast } from 'sonner';
+
+// Validation schemas for patient medical data
+const vitalSignsSchema = z.object({
+  PA: z.string().regex(/^\d{2,3}\/\d{2,3}$/).optional().or(z.literal('')),
+  FC: z.number().int().min(30).max(250).optional().or(z.literal('')),
+  FR: z.number().int().min(8).max(60).optional().or(z.literal('')),
+  Temp: z.string().regex(/^\d{2}\.\d$/).optional().or(z.literal('')),
+  SpO2: z.string().regex(/^\d{2,3}%?$/).optional().or(z.literal(''))
+});
+
+const patientDataSchema = z.object({
+  iniciais: z.string().min(1, "Iniciais são obrigatórias").max(10, "Iniciais muito longas"),
+  idade: z.union([
+    z.string().refine((val) => {
+      const num = parseInt(val);
+      return !isNaN(num) && num >= 0 && num <= 120;
+    }, { message: "Idade deve estar entre 0 e 120 anos" }),
+    z.number().int().min(0).max(120)
+  ]),
+  sexo: z.string().min(1, "Selecione um sexo"),
+  especialidade: z.string().min(3, "Especialidade deve ter no mínimo 3 caracteres").max(100, "Especialidade muito longa"),
+  queixa_principal: z.string().min(5, "Queixa principal deve ter no mínimo 5 caracteres").max(1000, "Queixa principal muito longa")
+});
 
 interface PatientData {
   iniciais: string;
@@ -53,17 +78,27 @@ export const PatientDataForm = ({
   });
 
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const debouncedData = useDebounce(data, 800);
 
   useEffect(() => {
     if (autoSave && onDataChange && debouncedData) {
-      onDataChange(debouncedData);
-      setLastSaved(new Date());
+      // Validate before saving
+      const result = patientDataSchema.safeParse(debouncedData);
+      if (result.success) {
+        onDataChange(debouncedData);
+        setLastSaved(new Date());
+        setValidationErrors([]);
+      } else {
+        setValidationErrors(result.error.errors.map(e => e.message));
+      }
     }
   }, [debouncedData, autoSave, onDataChange]);
 
   const handleChange = (field: string, value: any) => {
     setData(prev => ({ ...prev, [field]: value }));
+    // Clear validation errors when user types
+    setValidationErrors([]);
   };
 
   const handleVitalChange = (vital: string, value: string) => {
@@ -81,12 +116,19 @@ export const PatientDataForm = ({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Dados do Paciente</CardTitle>
-          {lastSaved && (
-            <Badge variant="outline" className="flex items-center gap-2">
-              <Save className="w-3 h-3" />
-              Salvo {lastSaved.toLocaleTimeString()}
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {validationErrors.length > 0 && (
+              <Badge variant="destructive" className="text-xs">
+                {validationErrors.length} erro(s)
+              </Badge>
+            )}
+            {lastSaved && validationErrors.length === 0 && (
+              <Badge variant="outline" className="flex items-center gap-2">
+                <Save className="w-3 h-3" />
+                Salvo {lastSaved.toLocaleTimeString()}
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

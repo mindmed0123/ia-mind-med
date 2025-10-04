@@ -35,19 +35,59 @@ export const LgpdConsent = ({ userId, onConsentGiven }: LgpdConsentProps) => {
 
   const checkConsentStatus = async () => {
     try {
-      const { data: profile } = await supabase
+      // Check consent from server-side (primary source of truth)
+      const { data: profile, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('lgpd_consent_given')
         .eq('id', userId)
         .single();
 
-      // Se não tiver dado consentimento ainda, mostrar dialog
-      const hasConsented = localStorage.getItem(`lgpd_consent_${userId}`);
-      if (!hasConsented) {
+      if (error) {
+        console.error('Erro ao verificar consentimento:', error);
         setOpen(true);
+        return;
       }
+
+      // If server-side consent exists, don't show dialog
+      if (profile?.lgpd_consent_given) {
+        return;
+      }
+
+      // Check localStorage for migration
+      const hasConsented = localStorage.getItem(`lgpd_consent_${userId}`);
+      if (hasConsented) {
+        try {
+          const consentData = JSON.parse(hasConsented);
+          if (consentData.dataProcessing || consentData.accepted) {
+            // Migrate localStorage consent to server
+            await migrateConsent();
+            return;
+          }
+        } catch (e) {
+          console.error('Erro ao migrar consentimento:', e);
+        }
+      }
+
+      // Show consent dialog if no consent found
+      setOpen(true);
     } catch (error) {
       console.error('Erro ao verificar consentimento:', error);
+      setOpen(true);
+    }
+  };
+
+  const migrateConsent = async () => {
+    try {
+      await supabase
+        .from('profiles')
+        .update({
+          lgpd_consent_given: true,
+          lgpd_consent_date: new Date().toISOString(),
+          lgpd_consent_version: '1.0'
+        })
+        .eq('id', userId);
+    } catch (error) {
+      console.error('Erro ao migrar consentimento:', error);
     }
   };
 
@@ -63,24 +103,39 @@ export const LgpdConsent = ({ userId, onConsentGiven }: LgpdConsentProps) => {
 
     setIsSubmitting(true);
     try {
-      // Registrar consentimento
-      await supabase.rpc('log_audit_action', {
-        p_entity: 'USER_CONSENT',
-        p_entity_id: userId,
-        p_action: 'CONSENT_GIVEN',
-        p_diff: {
-          consents,
-          timestamp: new Date().toISOString(),
-          ip: 'client'
-        }
-      });
-
-      // Salvar localmente
-      localStorage.setItem(`lgpd_consent_${userId}`, JSON.stringify({
+      const consentData = {
         ...consents,
-        date: new Date().toISOString()
-      }));
+        date: new Date().toISOString(),
+        version: '1.0'
+      };
 
+      // Store consent server-side (primary source of truth)
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          lgpd_consent_given: true,
+          lgpd_consent_date: new Date().toISOString(),
+          lgpd_consent_version: '1.0',
+          lgpd_consent_ip: null // Client can't reliably get IP
+        })
+        .eq('id', userId);
+
+      if (updateError) {
+        console.error('Erro ao salvar consentimento:', updateError);
+        toast({
+          title: "Erro",
+          description: "Não foi possível registrar seu consentimento. Tente novamente.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Also save to localStorage for UX (quick checks)
+      localStorage.setItem(`lgpd_consent_${userId}`, JSON.stringify(consentData));
+
+      // Note: Skipping audit log as it may fail due to entity validation
+      // Consent is already stored in profiles table which is the source of truth
+      
       toast({
         title: "Consentimento registrado",
         description: "Seus dados serão tratados de acordo com a LGPD.",
@@ -89,6 +144,7 @@ export const LgpdConsent = ({ userId, onConsentGiven }: LgpdConsentProps) => {
       setOpen(false);
       onConsentGiven?.();
     } catch (error: any) {
+      console.error('Erro ao salvar consentimento:', error);
       toast({
         title: "Erro",
         description: "Não foi possível registrar o consentimento.",

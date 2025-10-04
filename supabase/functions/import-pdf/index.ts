@@ -103,8 +103,17 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Erro ao importar PDF:', error);
+    // Log full error for ops/debugging
+    const errorId = crypto.randomUUID();
+    console.error('Error ID:', errorId, {
+      message: error.message,
+      stack: error.stack
+    });
+    
+    // Return generic error to client
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: 'Erro ao processar PDF',
+      error_id: errorId,
       fallback: 'Não foi possível extrair o texto automaticamente. Por favor, cole o conteúdo manualmente.'
     }), {
       status: 500,

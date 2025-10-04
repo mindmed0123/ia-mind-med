@@ -124,7 +124,19 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Erro ao exportar PDF:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    // Log full error for ops/debugging
+    const errorId = crypto.randomUUID();
+    console.error('Error ID:', errorId, {
+      message: error.message,
+      stack: error.stack,
+      laudo_id: laudo_id
+    });
+    
+    // Return generic error to client
+    return new Response(JSON.stringify({ 
+      error: 'Erro ao processar exportação',
+      error_id: errorId
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
