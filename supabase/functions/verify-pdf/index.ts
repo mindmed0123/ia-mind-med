@@ -1,5 +1,4 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -128,7 +127,7 @@ Deno.serve(async (req) => {
 <body>
   <div class="container">
     <h1>❌ Erro na Verificação</h1>
-    <p class="error"><strong>Motivo:</strong> ${error.message}</p>
+    <p class="error"><strong>Motivo:</strong> ${error instanceof Error ? error.message : 'Erro desconhecido'}</p>
     <p>O documento não pôde ser verificado. Entre em contato com o emissor.</p>
   </div>
 </body>

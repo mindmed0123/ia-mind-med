@@ -1,5 +1,4 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { crypto } from "https://deno.land/std@0.224.0/crypto/mod.ts";
 
 const corsHeaders = {
@@ -127,9 +126,8 @@ Deno.serve(async (req) => {
     // Log full error for ops/debugging
     const errorId = crypto.randomUUID();
     console.error('Error ID:', errorId, {
-      message: error.message,
-      stack: error.stack,
-      laudo_id: laudo_id
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
     });
     
     // Return generic error to client
