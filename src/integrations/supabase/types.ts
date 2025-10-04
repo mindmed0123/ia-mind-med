@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          diff: Json | null
+          entity: string
+          entity_id: string
+          id: string
+          ip: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          diff?: Json | null
+          entity: string
+          entity_id: string
+          id?: string
+          ip?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          diff?: Json | null
+          entity?: string
+          entity_id?: string
+          id?: string
+          ip?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       laudos: {
         Row: {
           ai_model: string | null
@@ -24,16 +60,24 @@ export type Database = {
           complementary_exams: Json | null
           conducts: Json | null
           created_at: string
+          diagnosis_diff: string | null
+          diagnosis_main: string | null
+          editor_last_saved: string | null
+          finalized_at: string | null
           generation_mode: string | null
           hypotheses: Json | null
           id: string
+          import_source: string | null
           last_update_type: string | null
           legal_disclaimer: string | null
           patient_data: Json | null
           patient_markdown: string | null
+          pdf_hash: string | null
           pdf_url: string | null
+          pdf_verify_token: string | null
           red_flags: Json | null
           report_markdown: string | null
+          sections: Json | null
           source_audio_url: string | null
           specialty: string | null
           status: string | null
@@ -54,16 +98,24 @@ export type Database = {
           complementary_exams?: Json | null
           conducts?: Json | null
           created_at?: string
+          diagnosis_diff?: string | null
+          diagnosis_main?: string | null
+          editor_last_saved?: string | null
+          finalized_at?: string | null
           generation_mode?: string | null
           hypotheses?: Json | null
           id?: string
+          import_source?: string | null
           last_update_type?: string | null
           legal_disclaimer?: string | null
           patient_data?: Json | null
           patient_markdown?: string | null
+          pdf_hash?: string | null
           pdf_url?: string | null
+          pdf_verify_token?: string | null
           red_flags?: Json | null
           report_markdown?: string | null
+          sections?: Json | null
           source_audio_url?: string | null
           specialty?: string | null
           status?: string | null
@@ -84,16 +136,24 @@ export type Database = {
           complementary_exams?: Json | null
           conducts?: Json | null
           created_at?: string
+          diagnosis_diff?: string | null
+          diagnosis_main?: string | null
+          editor_last_saved?: string | null
+          finalized_at?: string | null
           generation_mode?: string | null
           hypotheses?: Json | null
           id?: string
+          import_source?: string | null
           last_update_type?: string | null
           legal_disclaimer?: string | null
           patient_data?: Json | null
           patient_markdown?: string | null
+          pdf_hash?: string | null
           pdf_url?: string | null
+          pdf_verify_token?: string | null
           red_flags?: Json | null
           report_markdown?: string | null
+          sections?: Json | null
           source_audio_url?: string | null
           specialty?: string | null
           status?: string | null
@@ -200,7 +260,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      log_audit_action: {
+        Args: {
+          p_action: string
+          p_diff?: Json
+          p_entity: string
+          p_entity_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       plan_type: "STARTER" | "PRO" | "CLINIC"

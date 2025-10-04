@@ -5,3 +5,12 @@ verify_jwt = true
 
 [functions.transcribe-audio]
 verify_jwt = false
+
+[functions.export-pdf]
+verify_jwt = true
+
+[functions.import-pdf]
+verify_jwt = true
+
+[functions.verify-pdf]
+verify_jwt = false

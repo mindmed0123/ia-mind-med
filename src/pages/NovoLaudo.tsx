@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Edit } from "lucide-react";
 import { PatientDataForm } from "@/components/laudos/PatientDataForm";
 import { LaudoViewer } from "@/components/laudos/LaudoViewer";
+import { LaudoEditor } from "@/components/laudos/LaudoEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const NovoLaudo = () => {
   const navigate = useNavigate();
@@ -22,6 +24,7 @@ const NovoLaudo = () => {
   const [transcript, setTranscript] = useState("");
   const [hasShownSuccessToast, setHasShownSuccessToast] = useState(false);
   const hasTriggeredGeneration = useRef(false);
+  const [showEditor, setShowEditor] = useState(false);
 
   useEffect(() => {
     if (laudoId) {
@@ -302,7 +305,31 @@ const NovoLaudo = () => {
 
             <div className="lg:col-span-2">
               {laudo.status === 'completed' ? (
-                <LaudoViewer laudoId={laudoId} />
+                <Tabs defaultValue={showEditor ? "editor" : "viewer"} className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="viewer" onClick={() => setShowEditor(false)}>
+                      Visualizar
+                    </TabsTrigger>
+                    <TabsTrigger value="editor" onClick={() => setShowEditor(true)}>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Editar
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="viewer" className="mt-6">
+                    <LaudoViewer laudoId={laudoId} />
+                  </TabsContent>
+                  
+                  <TabsContent value="editor" className="mt-6">
+                    <LaudoEditor 
+                      laudoId={laudoId} 
+                      initialData={laudo}
+                      onStatusChange={(newStatus) => {
+                        setLaudo({ ...laudo, status: newStatus });
+                      }}
+                    />
+                  </TabsContent>
+                </Tabs>
               ) : (
                 <Card>
                   <CardContent className="py-12 text-center">
