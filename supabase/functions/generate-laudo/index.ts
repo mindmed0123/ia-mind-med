@@ -237,7 +237,12 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
     let laudoData;
     try {
       // Remove markdown code blocks if present
-      const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      let cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      
+      // Remove control characters that break JSON parsing
+      // Keep only valid JSON whitespace (space, tab, newline, carriage return)
+      cleanContent = cleanContent.replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+      
       laudoData = JSON.parse(cleanContent);
     } catch (parseError) {
       console.error('Erro ao parsear JSON:', parseError);
@@ -267,7 +272,9 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
         const recoveryData = await recoveryResp.json();
         const recoveryContent = recoveryData.choices?.[0]?.message?.content;
         if (recoveryContent) {
-          const cleanRecovery = recoveryContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          let cleanRecovery = recoveryContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          // Remove control characters
+          cleanRecovery = cleanRecovery.replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F]/g, '');
           try {
             laudoData = JSON.parse(cleanRecovery);
             modelUsed = 'google/gemini-2.5-flash-lite (recovery)';

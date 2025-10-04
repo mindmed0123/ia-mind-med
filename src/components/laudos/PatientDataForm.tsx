@@ -20,17 +20,18 @@ const vitalSignsSchema = z.object({
 });
 
 const patientDataSchema = z.object({
-  iniciais: z.string().min(1, "Iniciais são obrigatórias").max(10, "Iniciais muito longas"),
+  iniciais: z.string().max(10, "Iniciais muito longas").optional().or(z.literal('')),
   idade: z.union([
     z.string().refine((val) => {
+      if (val === '') return true; // Allow empty
       const num = parseInt(val);
       return !isNaN(num) && num >= 0 && num <= 120;
     }, { message: "Idade deve estar entre 0 e 120 anos" }),
     z.number().int().min(0).max(120)
-  ]),
-  sexo: z.string().min(1, "Selecione um sexo"),
-  especialidade: z.string().min(3, "Especialidade deve ter no mínimo 3 caracteres").max(100, "Especialidade muito longa"),
-  queixa_principal: z.string().min(5, "Queixa principal deve ter no mínimo 5 caracteres").max(1000, "Queixa principal muito longa")
+  ]).optional(),
+  sexo: z.string().optional().or(z.literal('')),
+  especialidade: z.string().max(100, "Especialidade muito longa").optional().or(z.literal('')),
+  queixa_principal: z.string().max(1000, "Queixa principal muito longa").optional().or(z.literal(''))
 });
 
 interface PatientData {
