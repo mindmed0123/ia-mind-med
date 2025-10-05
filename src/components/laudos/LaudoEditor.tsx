@@ -387,7 +387,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
               <Label htmlFor="nome">Nome/Iniciais</Label>
               <Input
                 id="nome"
-                value={sections.identificacao.nome}
+                value={sections.identificacao.nome || ''}
                 onChange={(e) => setSections(prev => ({
                   ...prev,
                   identificacao: { ...prev.identificacao, nome: e.target.value }
@@ -400,7 +400,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
               <Label htmlFor="idade">Idade</Label>
               <Input
                 id="idade"
-                value={sections.identificacao.idade}
+                value={sections.identificacao.idade || ''}
                 onChange={(e) => setSections(prev => ({
                   ...prev,
                   identificacao: { ...prev.identificacao, idade: e.target.value }
@@ -413,7 +413,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
               <Label htmlFor="sexo">Sexo</Label>
               <Input
                 id="sexo"
-                value={sections.identificacao.sexo}
+                value={sections.identificacao.sexo || ''}
                 onChange={(e) => setSections(prev => ({
                   ...prev,
                   identificacao: { ...prev.identificacao, sexo: e.target.value }
@@ -433,7 +433,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
         </CardHeader>
         <CardContent>
           <Textarea
-            value={sections.queixa}
+            value={sections.queixa || ''}
             onChange={(e) => setSections(prev => ({ ...prev, queixa: e.target.value }))}
             placeholder="Descreva a queixa principal do paciente..."
             rows={3}
@@ -449,7 +449,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
         </CardHeader>
         <CardContent>
           <Textarea
-            value={sections.hda}
+            value={sections.hda || ''}
             onChange={(e) => setSections(prev => ({ ...prev, hda: e.target.value }))}
             placeholder="Descreva a evolução dos sintomas, duração, características..."
             rows={6}
@@ -465,7 +465,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
         </CardHeader>
         <CardContent>
           <Textarea
-            value={sections.exame_fisico}
+            value={sections.exame_fisico || ''}
             onChange={(e) => setSections(prev => ({ ...prev, exame_fisico: e.target.value }))}
             placeholder="Descreva os achados do exame físico..."
             rows={5}
@@ -491,7 +491,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
             </Label>
             <Textarea
               id="hipotese-principal"
-              value={sections.hipoteses.principal}
+              value={sections.hipoteses.principal || ''}
               onChange={(e) => setSections(prev => ({
                 ...prev,
                 hipoteses: { ...prev.hipoteses, principal: e.target.value }
@@ -511,7 +511,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
             </Label>
             <Textarea
               id="hipotese-diferencial"
-              value={sections.hipoteses.diferencial}
+              value={sections.hipoteses.diferencial || ''}
               onChange={(e) => setSections(prev => ({
                 ...prev,
                 hipoteses: { ...prev.hipoteses, diferencial: e.target.value }
@@ -536,7 +536,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
         </CardHeader>
         <CardContent>
           <Textarea
-            value={sections.conduta}
+            value={sections.conduta || ''}
             onChange={(e) => setSections(prev => ({ ...prev, conduta: e.target.value }))}
             placeholder="Descreva o plano de tratamento, medicações, orientações..."
             rows={6}
