@@ -603,9 +603,10 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
           size="lg"
           onClick={handleExportPdf}
           disabled={!isComplete}
+          className="whitespace-nowrap"
         >
           <Download className="w-4 h-4 mr-2" />
-          Exportar PDF
+          Exportar
         </Button>
         
         {status === 'draft' && (
@@ -613,9 +614,10 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
             size="lg"
             onClick={handleFinalize}
             disabled={!isComplete}
+            className="whitespace-nowrap"
           >
             <CheckCircle className="w-4 h-4 mr-2" />
-            Marcar como Concluído
+            Concluir
           </Button>
         )}
       </div>

@@ -287,15 +287,15 @@ const NovoLaudo = () => {
                     <Button
                       onClick={() => handleGenerateLaudo()}
                       disabled={isGeneratingLaudo}
-                      className="w-full mt-4"
+                      className="w-full mt-4 whitespace-nowrap"
                     >
                       {isGeneratingLaudo ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Gerando Laudo...
+                          Gerando...
                         </>
                       ) : (
-                        'Gerar Laudo com IA'
+                        'Gerar Laudo'
                       )}
                     </Button>
                   )}
