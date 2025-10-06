@@ -254,7 +254,7 @@ const Home = () => {
               </ul>
 
               <a href="https://buy.stripe.com/14A00l9fw75kb86fIYco001" target="_blank" rel="noopener noreferrer" className="block">
-                <PremiumButton className="w-full text-lg py-6">
+                <PremiumButton className="w-full text-lg py-6 whitespace-normal">
                   🔵 Comece agora e revolucione sua rotina clínica
                 </PremiumButton>
               </a>
