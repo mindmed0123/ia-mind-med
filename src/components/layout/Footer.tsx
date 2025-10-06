@@ -79,7 +79,7 @@ const Footer = () => {
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4" />
-                (11) 9xxxx-xxxx
+                (11) 95889-0212
               </li>
             </ul>
           </div>
@@ -88,7 +88,7 @@ const Footer = () => {
         <div className="border-t border-border mt-8 pt-8 text-center text-sm text-muted-foreground">
           <p>© 2025 MindMed. Todos os direitos reservados.</p>
           <p className="mt-2">
-            CNPJ: XX.XXX.XXX/0001-XX | LGPD by design | Certificado HIPAA-ready
+            LGPD by design | Certificado HIPAA-ready
           </p>
         </div>
       </div>
