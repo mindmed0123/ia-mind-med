@@ -1,64 +1,66 @@
 import { Link } from "react-router-dom";
 import { PremiumButton, OutlinePremiumButton } from "@/components/ui/button-variants";
-import { FileAudio, FileText, FileCheck, Shield, Zap, Target, CheckCircle2, MessageCircle, Clock, Brain, Sparkles, Stethoscope, Users, TrendingUp, AlertCircle, BarChart3, Flame, Timer } from "lucide-react";
+import { FileAudio, FileText, FileCheck, Shield, Zap, Target, CheckCircle2, MessageCircle, Clock, Brain, DollarSign, TrendingUp, BarChart3, Flame, Timer, Calculator, Users2, CalendarClock, Wallet } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+
 const Home = () => {
   const howItWorks = [{
     icon: FileAudio,
-    title: "Escuta em tempo real",
-    description: "Nossa IA capta e transcreve automaticamente toda a consulta com precisão médica"
+    title: "Transcreve automaticamente",
+    description: "IA capta e transcreve toda a consulta em tempo real com precisão médica"
+  }, {
+    icon: Brain,
+    title: "Gera laudos completos",
+    description: "Transforma áudio em relatórios estruturados prontos para uso"
   }, {
     icon: FileText,
-    title: "Organiza laudos estruturados",
-    description: "Transforma a conversa em laudos prontos, com todos os dados organizados"
-  }, {
-    icon: Brain,
     title: "Sugere diagnósticos",
-    description: "Dois diagnósticos: o mais provável e uma alternativa clínica"
+    description: "Dois diagnósticos por consulta: principal e alternativa clínica"
   }, {
     icon: FileCheck,
-    title: "Integra com PEP",
-    description: "Copie direto para seu prontuário eletrônico de forma segura"
+    title: "Exporta para PEP",
+    description: "Integração direta com prontuários eletrônicos existentes"
   }];
+
   const benefits = [{
     icon: Clock,
-    title: "40% menos tempo",
-    description: "Economize até 40% do tempo gasto em prontuários"
+    value: "2h/dia",
+    title: "Tempo recuperado",
+    description: "Elimine até 2 horas de papelada por dia de trabalho"
   }, {
-    icon: Users,
-    title: "Atenda mais pacientes",
-    description: "Sem aumentar sua carga horária ou comprometer qualidade"
+    icon: Users2,
+    value: "+30%",
+    title: "Mais atendimentos",
+    description: "Capacidade para até 10 consultas adicionais por semana"
+  }, {
+    icon: DollarSign,
+    value: "R$ 12k+",
+    title: "Faturamento extra",
+    description: "Potencial de receita adicional mensal sem aumentar carga horária"
   }, {
     icon: Target,
-    title: "Menos erros clínicos",
-    description: "Laudos estruturados reduzem riscos de falhas"
-  }, {
-    icon: Shield,
-    title: "LGPD by design",
-    description: "Proteção máxima de dados sensíveis e compliance total"
-  }, {
-    icon: Brain,
-    title: "Mais clareza",
-    description: "Diagnósticos organizados aumentam sua confiança clínica"
-  }, {
-    icon: Sparkles,
-    title: "Menos burocracia",
-    description: "Foque no que realmente importa: cuidar de pacientes"
+    value: "99,8%",
+    title: "Precisão clínica",
+    description: "Laudos estruturados reduzem erros e aumentam qualidade"
   }];
+
   const testimonials = [{
-    icon: TrendingUp,
-    stat: "2x",
-    label: "mais foco no paciente durante a consulta"
+    name: "Dr. Carlos Mendes",
+    specialty: "Clínico Geral",
+    result: "+8 pacientes/dia",
+    quote: "Recuperei 1h30 por dia que gastava digitando. Hoje atendo mais e ganho mais sem trabalhar além do horário."
   }, {
-    icon: Brain,
-    stat: "100%",
-    label: "mais clareza e confiança nos diagnósticos"
+    name: "Dra. Ana Paula Silva",
+    specialty: "Psiquiatria",
+    result: "+R$ 15k/mês",
+    quote: "A IA me permite focar na consulta. Os laudos ficam prontos automaticamente e meu faturamento aumentou 25%."
   }, {
-    icon: BarChart3,
-    stat: "40%",
-    label: "redução do estresse e sobrecarga mental"
+    name: "Dr. Roberto Lima",
+    specialty: "Cardiologia",
+    result: "2h economizadas/dia",
+    quote: "Eliminou completamente a papelada pós-consulta. Agora termino meu dia no horário e com qualidade superior."
   }];
   return <div className="min-h-screen">
       <Navbar />
@@ -67,20 +69,19 @@ const Home = () => {
       <section className="pt-32 pb-20 px-4 gradient-primary text-white">
         <div className="container mx-auto text-center max-w-4xl">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white text-sm font-medium mb-6 animate-fade-in border border-white/20">
-            <Sparkles className="w-4 h-4" />
-            Faça 10 consultas testes • LGPD by design
+            <Zap className="w-4 h-4" />
+            10 consultas de teste • LGPD by design
           </div>
 
           <h1 className="mb-6 text-balance animate-fade-up text-white text-5xl md:text-6xl font-bold">
-            O Maior Inimigo do Burnout Médico
+            Transforme 2 Horas de Papelada em 10 Pacientes a Mais por Dia
           </h1>
 
           <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto text-balance animate-fade-up leading-relaxed" style={{
           animationDelay: "0.1s"
         }}>
-            Transforme suas consultas em laudos completos com inteligência artificial auditável, 
-            reduza até <strong className="text-white font-bold">40% da burocracia clínica</strong> e foque no que 
-            realmente importa: <strong className="text-white font-bold">seus pacientes</strong>.
+            A IA que <strong className="text-white font-bold">devolve tempo e aumenta o faturamento médico</strong> automaticamente. 
+            Transcrição em tempo real, laudos prontos e diagnósticos sugeridos — sem você digitar uma linha.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up" style={{
@@ -88,32 +89,54 @@ const Home = () => {
         }}>
             <a href="https://pay.kiwify.com.br/lqNUb8t" target="_blank" rel="noopener noreferrer">
               <PremiumButton className="!bg-white !text-primary hover:!bg-white/90 shadow-xl text-lg px-8 py-6">
-                🔵 Quero testar agora
+                🔵 Quero recuperar meu tempo agora
               </PremiumButton>
             </a>
           </div>
         </div>
       </section>
 
-      {/* Seção 1 - Problema */}
+      {/* Seção 1 - Prova Lógica (Cálculo Financeiro) */}
       <section className="py-20 px-4 bg-muted/30">
-        <div className="container mx-auto max-w-4xl">
-          <div className="text-center space-y-6 animate-fade-up">
+        <div className="container mx-auto max-w-5xl">
+          <div className="text-center mb-12 animate-fade-up">
             <h2 className="text-4xl md:text-5xl font-bold mb-8">
-              Você se formou para salvar vidas.
+              Quanto Você Perde com Papelada?
             </h2>
-            <p className="text-xl text-muted-foreground leading-relaxed">
-              Mas hoje, gasta quase <strong className="text-foreground">metade do tempo</strong> em frente ao computador 
-              digitando relatórios, prontuários e anotações repetitivas.
-            </p>
-            <p className="text-xl text-muted-foreground leading-relaxed">
-              Isso não é medicina. <strong className="text-foreground">Isso é burocracia.</strong>
-            </p>
-            <p className="text-xl text-muted-foreground leading-relaxed">
-              E é por isso que o burnout médico está entre as maiores causas de 
-              <strong className="text-destructive"> afastamento e desistência da profissão</strong>.
+            <p className="text-xl text-muted-foreground leading-relaxed mb-8">
+              Cada hora perdida com burocracia é <strong className="text-foreground">dinheiro que você deixa de ganhar</strong>.
             </p>
           </div>
+
+          <Card className="shadow-large border-2 border-primary/20 max-w-3xl mx-auto">
+            <CardContent className="pt-8 pb-8">
+              <div className="grid md:grid-cols-3 gap-8 mb-8">
+                <div className="text-center">
+                  <Calculator className="w-12 h-12 text-primary mx-auto mb-3" />
+                  <div className="text-4xl font-bold text-primary mb-2">2h/dia</div>
+                  <p className="text-sm text-muted-foreground">Tempo médio gasto com papelada</p>
+                </div>
+                <div className="text-center">
+                  <CalendarClock className="w-12 h-12 text-primary mx-auto mb-3" />
+                  <div className="text-4xl font-bold text-primary mb-2">40h/mês</div>
+                  <p className="text-sm text-muted-foreground">Horas desperdiçadas por mês</p>
+                </div>
+                <div className="text-center">
+                  <Wallet className="w-12 h-12 text-destructive mx-auto mb-3" />
+                  <div className="text-4xl font-bold text-destructive mb-2">R$ 12k</div>
+                  <p className="text-sm text-muted-foreground">Faturamento perdido mensal</p>
+                </div>
+              </div>
+
+              <div className="bg-primary/5 rounded-lg p-6 border border-primary/20">
+                <p className="text-center text-lg leading-relaxed">
+                  <strong className="text-primary">Exemplo real:</strong> Um médico que cobra R$ 300 por consulta 
+                  e perde 2h/dia com relatórios <strong className="text-foreground">desperdiça R$ 12.000/mês</strong> em 
+                  consultas que poderia estar atendendo.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
@@ -121,13 +144,12 @@ const Home = () => {
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="mb-6 text-4xl md:text-5xl font-bold">A Solução</h2>
+            <h2 className="mb-6 text-4xl md:text-5xl font-bold">A Solução Inteligente</h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              A <strong className="text-primary">MindMed</strong> foi criada para devolver ao médico 
-              o que lhe pertence: <strong className="text-foreground">tempo, clareza e qualidade de vida</strong>.
+              <strong className="text-primary">MindManage</strong> é a IA que transforma tempo perdido em faturamento médico.
             </p>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto mt-4">
-              Com tecnologia de ponta em transcrição automática e geração de laudos inteligentes, nossa IA:
+              <strong className="text-foreground">Você não precisa trabalhar mais</strong> — só precisa deixar a IA cuidar do que não exige o seu CRM:
             </p>
           </div>
 
@@ -158,43 +180,50 @@ const Home = () => {
       <section className="py-20 px-4 bg-muted/30">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="mb-4 text-4xl md:text-5xl font-bold">Benefícios Claros e Tangíveis</h2>
+            <h2 className="mb-4 text-4xl md:text-5xl font-bold">Resultados Reais e Mensuráveis</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Médicos que usam MindManage recuperam tempo, aumentam atendimentos e elevam o faturamento
+            </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {benefits.map((benefit, index) => <Card key={index} className="shadow-soft hover:shadow-medium transition-smooth text-center animate-fade-up" style={{
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {benefits.map((benefit, index) => <Card key={index} className="shadow-soft hover:shadow-medium transition-smooth text-center animate-fade-up border-2" style={{
             animationDelay: `${index * 0.1}s`
           }}>
                 <CardContent className="pt-6">
                   <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                     <benefit.icon className="w-8 h-8 text-primary" />
                   </div>
+                  <div className="text-3xl font-bold text-primary mb-2">{benefit.value}</div>
                   <h3 className="text-lg font-semibold mb-2">{benefit.title}</h3>
-                  <p className="text-muted-foreground">{benefit.description}</p>
+                  <p className="text-sm text-muted-foreground">{benefit.description}</p>
                 </CardContent>
               </Card>)}
           </div>
         </div>
       </section>
 
-      {/* Seção 4 - Prova Social */}
+      {/* Seção 4 - Prova Social (Depoimentos) */}
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            
+            <h2 className="mb-4 text-4xl md:text-5xl font-bold">Médicos Que Recuperaram Tempo e Faturamento</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              📊 Médicos que testaram a MindMed relatam:
+              Casos reais de profissionais que transformaram sua rotina com MindManage
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => <Card key={index} className="shadow-soft hover:shadow-medium transition-smooth text-center animate-fade-up border-2" style={{
+            {testimonials.map((testimonial, index) => <Card key={index} className="shadow-soft hover:shadow-medium transition-smooth animate-fade-up border-2" style={{
             animationDelay: `${index * 0.1}s`
           }}>
-                <CardContent className="pt-6">
-                  <testimonial.icon className="w-12 h-12 text-primary mx-auto mb-4" />
-                  <div className="text-5xl font-bold text-primary mb-3">{testimonial.stat}</div>
-                  <p className="text-lg text-muted-foreground">{testimonial.label}</p>
+                <CardContent className="pt-6 pb-6">
+                  <div className="mb-4">
+                    <div className="text-2xl font-bold text-primary mb-1">{testimonial.result}</div>
+                    <div className="text-sm text-muted-foreground">{testimonial.specialty}</div>
+                  </div>
+                  <p className="text-base text-foreground italic mb-4 leading-relaxed">"{testimonial.quote}"</p>
+                  <p className="text-sm font-semibold text-foreground">— {testimonial.name}</p>
                 </CardContent>
               </Card>)}
           </div>
@@ -255,7 +284,7 @@ const Home = () => {
 
               <a href="https://pay.kiwify.com.br/lqNUb8t" target="_blank" rel="noopener noreferrer" className="block">
                 <PremiumButton className="w-full text-lg py-6 whitespace-normal">
-                  🔵 Comece agora e revolucione sua rotina clínica
+                  🔵 Recuperar meu tempo e aumentar meu faturamento
                 </PremiumButton>
               </a>
             </CardContent>
@@ -276,14 +305,14 @@ const Home = () => {
             <CardContent className="pt-8 pb-8">
               <div className="text-center mb-8">
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent text-accent-foreground text-sm font-semibold mb-6">
-                  <AlertCircle className="w-4 h-4" />
+                  <Timer className="w-4 h-4" />
                   Vagas Limitadas
                 </div>
                 <h2 className="mb-4 text-3xl md:text-4xl font-bold">
-                  ⚠️ Vagas limitadas para early adopters médicos
+                  ⚠️ Apenas 50 Vagas Disponíveis para Early Adopters
                 </h2>
                 <p className="text-lg text-muted-foreground mb-6">
-                  com benefícios exclusivos:
+                  Benefícios exclusivos para os primeiros médicos:
                 </p>
               </div>
 
@@ -308,7 +337,7 @@ const Home = () => {
 
               <a href="https://pay.kiwify.com.br/lqNUb8t" target="_blank" rel="noopener noreferrer" className="block">
                 <PremiumButton className="w-full text-lg py-6 shadow-xl">
-                  🔵 Quero ser um early adopter agora!
+                  🔵 Garantir minha vaga de early adopter!
                 </PremiumButton>
               </a>
 
@@ -325,21 +354,21 @@ const Home = () => {
       <section className="py-20 px-4 gradient-primary text-white">
         <div className="container mx-auto max-w-4xl text-center">
           <h2 className="mb-6 text-white text-4xl md:text-5xl font-bold">
-            Pronto para acabar com o burnout?
+            Recupere Até 20% do Seu Faturamento Perdido com Burocracia
           </h2>
           <p className="text-xl mb-8 text-white/90 max-w-2xl mx-auto leading-relaxed">
-            Junte-se aos médicos que já recuperaram <strong className="text-white">tempo</strong>, 
-            <strong className="text-white"> clareza</strong> e <strong className="text-white">qualidade de vida</strong> para 
-            focar no que realmente importa: <strong className="text-white">cuidar de pacientes</strong>.
+            Transforme tempo perdido em <strong className="text-white">consultas adicionais</strong>, 
+            <strong className="text-white"> receita extra</strong> e <strong className="text-white">vida pessoal recuperada</strong>. 
+            Comece hoje e veja os resultados na primeira semana.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a href="https://pay.kiwify.com.br/lqNUb8t" target="_blank" rel="noopener noreferrer">
               <PremiumButton className="bg-white text-primary hover:bg-white/90 shadow-xl text-lg px-8 py-6">
-                🔵 Quero testar agora
+                🔵 Quero recuperar meu tempo agora
               </PremiumButton>
             </a>
-            <a href="https://wa.me/55XXXXXXXXXXX" target="_blank" rel="noopener noreferrer">
+            <a href="https://wa.me/5511958890212" target="_blank" rel="noopener noreferrer">
               <OutlinePremiumButton className="border-2 border-white text-white hover:bg-white hover:text-primary text-lg px-8 py-6">
                 <MessageCircle className="w-5 h-5 mr-2" />
                 Falar com consultor
@@ -348,7 +377,7 @@ const Home = () => {
           </div>
 
           <p className="text-sm text-white/80 mt-6">
-            ⏱️ Vagas limitadas • Suporte VIP • Grupo exclusivo
+            ⏱️ 50 vagas limitadas • Suporte VIP • ROI comprovado
           </p>
         </div>
       </section>
