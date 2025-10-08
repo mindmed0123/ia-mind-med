@@ -86,7 +86,7 @@ const Home = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up" style={{
           animationDelay: "0.2s"
         }}>
-            <a href="https://buy.stripe.com/14A00l9fw75kb86fIYco001" target="_blank" rel="noopener noreferrer">
+            <a href="https://pay.kiwify.com.br/lqNUb8t" target="_blank" rel="noopener noreferrer">
               <PremiumButton className="!bg-white !text-primary hover:!bg-white/90 shadow-xl text-lg px-8 py-6">
                 🔵 Quero testar agora
               </PremiumButton>
@@ -253,7 +253,7 @@ const Home = () => {
                 </li>
               </ul>
 
-              <a href="https://buy.stripe.com/14A00l9fw75kb86fIYco001" target="_blank" rel="noopener noreferrer" className="block">
+              <a href="https://pay.kiwify.com.br/lqNUb8t" target="_blank" rel="noopener noreferrer" className="block">
                 <PremiumButton className="w-full text-lg py-6 whitespace-normal">
                   🔵 Comece agora e revolucione sua rotina clínica
                 </PremiumButton>
@@ -306,7 +306,7 @@ const Home = () => {
                 </div>
               </div>
 
-              <a href="https://buy.stripe.com/14A00l9fw75kb86fIYco001" target="_blank" rel="noopener noreferrer" className="block">
+              <a href="https://pay.kiwify.com.br/lqNUb8t" target="_blank" rel="noopener noreferrer" className="block">
                 <PremiumButton className="w-full text-lg py-6 shadow-xl">
                   🔵 Quero ser um early adopter agora!
                 </PremiumButton>
@@ -334,7 +334,7 @@ const Home = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="https://buy.stripe.com/14A00l9fw75kb86fIYco001" target="_blank" rel="noopener noreferrer">
+            <a href="https://pay.kiwify.com.br/lqNUb8t" target="_blank" rel="noopener noreferrer">
               <PremiumButton className="bg-white text-primary hover:bg-white/90 shadow-xl text-lg px-8 py-6">
                 🔵 Quero testar agora
               </PremiumButton>
