@@ -42,14 +42,14 @@ const Navbar = () => {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-4">
-            <Link to="/auth">
+            <a href="https://acesso.mindmed.online" target="_blank" rel="noopener noreferrer">
               <Button variant="ghost">Entrar</Button>
-            </Link>
-            <Link to="/auth">
+            </a>
+            <a href="https://acesso.mindmed.online" target="_blank" rel="noopener noreferrer">
               <Button className="gradient-primary shadow-soft">
                 Testar agora
               </Button>
-            </Link>
+            </a>
           </div>
 
           {/* Mobile Menu Button */}
@@ -80,16 +80,16 @@ const Navbar = () => {
               </Link>
             ))}
             <div className="flex flex-col gap-2 pt-2 border-t border-border">
-              <Link to="/auth">
+              <a href="https://acesso.mindmed.online" target="_blank" rel="noopener noreferrer">
                 <Button variant="ghost" className="w-full">
                   Entrar
                 </Button>
-              </Link>
-              <Link to="/auth">
+              </a>
+              <a href="https://acesso.mindmed.online" target="_blank" rel="noopener noreferrer">
                 <Button className="w-full gradient-primary">
                   Testar agora
                 </Button>
-              </Link>
+              </a>
             </div>
           </div>
         </div>

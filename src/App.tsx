@@ -28,8 +28,8 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/home" element={<Home />} />
+            <Route path="/" element={<Home />} />
+            <Route path="/old" element={<Index />} />
             <Route path="/produto" element={<Produto />} />
             <Route path="/precos" element={<Precos />} />
             <Route path="/integracoes" element={<Integracoes />} />
