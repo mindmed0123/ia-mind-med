@@ -155,7 +155,7 @@ const Auth = () => {
       <div className="w-full max-w-md">
         {/* Logo */}
         <Link
-          to="/"
+          to="/home"
           className="flex items-center justify-center gap-2 text-2xl font-bold mb-8"
         >
           <Activity className="w-8 h-8 text-primary" />
