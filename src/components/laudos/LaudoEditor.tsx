@@ -347,9 +347,10 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
                 size="sm"
                 onClick={handleSave}
                 disabled={isSaving}
+                className="hover:bg-primary/10 hover:text-primary transition-colors"
               >
                 <Save className="w-4 h-4 mr-2" />
-                Salvar
+                {isSaving ? 'Salvando...' : 'Salvar Agora'}
               </Button>
             </div>
           </div>
@@ -586,7 +587,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
       </Card>
 
       {/* Actions */}
-      <div className="flex gap-2 justify-end">
+      <div className="flex gap-3 justify-end">
         {sections.identificacao?.nome && (
           <AnonymizeDialog
             laudoId={laudoId}
@@ -603,10 +604,10 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
           size="lg"
           onClick={handleExportPdf}
           disabled={!isComplete}
-          className="whitespace-nowrap"
+          className="whitespace-nowrap hover:bg-primary/10 hover:text-primary transition-colors"
         >
           <Download className="w-4 h-4 mr-2" />
-          Exportar
+          Exportar PDF
         </Button>
         
         {status === 'draft' && (
@@ -614,10 +615,10 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
             size="lg"
             onClick={handleFinalize}
             disabled={!isComplete}
-            className="whitespace-nowrap"
+            className="whitespace-nowrap bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all"
           >
             <CheckCircle className="w-4 h-4 mr-2" />
-            Concluir
+            Concluir Laudo
           </Button>
         )}
       </div>

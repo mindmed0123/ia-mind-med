@@ -157,93 +157,162 @@ function generatePdfHtml(
 <head>
   <meta charset="UTF-8">
   <style>
-    @page { size: A4; margin: 2cm; }
+    @page { size: A4; margin: 2.5cm; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
     body { 
-      font-family: 'Inter', 'Roboto', sans-serif; 
+      font-family: 'Segoe UI', 'Arial', sans-serif; 
       font-size: 11pt; 
-      line-height: 1.6;
-      color: #1a1a1a;
+      line-height: 1.8;
+      color: #1f2937;
     }
     .header {
       text-align: center;
-      border-bottom: 2px solid #2563eb;
-      padding-bottom: 16px;
-      margin-bottom: 24px;
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+      border-bottom: 3px solid #3b82f6;
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      padding: 24px;
+      border-radius: 8px;
     }
     .header h1 { 
-      color: #2563eb; 
-      font-size: 24pt;
-      margin: 0 0 8px 0;
+      color: #1e40af; 
+      font-size: 28pt;
+      margin: 0 0 12px 0;
+      font-weight: 700;
+      letter-spacing: -0.5px;
     }
     .header .subtitle {
       color: #64748b;
-      font-size: 10pt;
+      font-size: 11pt;
+      font-weight: 500;
     }
     .info-box {
-      background: #f1f5f9;
-      padding: 12px;
-      border-radius: 8px;
-      margin: 16px 0;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      padding: 20px;
+      border-radius: 12px;
+      margin: 24px 0;
+      border-left: 5px solid #3b82f6;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .info-box p {
+      margin: 8px 0;
+      display: flex;
+      align-items: baseline;
+    }
+    .info-box strong {
+      color: #1e40af;
+      min-width: 140px;
+      font-weight: 600;
     }
     .section {
-      margin: 24px 0;
+      margin: 32px 0;
       page-break-inside: avoid;
     }
     .section h2 {
-      color: #1e40af;
-      font-size: 14pt;
-      border-bottom: 1px solid #e2e8f0;
-      padding-bottom: 4px;
-      margin-bottom: 12px;
+      color: #1e3a8a;
+      font-size: 16pt;
+      font-weight: 700;
+      border-bottom: 2px solid #3b82f6;
+      padding-bottom: 8px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section h2::before {
+      content: '▸';
+      color: #3b82f6;
+      font-size: 20pt;
     }
     .section h3 {
       color: #475569;
-      font-size: 12pt;
-      margin: 12px 0 8px 0;
+      font-size: 13pt;
+      font-weight: 600;
+      margin: 16px 0 10px 0;
+      padding-left: 12px;
+      border-left: 3px solid #93c5fd;
+    }
+    .section p {
+      text-align: justify;
+      margin: 8px 0;
+      padding-left: 12px;
     }
     .highlight {
-      background: #fef3c7;
-      padding: 2px 6px;
-      border-radius: 3px;
+      background: linear-gradient(120deg, #fef3c7 0%, #fde68a 100%);
+      padding: 16px;
+      border-radius: 8px;
+      border-left: 4px solid #f59e0b;
+      font-weight: 500;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
     .footer {
-      margin-top: 40px;
-      padding-top: 16px;
-      border-top: 1px solid #e2e8f0;
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 2px solid #e2e8f0;
       font-size: 9pt;
       color: #64748b;
     }
     .signature-box {
-      margin-top: 40px;
+      margin-top: 48px;
       text-align: center;
+      page-break-inside: avoid;
     }
     .signature-line {
-      border-top: 1px solid #000;
-      width: 300px;
-      margin: 40px auto 8px;
+      border-top: 2px solid #1e3a8a;
+      width: 350px;
+      margin: 48px auto 12px;
+    }
+    .signature-box p {
+      color: #1e40af;
+      font-weight: 600;
+      margin: 4px 0;
     }
     .qr-section {
-      margin-top: 24px;
+      margin-top: 32px;
       text-align: center;
       font-size: 8pt;
       color: #64748b;
+      padding: 16px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
     }
-    ul { margin: 8px 0; padding-left: 24px; }
-    li { margin: 4px 0; }
+    ul { 
+      margin: 12px 0; 
+      padding-left: 32px; 
+    }
+    li { 
+      margin: 8px 0;
+      line-height: 1.6;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: #dbeafe;
+      color: #1e40af;
+      border-radius: 16px;
+      font-size: 9pt;
+      font-weight: 600;
+      margin-left: 8px;
+    }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>MindMed</h1>
-    <div class="subtitle">Laudo Médico Gerado por Inteligência Artificial</div>
+    <h1>🏥 MindMed</h1>
+    <div class="subtitle">Laudo Médico com Inteligência Artificial</div>
   </div>
 
   <div class="info-box">
-    <strong>Médico:</strong> ${profile?.full_name || 'Não informado'} ${profile?.crm ? `- CRM ${profile.crm}` : ''}<br>
-    <strong>Especialidade:</strong> ${profile?.specialty || 'Não informada'}<br>
-    <strong>Data de emissão:</strong> ${new Date().toLocaleString('pt-BR')}<br>
-    <strong>ID do Laudo:</strong> ${laudo.id}<br>
-    <strong>Paciente:</strong> ${sections.identificacao?.nome || 'N/I'} - ${sections.identificacao?.sexo || 'N/I'} - ${sections.identificacao?.idade || 'N/I'} anos
+    <p><strong>Médico Responsável:</strong> ${profile?.full_name || 'Não informado'} ${profile?.crm ? `- CRM ${profile.crm}` : ''}</p>
+    <p><strong>Especialidade:</strong> ${profile?.specialty || 'Não informada'}</p>
+    <p><strong>Data de Emissão:</strong> ${new Date().toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' })}</p>
+    <p><strong>ID do Laudo:</strong> <code style="background:#e0e7ff;padding:2px 8px;border-radius:4px;font-size:9pt;">${laudo.id}</code></p>
+    <p><strong>Paciente:</strong> ${sections.identificacao?.nome || 'N/I'} | ${sections.identificacao?.sexo || 'N/I'} | ${sections.identificacao?.idade || 'N/I'} anos</p>
   </div>
 
   ${sections.queixa ? `
@@ -270,11 +339,11 @@ function generatePdfHtml(
   <div class="section">
     <h2>Hipóteses Diagnósticas</h2>
     ${sections.hipoteses?.principal ? `
-      <h3>A) Principal (Mais Provável)</h3>
-      <p class="highlight">${sections.hipoteses.principal}</p>
+      <h3>A) Hipótese Principal (Mais Provável)</h3>
+      <div class="highlight">${sections.hipoteses.principal}</div>
     ` : ''}
     ${sections.hipoteses?.diferencial ? `
-      <h3>B) Diferencial (Menos Provável)</h3>
+      <h3>B) Diagnóstico Diferencial (Menos Provável)</h3>
       <p>${sections.hipoteses.diferencial}</p>
     ` : ''}
   </div>
@@ -288,26 +357,28 @@ function generatePdfHtml(
 
   ${sections.cid10 && sections.cid10.length > 0 ? `
   <div class="section">
-    <h2>CID-10</h2>
-    <p>${sections.cid10.join(', ')}</p>
+    <h2>Classificação CID-10</h2>
+    <p>${sections.cid10.map(c => `<span class="badge">${c}</span>`).join(' ')}</p>
   </div>
   ` : ''}
 
   <div class="signature-box">
     <div class="signature-line"></div>
-    <p><strong>${profile?.full_name || 'Médico Responsável'}</strong><br>
-    ${profile?.crm ? `CRM ${profile.crm}` : ''}</p>
+    <p>${profile?.full_name || 'Médico Responsável'}</p>
+    ${profile?.crm ? `<p style="font-size:10pt;color:#64748b;">CRM ${profile.crm}</p>` : ''}
   </div>
 
   <div class="footer">
-    <p><strong>Emitido por MindMed</strong> - Sistema de Laudos Médicos com IA</p>
-    <p>Este documento foi gerado automaticamente e contém informações protegidas pela LGPD.</p>
-    <p><strong>Hash de verificação:</strong> ${hash.substring(0, 16)}...</p>
+    <p style="font-weight:600;margin-bottom:8px;">📄 Documento Gerado por MindMed - Sistema de Laudos Médicos com IA</p>
+    <p style="margin-bottom:4px;">Este documento foi gerado automaticamente e contém informações protegidas pela LGPD (Lei Geral de Proteção de Dados).</p>
+    <p style="margin-bottom:8px;">Qualquer reprodução ou uso não autorizado é proibido.</p>
+    <p style="font-family:monospace;font-size:7pt;"><strong>Hash de Verificação:</strong> ${hash.substring(0, 32)}...</p>
     
     <div class="qr-section">
-      <p>Verificação de autenticidade: Escaneie o QR Code abaixo ou acesse:</p>
-      <p style="word-break: break-all; font-size: 7pt;">${verifyUrl}</p>
-      <p style="margin-top: 8px;">📱 [QR Code seria gerado aqui]</p>
+      <p style="font-weight:600;margin-bottom:8px;color:#1e40af;">🔐 Verificação de Autenticidade</p>
+      <p style="margin-bottom:4px;">Escaneie o QR Code ou acesse o link para verificar a autenticidade deste documento:</p>
+      <p style="word-break:break-all;font-size:7pt;background:#fff;padding:8px;border-radius:4px;margin-top:8px;">${verifyUrl}</p>
+      <p style="margin-top:12px;font-size:16pt;">📱 [QR Code seria gerado aqui]</p>
     </div>
   </div>
 </body>

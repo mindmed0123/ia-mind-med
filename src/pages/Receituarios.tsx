@@ -241,7 +241,7 @@ export default function Receituarios() {
     try {
       toast({
         title: 'Gerando PDF',
-        description: 'Aguarde...'
+        description: 'Aguarde enquanto o documento é gerado...'
       });
 
       const { data, error } = await supabase.functions.invoke('generate-prescription-pdf', {
@@ -250,13 +250,42 @@ export default function Receituarios() {
 
       if (error) throw error;
 
-      if (data?.pdf_url) {
-        window.open(data.pdf_url, '_blank');
+      if (data?.html) {
+        // Importar dinamicamente as funções de PDF
+        const { generatePdf, downloadPdf, uploadPdfToStorage } = await import('@/lib/pdf-generator');
+        
+        const fileName = `receituario-${prescriptionId}-${Date.now()}.pdf`;
+        
+        // Gerar PDF no cliente
+        const pdfBlob = await generatePdf({
+          html: data.html,
+          fileName,
+          verifyUrl: '' // Receitas não precisam de verificação por enquanto
+        });
+
+        // Upload para storage
+        const filePath = `prescriptions/${prescriptionId}/exports/${Date.now()}.pdf`;
+        const signedUrl = await uploadPdfToStorage(pdfBlob, filePath, supabase);
+
+        // Atualizar prescrição com URL do PDF
+        await supabase
+          .from('prescriptions')
+          .update({ pdf_url: signedUrl })
+          .eq('id', prescriptionId);
+
+        // Download automático
+        downloadPdf(pdfBlob, fileName);
+
+        toast({
+          title: 'PDF gerado!',
+          description: 'O receituário foi gerado e baixado com sucesso.',
+        });
       }
     } catch (error: any) {
+      console.error('Erro ao gerar PDF:', error);
       toast({
         title: 'Erro ao gerar PDF',
-        description: error.message,
+        description: error.message || 'Não foi possível gerar o PDF',
         variant: 'destructive'
       });
     }
@@ -443,9 +472,13 @@ export default function Receituarios() {
                 <Button variant="outline" onClick={resetForm}>
                   Cancelar
                 </Button>
-                <Button onClick={handleSave} disabled={loading} className="flex-1">
+                <Button 
+                  onClick={handleSave} 
+                  disabled={loading} 
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all"
+                >
                   <Save className="w-4 h-4 mr-2" />
-                  {loading ? 'Salvando...' : 'Salvar Receituário'}
+                  {loading ? 'Salvando...' : (editingId ? 'Atualizar Receituário' : 'Salvar Receituário')}
                 </Button>
               </div>
             </CardContent>
@@ -490,6 +523,7 @@ export default function Receituarios() {
                           size="icon"
                           onClick={() => handleDownloadPDF(prescription.id)}
                           title="Baixar PDF"
+                          className="hover:bg-primary/10 hover:text-primary transition-colors"
                         >
                           <Download className="w-4 h-4" />
                         </Button>
@@ -498,6 +532,7 @@ export default function Receituarios() {
                           size="icon"
                           onClick={() => handleDuplicate(prescription)}
                           title="Duplicar"
+                          className="hover:bg-secondary/80 transition-colors"
                         >
                           <Copy className="w-4 h-4" />
                         </Button>
@@ -506,6 +541,7 @@ export default function Receituarios() {
                           size="icon"
                           onClick={() => handleDelete(prescription.id)}
                           title="Excluir"
+                          className="hover:bg-destructive/90 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>

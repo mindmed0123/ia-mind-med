@@ -52,6 +52,87 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
     });
   };
 
+  const handleDownloadPdf = async () => {
+    try {
+      toast({
+        title: "Gerando PDF...",
+        description: "Aguarde enquanto o documento é gerado.",
+      });
+
+      const { data, error } = await supabase.functions.invoke('export-pdf', {
+        body: { laudo_id: laudoId }
+      });
+
+      if (error) throw error;
+
+      if (data?.html && data?.verifyToken) {
+        // Importar dinamicamente as funções de PDF
+        const { generatePdf, downloadPdf, uploadPdfToStorage } = await import('@/lib/pdf-generator');
+        
+        const baseUrl = window.location.origin;
+        const verifyUrl = `${baseUrl}/api/verify-pdf/${laudoId}?token=${data.verifyToken}`;
+        
+        // Gerar PDF no cliente
+        const pdfBlob = await generatePdf({
+          html: data.html,
+          fileName: data.fileName,
+          verifyUrl
+        });
+
+        // Upload para storage
+        const filePath = `reports/${laudoId}/exports/${Date.now()}.pdf`;
+        const signedUrl = await uploadPdfToStorage(pdfBlob, filePath, supabase);
+
+        // Atualizar laudo com URL do PDF
+        await supabase
+          .from('laudos')
+          .update({ pdf_url: signedUrl })
+          .eq('id', laudoId);
+
+        // Download automático
+        downloadPdf(pdfBlob, data.fileName);
+
+        toast({
+          title: "PDF gerado!",
+          description: "O documento foi gerado e baixado com sucesso.",
+        });
+      }
+    } catch (error: any) {
+      console.error('Erro ao exportar PDF:', error);
+      toast({
+        title: "Erro ao gerar PDF",
+        description: error.message || 'Não foi possível gerar o PDF',
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSaveLaudo = async () => {
+    try {
+      // Verificar se o laudo já está finalizado
+      if (laudo.status !== 'completed') {
+        toast({
+          title: "Finalize o laudo",
+          description: "O laudo precisa ser finalizado antes de salvar.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({
+        title: "Laudo salvo",
+        description: "O laudo já está salvo no sistema.",
+      });
+    } catch (error: any) {
+      console.error('Erro ao salvar laudo:', error);
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -331,13 +412,13 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
         </TabsContent>
       </Tabs>
 
-      <div className="flex gap-2 justify-end">
-        <Button variant="outline">
+      <div className="flex gap-2 justify-end mt-6">
+        <Button variant="outline" onClick={handleDownloadPdf}>
           <Download className="w-4 h-4 mr-2" />
           Baixar PDF
         </Button>
-        <Button>
-          Salvar Laudo
+        <Button onClick={handleSaveLaudo} disabled={laudo.status !== 'completed'}>
+          {laudo.status === 'completed' ? 'Laudo Salvo' : 'Finalizar para Salvar'}
         </Button>
       </div>
     </div>
