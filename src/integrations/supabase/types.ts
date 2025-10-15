@@ -50,6 +50,39 @@ export type Database = {
         }
         Relationships: []
       }
+      consent_logs: {
+        Row: {
+          accepted_at: string
+          consent_type: string
+          id: string
+          ip: string | null
+          metadata: Json | null
+          user_agent: string | null
+          user_id: string
+          version: string
+        }
+        Insert: {
+          accepted_at?: string
+          consent_type: string
+          id?: string
+          ip?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id: string
+          version: string
+        }
+        Update: {
+          accepted_at?: string
+          consent_type?: string
+          id?: string
+          ip?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id?: string
+          version?: string
+        }
+        Relationships: []
+      }
       laudos: {
         Row: {
           ai_model: string | null
@@ -222,8 +255,11 @@ export type Database = {
           created_at: string
           current_period_end: string
           current_period_start: string
+          external_payment_id: string | null
           id: string
+          payment_provider: string | null
           plan: Database["public"]["Enums"]["plan_type"]
+          quota_used: number | null
           remaining_starter_credits: number | null
           status: Database["public"]["Enums"]["subscription_status"]
           stripe_customer_id: string | null
@@ -235,8 +271,11 @@ export type Database = {
           created_at?: string
           current_period_end?: string
           current_period_start?: string
+          external_payment_id?: string | null
           id?: string
+          payment_provider?: string | null
           plan?: Database["public"]["Enums"]["plan_type"]
+          quota_used?: number | null
           remaining_starter_credits?: number | null
           status?: Database["public"]["Enums"]["subscription_status"]
           stripe_customer_id?: string | null
@@ -248,8 +287,11 @@ export type Database = {
           created_at?: string
           current_period_end?: string
           current_period_start?: string
+          external_payment_id?: string | null
           id?: string
+          payment_provider?: string | null
           plan?: Database["public"]["Enums"]["plan_type"]
+          quota_used?: number | null
           remaining_starter_credits?: number | null
           status?: Database["public"]["Enums"]["subscription_status"]
           stripe_customer_id?: string | null
@@ -272,6 +314,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_and_consume_quota: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
+      get_quota_status: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       log_audit_action: {
         Args: {
           p_action: string

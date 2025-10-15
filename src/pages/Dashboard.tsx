@@ -8,6 +8,7 @@ import { Activity, LogOut, FileAudio, FileText, Settings } from "lucide-react";
 import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
 import { LgpdConsent } from "@/components/consent/LgpdConsent";
+import { QuotaDisplay } from "@/components/quota/QuotaDisplay";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -209,22 +210,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="shadow-soft hover:shadow-medium transition-smooth border-2 border-primary/20">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Activity className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">10/10</p>
-                  <p className="text-sm text-muted-foreground">Créditos Starter</p>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Período de teste ativo até {new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString()}
-              </p>
-            </CardContent>
-          </Card>
+          <QuotaDisplay />
         </div>
 
         <div className="mb-6">
@@ -266,10 +252,10 @@ const Dashboard = () => {
         </Card>
 
         <div className="mt-8 text-center text-sm text-muted-foreground">
-          <p>Você está usando o plano <strong>Starter</strong> (Trial)</p>
-          <Button variant="link" className="text-primary">
+          <p>Precisa de mais consultas?</p>
+          <a href="/precos" className="text-primary hover:underline">
             Ver todos os planos →
-          </Button>
+          </a>
         </div>
       </main>
     </div>

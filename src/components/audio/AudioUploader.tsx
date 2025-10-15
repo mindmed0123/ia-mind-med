@@ -4,6 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Upload, FileAudio, X } from "lucide-react";
 import { useAudioUpload } from "@/hooks/useAudioUpload";
+import { AudioConsentDialog } from "@/components/consent/AudioConsentDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuota } from "@/hooks/useQuota";
 
 interface AudioUploaderProps {
   onUploadComplete?: (url: string, path: string) => void;
@@ -12,12 +15,33 @@ interface AudioUploaderProps {
 export const AudioUploader = ({ onUploadComplete }: AudioUploaderProps) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [showConsentDialog, setShowConsentDialog] = useState(false);
+  const [hasConsent, setHasConsent] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadAudio, uploading, progress } = useAudioUpload();
+  const { consumeQuota } = useQuota();
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Verificar consentimento LGPD primeiro
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: consents } = await supabase
+        .from('consent_logs')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('consent_type', 'audio_processing')
+        .order('accepted_at', { ascending: false })
+        .limit(1);
+
+      if (!consents || consents.length === 0) {
+        setShowConsentDialog(true);
+        return;
+      }
+
+      setHasConsent(true);
       setSelectedFile(file);
       setAudioUrl(URL.createObjectURL(file));
     }
@@ -25,6 +49,10 @@ export const AudioUploader = ({ onUploadComplete }: AudioUploaderProps) => {
 
   const handleUpload = async () => {
     if (!selectedFile) return;
+
+    // Verificar e consumir quota
+    const allowed = await consumeQuota();
+    if (!allowed) return;
 
     const result = await uploadAudio(selectedFile);
     if (result) {
@@ -41,7 +69,23 @@ export const AudioUploader = ({ onUploadComplete }: AudioUploaderProps) => {
   };
 
   return (
-    <Card className="shadow-soft">
+    <>
+      <AudioConsentDialog
+        open={showConsentDialog}
+        onOpenChange={setShowConsentDialog}
+        onConsent={() => {
+          setHasConsent(true);
+          setShowConsentDialog(false);
+          // Reprocessar seleção de arquivo
+          if (fileInputRef.current?.files?.[0]) {
+            const file = fileInputRef.current.files[0];
+            setSelectedFile(file);
+            setAudioUrl(URL.createObjectURL(file));
+          }
+        }}
+      />
+      
+      <Card className="shadow-soft">
       <CardContent className="pt-6">
         <div className="space-y-4">
           <div className="flex items-center gap-4">
@@ -124,5 +168,6 @@ export const AudioUploader = ({ onUploadComplete }: AudioUploaderProps) => {
         </div>
       </CardContent>
     </Card>
+    </>
   );
 };

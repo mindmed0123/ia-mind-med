@@ -4,6 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Mic, Square, Play, Pause } from "lucide-react";
 import { useAudioUpload } from "@/hooks/useAudioUpload";
 import { useToast } from "@/hooks/use-toast";
+import { AudioConsentDialog } from "@/components/consent/AudioConsentDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuota } from "@/hooks/useQuota";
 
 interface AudioRecorderProps {
   onRecordingComplete?: (url: string, path: string) => void;
@@ -15,6 +18,8 @@ export const AudioRecorder = ({ onRecordingComplete }: AudioRecorderProps) => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [showConsentDialog, setShowConsentDialog] = useState(false);
+  const [hasConsent, setHasConsent] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -22,6 +27,7 @@ export const AudioRecorder = ({ onRecordingComplete }: AudioRecorderProps) => {
   
   const { uploadAudio, uploading } = useAudioUpload();
   const { toast } = useToast();
+  const { consumeQuota } = useQuota();
 
   useEffect(() => {
     return () => {
@@ -36,6 +42,25 @@ export const AudioRecorder = ({ onRecordingComplete }: AudioRecorderProps) => {
 
   const startRecording = async () => {
     try {
+      // Verificar consentimento LGPD primeiro
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: consents } = await supabase
+        .from('consent_logs')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('consent_type', 'audio_processing')
+        .order('accepted_at', { ascending: false })
+        .limit(1);
+
+      if (!consents || consents.length === 0) {
+        setShowConsentDialog(true);
+        return;
+      }
+
+      setHasConsent(true);
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
       const mediaRecorder = new MediaRecorder(stream, {
@@ -111,6 +136,10 @@ export const AudioRecorder = ({ onRecordingComplete }: AudioRecorderProps) => {
   const handleUpload = async () => {
     if (!audioBlob) return;
 
+    // Verificar e consumir quota
+    const allowed = await consumeQuota();
+    if (!allowed) return;
+
     const file = new File([audioBlob], `recording-${Date.now()}.webm`, {
       type: 'audio/webm',
     });
@@ -131,7 +160,19 @@ export const AudioRecorder = ({ onRecordingComplete }: AudioRecorderProps) => {
   };
 
   return (
-    <Card className="shadow-soft">
+    <>
+      <AudioConsentDialog
+        open={showConsentDialog}
+        onOpenChange={setShowConsentDialog}
+        onConsent={() => {
+          setHasConsent(true);
+          setShowConsentDialog(false);
+          // Iniciar gravação após consentimento
+          startRecording();
+        }}
+      />
+      
+      <Card className="shadow-soft">
       <CardContent className="pt-6">
         <div className="space-y-4">
           <div className="flex items-center justify-center gap-4">
@@ -233,5 +274,6 @@ export const AudioRecorder = ({ onRecordingComplete }: AudioRecorderProps) => {
         </div>
       </CardContent>
     </Card>
+    </>
   );
 };
