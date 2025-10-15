@@ -13,6 +13,8 @@ import Contato from "./pages/Contato";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NovoLaudo from "./pages/NovoLaudo";
+import Perfil from "./pages/Perfil";
+import Receituarios from "./pages/Receituarios";
 import NotFound from "./pages/NotFound";
 import PdfTest from "./pages/debug/PdfTest";
 import OcrTest from "./pages/debug/OcrTest";
@@ -34,9 +36,11 @@ const App = () => (
             <Route path="/produto" element={<Produto />} />
             <Route path="/precos" element={<Precos />} />
             <Route path="/integracoes" element={<Integracoes />} />
-            <Route path="/contato" element={<Contato />} />
+          <Route path="/contato" element={<Contato />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/novo-laudo" element={<NovoLaudo />} />
+          <Route path="/perfil" element={<Perfil />} />
+          <Route path="/receituarios" element={<Receituarios />} />
           <Route path="/debug/pdf" element={<PdfTest />} />
           <Route path="/debug/ocr" element={<OcrTest />} />
           <Route path="/debug/storage" element={<StorageTest />} />

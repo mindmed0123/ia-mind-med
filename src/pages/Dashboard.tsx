@@ -158,7 +158,7 @@ const Dashboard = () => {
               <span className="text-sm text-muted-foreground hidden md:block">
                 {user.email}
               </span>
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" onClick={() => navigate('/perfil')}>
                 <Settings className="w-5 h-5" />
               </Button>
               <Button variant="outline" onClick={handleSignOut}>
@@ -213,14 +213,21 @@ const Dashboard = () => {
           <QuotaDisplay />
         </div>
 
-        <div className="mb-6">
+        <div className="mb-6 flex gap-4">
           <Button 
             onClick={() => navigate("/novo-laudo")} 
             size="lg"
-            className="w-full md:w-auto"
           >
             <FileText className="w-5 h-5 mr-2" />
             Gerar Novo Laudo com IA
+          </Button>
+          <Button 
+            onClick={() => navigate("/receituarios")} 
+            size="lg"
+            variant="outline"
+          >
+            <FileText className="w-5 h-5 mr-2" />
+            Receituários
           </Button>
         </div>
 

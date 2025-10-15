@@ -105,9 +105,11 @@ export type Database = {
           legal_disclaimer: string | null
           patient_data: Json | null
           patient_markdown: string | null
+          pdf_generated_at: string | null
           pdf_hash: string | null
           pdf_url: string | null
           pdf_verify_token: string | null
+          pdf_version: number | null
           red_flags: Json | null
           report_markdown: string | null
           sections: Json | null
@@ -143,9 +145,11 @@ export type Database = {
           legal_disclaimer?: string | null
           patient_data?: Json | null
           patient_markdown?: string | null
+          pdf_generated_at?: string | null
           pdf_hash?: string | null
           pdf_url?: string | null
           pdf_verify_token?: string | null
+          pdf_version?: number | null
           red_flags?: Json | null
           report_markdown?: string | null
           sections?: Json | null
@@ -181,9 +185,11 @@ export type Database = {
           legal_disclaimer?: string | null
           patient_data?: Json | null
           patient_markdown?: string | null
+          pdf_generated_at?: string | null
           pdf_hash?: string | null
           pdf_url?: string | null
           pdf_verify_token?: string | null
+          pdf_version?: number | null
           red_flags?: Json | null
           report_markdown?: string | null
           sections?: Json | null
@@ -208,44 +214,113 @@ export type Database = {
           },
         ]
       }
-      profiles: {
+      prescriptions: {
         Row: {
           created_at: string
+          id: string
+          items: Json
+          notes: string | null
+          patient_dob: string | null
+          patient_id_external: string | null
+          patient_name: string
+          patient_sex: string | null
+          pdf_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          items?: Json
+          notes?: string | null
+          patient_dob?: string | null
+          patient_id_external?: string | null
+          patient_name: string
+          patient_sex?: string | null
+          pdf_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          items?: Json
+          notes?: string | null
+          patient_dob?: string | null
+          patient_id_external?: string | null
+          patient_name?: string
+          patient_sex?: string | null
+          pdf_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          clinic_name: string | null
+          created_at: string
           crm: string | null
+          crm_uf: string | null
           email: string
+          email_public: string | null
           full_name: string | null
           id: string
           lgpd_consent_date: string | null
           lgpd_consent_given: boolean | null
           lgpd_consent_ip: string | null
           lgpd_consent_version: string | null
+          logo_url: string | null
+          phone: string | null
+          prescription_footer_text: string | null
+          signature_image_url: string | null
           specialty: string | null
+          stamp_image_url: string | null
           updated_at: string
         }
         Insert: {
+          address?: string | null
+          clinic_name?: string | null
           created_at?: string
           crm?: string | null
+          crm_uf?: string | null
           email: string
+          email_public?: string | null
           full_name?: string | null
           id: string
           lgpd_consent_date?: string | null
           lgpd_consent_given?: boolean | null
           lgpd_consent_ip?: string | null
           lgpd_consent_version?: string | null
+          logo_url?: string | null
+          phone?: string | null
+          prescription_footer_text?: string | null
+          signature_image_url?: string | null
           specialty?: string | null
+          stamp_image_url?: string | null
           updated_at?: string
         }
         Update: {
+          address?: string | null
+          clinic_name?: string | null
           created_at?: string
           crm?: string | null
+          crm_uf?: string | null
           email?: string
+          email_public?: string | null
           full_name?: string | null
           id?: string
           lgpd_consent_date?: string | null
           lgpd_consent_given?: boolean | null
           lgpd_consent_ip?: string | null
           lgpd_consent_version?: string | null
+          logo_url?: string | null
+          phone?: string | null
+          prescription_footer_text?: string | null
+          signature_image_url?: string | null
           specialty?: string | null
+          stamp_image_url?: string | null
           updated_at?: string
         }
         Relationships: []
