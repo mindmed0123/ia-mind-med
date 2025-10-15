@@ -9,6 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, ArrowLeft, Plus, Trash2, Copy, Download, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import {
+  validatePatientName,
+  validateMedicationName,
+  validateDosage,
+  sanitizeText,
+  checkRateLimit
+} from '@/lib/validation';
 
 interface PrescriptionItem {
   medicamento: string;
@@ -97,11 +104,17 @@ export default function Receituarios() {
     try {
       setLoading(true);
 
-      // Validar
-      if (!formData.patient_name.trim()) {
-        throw new Error('Nome do paciente é obrigatório');
+      // Rate limiting
+      if (!checkRateLimit(`prescription-${user?.id}`, 10, 60000)) {
+        throw new Error('Muitas requisições. Aguarde um momento.');
       }
 
+      // Validar nome do paciente
+      if (!validatePatientName(formData.patient_name)) {
+        throw new Error('Nome do paciente inválido (min 3, max 200 caracteres)');
+      }
+
+      // Validar medicamentos
       const validItems = items.filter(item => 
         item.medicamento.trim() && item.dosagem.trim() && item.posologia.trim()
       );
@@ -110,14 +123,31 @@ export default function Receituarios() {
         throw new Error('Adicione pelo menos um medicamento');
       }
 
+      // Validar cada medicamento
+      for (const item of validItems) {
+        if (!validateMedicationName(item.medicamento)) {
+          throw new Error(`Medicamento "${item.medicamento}" inválido`);
+        }
+        if (!validateDosage(item.dosagem)) {
+          throw new Error(`Dosagem "${item.dosagem}" inválida`);
+        }
+      }
+
+      // Sanitizar dados
       const prescriptionData = {
         user_id: user?.id,
-        patient_name: formData.patient_name,
+        patient_name: sanitizeText(formData.patient_name),
         patient_dob: formData.patient_dob || null,
-        patient_sex: formData.patient_sex || null,
-        patient_id_external: formData.patient_id_external || null,
-        items: validItems as any,
-        notes: formData.notes || null
+        patient_sex: formData.patient_sex ? sanitizeText(formData.patient_sex) : null,
+        patient_id_external: formData.patient_id_external ? sanitizeText(formData.patient_id_external) : null,
+        items: validItems.map(item => ({
+          medicamento: sanitizeText(item.medicamento),
+          dosagem: sanitizeText(item.dosagem),
+          posologia: sanitizeText(item.posologia),
+          duracao: item.duracao ? sanitizeText(item.duracao) : '',
+          observacoes: item.observacoes ? sanitizeText(item.observacoes) : ''
+        })) as any,
+        notes: formData.notes ? sanitizeText(formData.notes) : null
       };
 
       if (editingId) {

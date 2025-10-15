@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Rate limiting simples (em produção usar Redis)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
 interface CaktoWebhookPayload {
   event: string;
   data: {
@@ -16,6 +19,24 @@ interface CaktoWebhookPayload {
     amount?: number;
     metadata?: Record<string, any>;
   };
+}
+
+function checkRateLimit(userId: string, maxRequests: number = 10, windowMs: number = 60000): boolean {
+  const now = Date.now();
+  const key = `webhook-${userId}`;
+  const entry = rateLimitMap.get(key);
+
+  if (!entry || entry.resetAt < now) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+
+  if (entry.count >= maxRequests) {
+    return false;
+  }
+
+  entry.count++;
+  return true;
 }
 
 serve(async (req) => {

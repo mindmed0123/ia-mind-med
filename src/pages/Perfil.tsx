@@ -9,6 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, ArrowLeft, Upload, X, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import {
+  validateCRM,
+  validateCRMUF,
+  validateEmail,
+  validatePhone,
+  validateFile,
+  sanitizeText
+} from '@/lib/validation';
 
 export default function Perfil() {
   const { user } = useAuth();
@@ -80,14 +88,15 @@ export default function Perfil() {
     try {
       setUploading(type);
 
-      // Validar tipo e tamanho
+      // Validar arquivo
       const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
-      if (!validTypes.includes(file.type)) {
-        throw new Error('Formato inválido. Use PNG, JPG ou SVG');
-      }
+      const validation = validateFile(file, {
+        maxSize: 5 * 1024 * 1024,
+        allowedTypes: validTypes
+      });
 
-      if (file.size > 5 * 1024 * 1024) {
-        throw new Error('Arquivo muito grande. Máximo 5MB');
+      if (!validation.valid) {
+        throw new Error(validation.error);
       }
 
       // Upload para Supabase Storage
@@ -151,31 +160,42 @@ export default function Perfil() {
     try {
       setLoading(true);
 
-      // Validações
-      if (formData.crm && !/^\d{4,8}$/.test(formData.crm)) {
+      // Validações com mensagens claras
+      if (formData.crm && !validateCRM(formData.crm)) {
         throw new Error('CRM inválido. Digite apenas números (4-8 dígitos)');
       }
 
-      if (formData.crm_uf && !/^[A-Z]{2}$/.test(formData.crm_uf)) {
+      if (formData.crm_uf && !validateCRMUF(formData.crm_uf)) {
         throw new Error('UF inválida. Digite 2 letras maiúsculas (ex: SP, RJ)');
       }
 
+      if (formData.email_public && !validateEmail(formData.email_public)) {
+        throw new Error('Email público inválido');
+      }
+
+      if (formData.phone && !validatePhone(formData.phone)) {
+        throw new Error('Telefone inválido');
+      }
+
+      // Sanitizar textos
+      const sanitizedData = {
+        full_name: sanitizeText(formData.full_name),
+        crm: formData.crm.replace(/\D/g, ''),
+        crm_uf: formData.crm_uf.toUpperCase(),
+        specialty: sanitizeText(formData.specialty),
+        clinic_name: sanitizeText(formData.clinic_name),
+        address: sanitizeText(formData.address),
+        phone: formData.phone,
+        email_public: formData.email_public,
+        logo_url: formData.logo_url,
+        signature_image_url: formData.signature_image_url,
+        stamp_image_url: formData.stamp_image_url,
+        prescription_footer_text: sanitizeText(formData.prescription_footer_text)
+      };
+
       const { error } = await supabase
         .from('profiles')
-        .update({
-          full_name: formData.full_name,
-          crm: formData.crm,
-          crm_uf: formData.crm_uf,
-          specialty: formData.specialty,
-          clinic_name: formData.clinic_name,
-          address: formData.address,
-          phone: formData.phone,
-          email_public: formData.email_public,
-          logo_url: formData.logo_url,
-          signature_image_url: formData.signature_image_url,
-          stamp_image_url: formData.stamp_image_url,
-          prescription_footer_text: formData.prescription_footer_text
-        })
+        .update(sanitizedData)
         .eq('id', user?.id);
 
       if (error) throw error;
