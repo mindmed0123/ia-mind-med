@@ -4,7 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, LogOut, FileAudio, FileText, Settings } from "lucide-react";
+import { Activity, LogOut, FileAudio, FileText, Settings, Shield } from "lucide-react";
+import { useAdmin } from "@/hooks/useAdmin";
 import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
 import { LgpdConsent } from "@/components/consent/LgpdConsent";
@@ -16,6 +17,7 @@ const Dashboard = () => {
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAdmin, loading: adminLoading } = useAdmin();
   const [transcriptionCount, setTranscriptionCount] = useState(0);
   const [laudosCount, setLaudosCount] = useState(0);
 
@@ -158,6 +160,12 @@ const Dashboard = () => {
               <span className="text-sm text-muted-foreground hidden md:block">
                 {user.email}
               </span>
+              {!adminLoading && isAdmin && (
+                <Button variant="outline" onClick={() => navigate('/admin')}>
+                  <Shield className="w-5 h-5 mr-2" />
+                  Admin
+                </Button>
+              )}
               <Button variant="outline" size="icon" onClick={() => navigate('/perfil')}>
                 <Settings className="w-5 h-5" />
               </Button>
