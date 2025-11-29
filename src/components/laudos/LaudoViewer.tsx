@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Copy, Download, FileText, User, AlertTriangle } from "lucide-react";
+import { Copy, Download, FileText, User, AlertTriangle, Pill, Crown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface LaudoViewerProps {
   laudoId: string;
@@ -15,6 +17,8 @@ interface LaudoViewerProps {
 
 export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { subscription } = useSubscription();
   const [laudo, setLaudo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -412,7 +416,40 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
         </TabsContent>
       </Tabs>
 
-      <div className="flex gap-2 justify-end mt-6">
+      <div className="flex flex-wrap gap-2 justify-end mt-6">
+        {/* Botão Gerar Receituário - Apenas PRO */}
+        {laudo.status === 'completed' && laudo.sections?.hipoteses?.principal && (
+          subscription?.isPro ? (
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                // Store laudo data in sessionStorage for the prescription page
+                const prescriptionData = {
+                  patient_name: laudo.patient_data?.iniciais || '',
+                  diagnosis: laudo.sections?.hipoteses?.principal || '',
+                  conduct: laudo.sections?.conduta || '',
+                  cid10: laudo.cid10_codes || []
+                };
+                sessionStorage.setItem('prescriptionFromLaudo', JSON.stringify(prescriptionData));
+                navigate('/receituarios?from=laudo');
+              }}
+              className="gap-2"
+            >
+              <Pill className="w-4 h-4" />
+              Gerar Receituário
+            </Button>
+          ) : (
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/precos')}
+              className="gap-2 border-primary/50"
+            >
+              <Crown className="w-4 h-4 text-primary" />
+              Gerar Receituário (PRO)
+            </Button>
+          )
+        )}
+        
         <Button variant="outline" onClick={handleDownloadPdf}>
           <Download className="w-4 h-4 mr-2" />
           Baixar PDF

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { ProFeatureGate } from '@/components/pro/ProFeatureGate';
@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Activity, ArrowLeft, Plus, Trash2, Copy, Download, Save, Crown } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Activity, ArrowLeft, Plus, Trash2, Copy, Download, Save, Crown, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -41,12 +41,14 @@ interface Prescription {
 export default function Receituarios() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { subscription, loading: subscriptionLoading } = useSubscription();
   const [loading, setLoading] = useState(false);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [fromLaudo, setFromLaudo] = useState(false);
 
   const [formData, setFormData] = useState({
     patient_name: '',
@@ -59,6 +61,33 @@ export default function Receituarios() {
   const [items, setItems] = useState<PrescriptionItem[]>([
     { medicamento: '', dosagem: '', posologia: '', duracao: '', observacoes: '' }
   ]);
+
+  // Check if coming from a laudo
+  useEffect(() => {
+    if (searchParams.get('from') === 'laudo') {
+      const savedData = sessionStorage.getItem('prescriptionFromLaudo');
+      if (savedData) {
+        try {
+          const laudoData = JSON.parse(savedData);
+          setFormData(prev => ({
+            ...prev,
+            patient_name: laudoData.patient_name || '',
+            notes: `Diagnóstico: ${laudoData.diagnosis || 'N/I'}\n\nConduta: ${laudoData.conduct || 'N/I'}\n\nCID-10: ${laudoData.cid10?.join(', ') || 'N/I'}`
+          }));
+          setFromLaudo(true);
+          setShowForm(true);
+          sessionStorage.removeItem('prescriptionFromLaudo');
+          
+          toast({
+            title: 'Dados importados do laudo',
+            description: 'Preencha os medicamentos para completar o receituário.',
+          });
+        } catch (e) {
+          console.error('Error parsing laudo data:', e);
+        }
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (user) {
@@ -305,6 +334,7 @@ export default function Receituarios() {
     });
     setItems([{ medicamento: '', dosagem: '', posologia: '', duracao: '', observacoes: '' }]);
     setShowForm(false);
+    setFromLaudo(false);
   };
 
   return (
@@ -343,7 +373,23 @@ export default function Receituarios() {
         ) : showForm ? (
           <Card>
             <CardHeader>
-              <CardTitle>{editingId ? 'Editar Receituário' : 'Novo Receituário'}</CardTitle>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>{editingId ? 'Editar Receituário' : 'Novo Receituário'}</CardTitle>
+                  {fromLaudo && (
+                    <CardDescription className="flex items-center gap-2 mt-2">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      Dados importados automaticamente do laudo
+                    </CardDescription>
+                  )}
+                </div>
+                {fromLaudo && (
+                  <span className="bg-primary/10 text-primary text-xs px-3 py-1 rounded-full flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    Do Laudo
+                  </span>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Dados do Paciente */}
