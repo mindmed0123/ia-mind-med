@@ -66,7 +66,13 @@ serve(async (req) => {
 
     currentLaudoId = laudo_id;
 
-    const systemPrompt = `Você é um assistente clínico em PT-BR. Gere **laudos estruturados** sem diagnóstico definitivo, explicitando incertezas. Sempre produza **duas hipóteses**: **Mais provável** e **Menos provável (diferencial)**. Para cada hipótese, liste: **racional** (com base na transcrição e dados informados), **achados de suporte**, **achados que contrariam**, **fatores de risco**, **probabilidade (Alta/Média/Baixa)** e **próximos passos** (condutas e exames). Liste **red flags**, **lacunas de dados** (perguntas que faltam) e **CID‑10 sugeridos** (indicativos). Se algo não estiver na transcrição/dados, marque **"não informado"** (não invente). Inclua **disclaimer**: "Conteúdo gerado por IA para apoio; não substitui avaliação clínica presencial e julgamento médico." Siga **LGPD by design**: restrinja identificadores a iniciais/idade/sexo; não registre dados sensíveis desnecessários; minimize. Evite alucinações.`;
+    const systemPrompt = `Você é um assistente clínico em PT-BR. Gere **laudos estruturados** sem diagnóstico definitivo, explicitando incertezas. Sempre produza **duas hipóteses**: **Mais provável** e **Menos provável (diferencial)**. Para cada hipótese, liste: **racional** (com base na transcrição e dados informados), **achados de suporte**, **achados que contrariam**, **fatores de risco**, **probabilidade (Alta/Média/Baixa)** e **próximos passos** (condutas e exames). Liste **red flags**, **lacunas de dados** (perguntas que faltam) e **CID‑10 sugeridos** (indicativos). Se algo não estiver na transcrição/dados, marque **"não informado"** (não invente). Inclua **disclaimer**: "Conteúdo gerado por IA para apoio; não substitui avaliação clínica presencial e julgamento médico." Siga **LGPD by design**: restrinja identificadores a iniciais/idade/sexo; não registre dados sensíveis desnecessários; minimize. Evite alucinações.
+
+IMPORTANTE: Ao final do laudo, inclua uma seção de **Embasamento Teórico** com:
+- Referências a diretrizes médicas relevantes (Ministério da Saúde, sociedades médicas brasileiras)
+- Fundamentação científica para as hipóteses diagnósticas
+- Base teórica para as condutas recomendadas
+- Se aplicável, mencione protocolos clínicos estabelecidos`;
 
     const userPrompt = `
 **DADOS DO PACIENTE:**
@@ -114,12 +120,16 @@ Retorne um JSON estruturado com os seguintes campos:
 6. red_flags: array - Sinais de alerta importantes
 7. lacunas_dados: array - Perguntas/dados que faltam
 8. cid10_sugeridos: array - Códigos CID-10 sugeridos
-9. texto_laudo_md: string - Laudo completo em Markdown
+9. texto_laudo_md: string - Laudo completo em Markdown (incluir seção de Embasamento Teórico ao final)
 10. texto_paciente_md: string - Resumo acessível ao paciente
 11. avisos_legais: string - Disclaimer padrão
-12. referencias: array - Referências se aplicável
+12. referencias: array - Referências e diretrizes utilizadas
+13. embasamento_teorico: object - {diretrizes: string[], fundamentacao: string, protocolos: string[]}
 
-IMPORTANTE: Retorne APENAS o JSON, sem texto adicional antes ou depois.
+IMPORTANTE: 
+- Retorne APENAS o JSON, sem texto adicional antes ou depois.
+- A seção embasamento_teorico deve conter fundamentação científica real baseada em diretrizes médicas brasileiras.
+- Inclua o embasamento teórico também no texto_laudo_md como última seção.
 `;
 
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');

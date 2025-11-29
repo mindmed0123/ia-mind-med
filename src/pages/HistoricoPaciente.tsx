@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Activity, ArrowLeft, FileText, Pill, Calendar, 
@@ -59,14 +59,16 @@ export default function HistoricoPaciente() {
       
       // Load patient
       const { data: patientData, error: patientError } = await supabase
-        .from('patients')
+        .from('patients' as any)
         .select('*')
         .eq('id', patientId)
         .eq('user_id', user?.id)
         .single();
 
       if (patientError) throw patientError;
-      setPatient(patientData);
+      setPatient(patientData as unknown as Patient);
+
+      const patientName = (patientData as any)?.name || '';
 
       // Load laudos for this patient
       const { data: laudosData, error: laudosError } = await supabase
@@ -76,8 +78,7 @@ export default function HistoricoPaciente() {
         .order('created_at', { ascending: false });
 
       if (!laudosError) {
-        // Filter laudos by patient (would need patient_id in laudos table ideally)
-        setLaudos(laudosData || []);
+        setLaudos((laudosData || []) as Laudo[]);
       }
 
       // Load prescriptions
@@ -85,11 +86,14 @@ export default function HistoricoPaciente() {
         .from('prescriptions')
         .select('id, patient_name, created_at, items, pdf_url')
         .eq('user_id', user?.id)
-        .ilike('patient_name', `%${patientData.name}%`)
+        .ilike('patient_name', `%${patientName}%`)
         .order('created_at', { ascending: false });
 
       if (!prescError) {
-        setPrescriptions(prescData || []);
+        setPrescriptions((prescData || []).map(p => ({
+          ...p,
+          items: Array.isArray(p.items) ? p.items : []
+        })) as Prescription[]);
       }
     } catch (error) {
       console.error('Error loading patient data:', error);
@@ -273,16 +277,16 @@ export default function HistoricoPaciente() {
                             <span>{new Date(presc.created_at).toLocaleString('pt-BR')}</span>
                           </div>
                           <div className="space-y-1">
-                            {(presc.items as any[]).slice(0, 3).map((item, idx) => (
+                            {presc.items.slice(0, 3).map((item: any, idx: number) => (
                               <p key={idx} className="text-sm">
                                 <span className="font-medium">{item.medicamento}</span>
                                 {' - '}
                                 {item.dosagem}
                               </p>
                             ))}
-                            {(presc.items as any[]).length > 3 && (
+                            {presc.items.length > 3 && (
                               <p className="text-xs text-muted-foreground">
-                                +{(presc.items as any[]).length - 3} medicamentos
+                                +{presc.items.length - 3} medicamentos
                               </p>
                             )}
                           </div>

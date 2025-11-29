@@ -1,12 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Edit } from "lucide-react";
+import { ArrowLeft, Loader2, Edit, Mic, FileText } from "lucide-react";
 import { PatientDataForm } from "@/components/laudos/PatientDataForm";
 import { LaudoViewer } from "@/components/laudos/LaudoViewer";
 import { LaudoEditor } from "@/components/laudos/LaudoEditor";
+import { TextInputMode } from "@/components/laudos/TextInputMode";
+import { AudioUploader } from "@/components/audio/AudioUploader";
+import { AudioRecorder } from "@/components/audio/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -16,6 +20,7 @@ const NovoLaudo = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [laudoId, setLaudoId] = useState<string | null>(searchParams.get('id'));
   const [laudo, setLaudo] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -25,6 +30,7 @@ const NovoLaudo = () => {
   const [hasShownSuccessToast, setHasShownSuccessToast] = useState(false);
   const hasTriggeredGeneration = useRef(false);
   const [showEditor, setShowEditor] = useState(false);
+  const [inputMode, setInputMode] = useState<'audio' | 'text'>('audio');
 
   useEffect(() => {
     if (laudoId) {
@@ -163,6 +169,135 @@ const NovoLaudo = () => {
     }
   };
 
+  const handleTextGenerate = async (text: string) => {
+    if (!user) return;
+
+    setIsGeneratingLaudo(true);
+
+    try {
+      // Create a new laudo for text mode
+      const { data: newLaudo, error: createError } = await supabase
+        .from('laudos')
+        .insert({
+          user_id: user.id,
+          title: `Laudo - ${new Date().toLocaleString('pt-BR')}`,
+          status: 'draft',
+          transcript: { text, source: 'text_input' },
+          transcript_status: 'completed',
+          generation_mode: 'text',
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      setLaudoId(newLaudo.id);
+      setTranscript(text);
+
+      // Generate laudo
+      const { error } = await supabase.functions.invoke('generate-laudo', {
+        body: {
+          patient: {
+            iniciais: patientData?.iniciais || 'N/I',
+            sexo: patientData?.sexo || 'Não informado',
+            idade: parseInt(patientData?.idade) || 0,
+          },
+          specialty: patientData?.especialidade || 'Não especificada',
+          chief_complaint: patientData?.queixa_principal || 'Não informada',
+          transcript: text,
+          vitals: patientData?.sinais_vitais || {},
+          meds: patientData?.medicacoes || [],
+          allergies: patientData?.alergias || [],
+          exam_findings: '',
+          contexto_clinico: patientData?.contexto_clinico || '',
+          historico: patientData?.historico || '',
+          laudo_id: newLaudo.id,
+          mode: 'complete',
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Laudo gerado!',
+        description: 'O laudo foi gerado com sucesso',
+      });
+
+      // Navigate to the laudo
+      navigate(`/novo-laudo?id=${newLaudo.id}`, { replace: true });
+      await loadLaudo();
+    } catch (error: any) {
+      console.error('Error generating laudo from text:', error);
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao gerar laudo',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGeneratingLaudo(false);
+    }
+  };
+
+  const handleAudioUploadComplete = async (url: string, path: string) => {
+    try {
+      // Create laudo
+      const { data: newLaudo, error: createError } = await supabase
+        .from('laudos')
+        .insert({
+          user_id: user?.id,
+          title: `Laudo com áudio - ${new Date().toLocaleString('pt-BR')}`,
+          source_audio_url: url,
+          status: 'draft',
+          audio_processing_status: 'processing',
+          transcript_status: 'processing',
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      setLaudoId(newLaudo.id);
+
+      toast({
+        title: "Processando áudio...",
+        description: "A transcrição e geração do laudo serão automáticas",
+      });
+
+      // Start transcription
+      const { data: initial } = await supabase.auth.getSession();
+      let accessToken = initial?.session?.access_token;
+      if (!accessToken) return;
+      
+      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+      if (!refreshError && refreshed?.session?.access_token) {
+        accessToken = refreshed.session.access_token;
+      }
+
+      await supabase.functions.invoke('transcribe-audio', {
+        body: {
+          audio_url: url,
+          audio_path: path,
+          laudo_id: newLaudo.id,
+          mode: 'complete',
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+      });
+
+      // Update URL
+      navigate(`/novo-laudo?id=${newLaudo.id}`, { replace: true });
+    } catch (error: any) {
+      console.error('Error processing audio:', error);
+      toast({
+        title: 'Erro ao processar',
+        description: error.message || 'Tente novamente',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const retryTranscription = async () => {
     if (!laudoId) return;
     try {
@@ -201,6 +336,87 @@ const NovoLaudo = () => {
       await handleGenerateLaudo();
     }
   };
+
+  // If no laudo exists yet, show the input mode selector
+  if (!laudoId) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle">
+        <div className="container mx-auto px-4 py-8">
+          <div className="mb-6">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/dashboard')}
+              className="mb-4"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar ao Dashboard
+            </Button>
+            <h1 className="text-3xl font-bold">Novo Laudo com IA</h1>
+            <p className="text-muted-foreground mt-2">
+              Escolha como deseja criar o laudo: gravando áudio ou digitando texto
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1">
+              <PatientDataForm
+                initialData={patientData}
+                onDataChange={setPatientData}
+                autoSave={false}
+              />
+            </div>
+
+            <div className="lg:col-span-2">
+              <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'audio' | 'text')}>
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="audio">
+                    <Mic className="w-4 h-4 mr-2" />
+                    Gravar/Enviar Áudio
+                  </TabsTrigger>
+                  <TabsTrigger value="text">
+                    <FileText className="w-4 h-4 mr-2" />
+                    Escrever Consulta
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="audio">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Mic className="w-5 h-5 text-primary" />
+                        Modo Áudio
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Tabs defaultValue="upload">
+                        <TabsList className="grid w-full grid-cols-2 mb-4">
+                          <TabsTrigger value="upload">Enviar Arquivo</TabsTrigger>
+                          <TabsTrigger value="record">Gravar Agora</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="upload">
+                          <AudioUploader onUploadComplete={handleAudioUploadComplete} />
+                        </TabsContent>
+                        <TabsContent value="record">
+                          <AudioRecorder onRecordingComplete={handleAudioUploadComplete} />
+                        </TabsContent>
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="text">
+                  <TextInputMode 
+                    onGenerate={handleTextGenerate}
+                    isGenerating={isGeneratingLaudo}
+                  />
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -258,101 +474,91 @@ const NovoLaudo = () => {
           </Card>
         )}
 
-        {laudoId && laudo ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
-              <PatientDataForm
-                initialData={patientData}
-                onDataChange={handlePatientDataChange}
-                autoSave={true}
-              />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
+            <PatientDataForm
+              initialData={patientData}
+              onDataChange={handlePatientDataChange}
+              autoSave={true}
+            />
 
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle>Transcrição</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Label htmlFor="transcript">Texto da Consulta</Label>
-                  <Textarea
-                    id="transcript"
-                    value={transcript}
-                    onChange={(e) => setTranscript(e.target.value)}
-                    rows={10}
-                    className="mt-2"
-                    placeholder={isProcessing ? "Aguardando transcrição..." : "Transcrição aparecerá aqui"}
-                    disabled={isProcessing}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Transcrição</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Label htmlFor="transcript">Texto da Consulta</Label>
+                <Textarea
+                  id="transcript"
+                  value={transcript}
+                  onChange={(e) => setTranscript(e.target.value)}
+                  rows={10}
+                  className="mt-2"
+                  placeholder={isProcessing ? "Aguardando transcrição..." : "Transcrição aparecerá aqui"}
+                  disabled={isProcessing}
+                />
+                
+                {transcript && !isProcessing && laudo?.status !== 'completed' && (
+                  <Button
+                    onClick={() => handleGenerateLaudo()}
+                    disabled={isGeneratingLaudo}
+                    className="w-full mt-4 whitespace-nowrap"
+                  >
+                    {isGeneratingLaudo ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Gerando...
+                      </>
+                    ) : (
+                      'Gerar Laudo'
+                    )}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="lg:col-span-2">
+            {laudo?.status === 'completed' ? (
+              <Tabs defaultValue={showEditor ? "editor" : "viewer"} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="viewer" onClick={() => setShowEditor(false)}>
+                    Visualizar
+                  </TabsTrigger>
+                  <TabsTrigger value="editor" onClick={() => setShowEditor(true)}>
+                    <Edit className="w-4 h-4 mr-2" />
+                    Editar
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="viewer" className="mt-6">
+                  <LaudoViewer laudoId={laudoId} />
+                </TabsContent>
+                
+                <TabsContent value="editor" className="mt-6">
+                  <LaudoEditor 
+                    laudoId={laudoId} 
+                    initialData={laudo}
+                    onStatusChange={(newStatus) => {
+                      setLaudo({ ...laudo, status: newStatus });
+                    }}
                   />
-                  
-                  {transcript && !isProcessing && laudo.status !== 'completed' && (
-                    <Button
-                      onClick={() => handleGenerateLaudo()}
-                      disabled={isGeneratingLaudo}
-                      className="w-full mt-4 whitespace-nowrap"
-                    >
-                      {isGeneratingLaudo ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Gerando...
-                        </>
-                      ) : (
-                        'Gerar Laudo'
-                      )}
-                    </Button>
-                  )}
+                </TabsContent>
+              </Tabs>
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-muted-foreground">
+                    {isProcessing 
+                      ? 'Aguarde a transcrição e geração automática do laudo...'
+                      : 'Preencha os dados do paciente e clique em "Gerar Laudo com IA"'
+                    }
+                  </p>
                 </CardContent>
               </Card>
-            </div>
-
-            <div className="lg:col-span-2">
-              {laudo.status === 'completed' ? (
-                <Tabs defaultValue={showEditor ? "editor" : "viewer"} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="viewer" onClick={() => setShowEditor(false)}>
-                      Visualizar
-                    </TabsTrigger>
-                    <TabsTrigger value="editor" onClick={() => setShowEditor(true)}>
-                      <Edit className="w-4 h-4 mr-2" />
-                      Editar
-                    </TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="viewer" className="mt-6">
-                    <LaudoViewer laudoId={laudoId} />
-                  </TabsContent>
-                  
-                  <TabsContent value="editor" className="mt-6">
-                    <LaudoEditor 
-                      laudoId={laudoId} 
-                      initialData={laudo}
-                      onStatusChange={(newStatus) => {
-                        setLaudo({ ...laudo, status: newStatus });
-                      }}
-                    />
-                  </TabsContent>
-                </Tabs>
-              ) : (
-                <Card>
-                  <CardContent className="py-12 text-center">
-                    <p className="text-muted-foreground">
-                      {isProcessing 
-                        ? 'Aguarde a transcrição e geração automática do laudo...'
-                        : 'Preencha os dados do paciente e clique em "Gerar Laudo com IA"'
-                      }
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+            )}
           </div>
-        ) : (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">
-                Grave um áudio no Dashboard para iniciar
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        </div>
       </div>
     </div>
   );

@@ -4,10 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
   Activity, ArrowLeft, Plus, Search, User, Calendar, 
-  FileText, Pill, Edit, Trash2, History 
+  FileText, Edit, Trash2, History 
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -37,8 +37,6 @@ interface Patient {
   email: string | null;
   notes: string | null;
   created_at: string;
-  laudos_count?: number;
-  prescriptions_count?: number;
 }
 
 export default function Pacientes() {
@@ -71,13 +69,13 @@ export default function Pacientes() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('patients')
+        .from('patients' as any)
         .select('*')
         .eq('user_id', user?.id)
         .order('name', { ascending: true });
 
       if (error) throw error;
-      setPatients(data || []);
+      setPatients((data || []) as unknown as Patient[]);
     } catch (error) {
       console.error('Error loading patients:', error);
       toast({
@@ -109,14 +107,14 @@ export default function Pacientes() {
 
       if (editingPatient) {
         const { error } = await supabase
-          .from('patients')
+          .from('patients' as any)
           .update(patientData)
           .eq('id', editingPatient.id);
         if (error) throw error;
         toast({ title: 'Sucesso', description: 'Paciente atualizado' });
       } else {
         const { error } = await supabase
-          .from('patients')
+          .from('patients' as any)
           .insert(patientData);
         if (error) throw error;
         toast({ title: 'Sucesso', description: 'Paciente cadastrado' });
@@ -152,7 +150,7 @@ export default function Pacientes() {
 
     try {
       const { error } = await supabase
-        .from('patients')
+        .from('patients' as any)
         .delete()
         .eq('id', id);
 

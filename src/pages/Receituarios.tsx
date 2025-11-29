@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/hooks/useSubscription';
+import { ProFeatureGate } from '@/components/pro/ProFeatureGate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Activity, ArrowLeft, Plus, Trash2, Copy, Download, Save } from 'lucide-react';
+import { Activity, ArrowLeft, Plus, Trash2, Copy, Download, Save, Crown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -40,6 +42,7 @@ export default function Receituarios() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { subscription, loading: subscriptionLoading } = useSubscription();
   const [loading, setLoading] = useState(false);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -315,8 +318,14 @@ export default function Receituarios() {
               </Button>
               <Activity className="w-6 h-6 text-primary" />
               <span className="text-xl font-bold">Receituários</span>
+              {subscription?.isPro && (
+                <span className="bg-gradient-to-r from-primary to-accent text-primary-foreground text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                  <Crown className="w-3 h-3" />
+                  PRO
+                </span>
+              )}
             </div>
-            {!showForm && (
+            {!showForm && subscription?.isPro && (
               <Button onClick={() => setShowForm(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Novo Receituário
@@ -327,7 +336,11 @@ export default function Receituarios() {
       </header>
 
       <main className="container mx-auto px-4 py-12 max-w-6xl">
-        {showForm ? (
+        {!subscription?.isPro ? (
+          <ProFeatureGate feature="o Receituário Completo">
+            <div />
+          </ProFeatureGate>
+        ) : showForm ? (
           <Card>
             <CardHeader>
               <CardTitle>{editingId ? 'Editar Receituário' : 'Novo Receituário'}</CardTitle>
