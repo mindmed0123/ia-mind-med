@@ -104,6 +104,7 @@ export type Database = {
           last_update_type: string | null
           legal_disclaimer: string | null
           patient_data: Json | null
+          patient_id: string | null
           patient_markdown: string | null
           pdf_generated_at: string | null
           pdf_hash: string | null
@@ -144,6 +145,7 @@ export type Database = {
           last_update_type?: string | null
           legal_disclaimer?: string | null
           patient_data?: Json | null
+          patient_id?: string | null
           patient_markdown?: string | null
           pdf_generated_at?: string | null
           pdf_hash?: string | null
@@ -184,6 +186,7 @@ export type Database = {
           last_update_type?: string | null
           legal_disclaimer?: string | null
           patient_data?: Json | null
+          patient_id?: string | null
           patient_markdown?: string | null
           pdf_generated_at?: string | null
           pdf_hash?: string | null
@@ -206,6 +209,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "laudos_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "laudos_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -213,6 +223,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      patients: {
+        Row: {
+          birth_date: string | null
+          created_at: string
+          email: string | null
+          external_id: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          sex: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          birth_date?: string | null
+          created_at?: string
+          email?: string | null
+          external_id?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          sex?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          birth_date?: string | null
+          created_at?: string
+          email?: string | null
+          external_id?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          sex?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       prescriptions: {
         Row: {
