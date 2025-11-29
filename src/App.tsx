@@ -17,6 +17,7 @@ import Perfil from "./pages/Perfil";
 import Receituarios from "./pages/Receituarios";
 import Pacientes from "./pages/Pacientes";
 import HistoricoPaciente from "./pages/HistoricoPaciente";
+import EvolutionReport from "./pages/EvolutionReport";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import PdfTest from "./pages/debug/PdfTest";
@@ -46,6 +47,7 @@ const App = () => (
           <Route path="/receituarios" element={<Receituarios />} />
           <Route path="/pacientes" element={<Pacientes />} />
           <Route path="/historico-paciente/:patientId" element={<HistoricoPaciente />} />
+          <Route path="/evolucao/:patientId" element={<EvolutionReport />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/debug/pdf" element={<PdfTest />} />
           <Route path="/debug/ocr" element={<OcrTest />} />

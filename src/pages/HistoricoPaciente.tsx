@@ -6,10 +6,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Activity, ArrowLeft, FileText, Pill, Calendar, 
-  Download, User, ExternalLink 
+  Download, User, ExternalLink, Image as ImageIcon,
+  TrendingUp, GitCompare
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { PatientDocuments } from '@/components/patient/PatientDocuments';
+import { PatientTimeline } from '@/components/patient/PatientTimeline';
+import { ImageComparison } from '@/components/patient/ImageComparison';
+import { useSubscription } from '@/hooks/useSubscription';
 
 interface Patient {
   id: string;
@@ -41,11 +46,16 @@ export default function HistoricoPaciente() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { subscription } = useSubscription();
   
   const [patient, setPatient] = useState<Patient | null>(null);
   const [laudos, setLaudos] = useState<Laudo[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [documentCount, setDocumentCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showComparison, setShowComparison] = useState(false);
+
+  const isPro = subscription?.plan === 'PRO' || subscription?.plan === 'CLINIC';
 
   useEffect(() => {
     if (user && patientId) {
@@ -59,7 +69,7 @@ export default function HistoricoPaciente() {
       
       // Load patient
       const { data: patientData, error: patientError } = await supabase
-        .from('patients' as any)
+        .from('patients')
         .select('*')
         .eq('id', patientId)
         .eq('user_id', user?.id)
@@ -70,31 +80,38 @@ export default function HistoricoPaciente() {
 
       const patientName = (patientData as any)?.name || '';
 
-      // Load laudos for this patient
-      const { data: laudosData, error: laudosError } = await supabase
-        .from('laudos')
-        .select('id, title, status, created_at, specialty, pdf_url')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
+      // Load all data in parallel
+      const [laudosRes, prescRes, docsRes] = await Promise.all([
+        supabase
+          .from('laudos')
+          .select('id, title, status, created_at, specialty, pdf_url')
+          .eq('patient_id', patientId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('prescriptions')
+          .select('id, patient_name, created_at, items, pdf_url')
+          .eq('user_id', user?.id)
+          .ilike('patient_name', `%${patientName}%`)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('patient_documents')
+          .select('id', { count: 'exact' })
+          .eq('patient_id', patientId),
+      ]);
 
-      if (!laudosError) {
-        setLaudos((laudosData || []) as Laudo[]);
+      if (!laudosRes.error) {
+        setLaudos((laudosRes.data || []) as Laudo[]);
       }
 
-      // Load prescriptions
-      const { data: prescData, error: prescError } = await supabase
-        .from('prescriptions')
-        .select('id, patient_name, created_at, items, pdf_url')
-        .eq('user_id', user?.id)
-        .ilike('patient_name', `%${patientName}%`)
-        .order('created_at', { ascending: false });
-
-      if (!prescError) {
-        setPrescriptions((prescData || []).map(p => ({
+      if (!prescRes.error) {
+        setPrescriptions((prescRes.data || []).map(p => ({
           ...p,
           items: Array.isArray(p.items) ? p.items : []
         })) as Prescription[]);
       }
+
+      setDocumentCount(docsRes.count || 0);
+
     } catch (error) {
       console.error('Error loading patient data:', error);
       toast({
@@ -150,7 +167,7 @@ export default function HistoricoPaciente() {
             <Button variant="ghost" size="icon" onClick={() => navigate('/pacientes')}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-1">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <User className="w-5 h-5 text-primary" />
               </div>
@@ -175,12 +192,23 @@ export default function HistoricoPaciente() {
                 </div>
               </div>
             </div>
+            
+            {/* Evolution Report Button */}
+            {isPro && (
+              <Button 
+                variant="outline"
+                onClick={() => navigate(`/evolucao/${patient.id}`)}
+              >
+                <TrendingUp className="w-4 h-4 mr-2" />
+                Relatório de Evolução
+              </Button>
+            )}
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="flex gap-3 mb-6">
+      <main className="container mx-auto px-4 py-8 max-w-5xl">
+        <div className="flex flex-wrap gap-3 mb-6">
           <Button onClick={() => navigate(`/novo-laudo?patient_id=${patient.id}`)}>
             <FileText className="w-4 h-4 mr-2" />
             Novo Laudo
@@ -189,19 +217,44 @@ export default function HistoricoPaciente() {
             <Pill className="w-4 h-4 mr-2" />
             Nova Receita
           </Button>
+          {isPro && documentCount >= 2 && (
+            <Button variant="outline" onClick={() => setShowComparison(true)}>
+              <GitCompare className="w-4 h-4 mr-2" />
+              Comparar Imagens
+            </Button>
+          )}
         </div>
 
-        <Tabs defaultValue="laudos" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs defaultValue="timeline" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="timeline">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Timeline
+            </TabsTrigger>
+            <TabsTrigger value="documentos">
+              <ImageIcon className="w-4 h-4 mr-2" />
+              Documentos ({documentCount})
+            </TabsTrigger>
             <TabsTrigger value="laudos">
               <FileText className="w-4 h-4 mr-2" />
               Laudos ({laudos.length})
             </TabsTrigger>
             <TabsTrigger value="prescricoes">
               <Pill className="w-4 h-4 mr-2" />
-              Receituários ({prescriptions.length})
+              Receitas ({prescriptions.length})
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="timeline" className="mt-6">
+            <PatientTimeline patientId={patient.id} />
+          </TabsContent>
+
+          <TabsContent value="documentos" className="mt-6">
+            <PatientDocuments 
+              patientId={patient.id} 
+              patientName={patient.name} 
+            />
+          </TabsContent>
 
           <TabsContent value="laudos" className="mt-6">
             {laudos.length === 0 ? (
@@ -209,6 +262,12 @@ export default function HistoricoPaciente() {
                 <CardContent className="pt-6 text-center py-8">
                   <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                   <p className="text-muted-foreground">Nenhum laudo encontrado</p>
+                  <Button 
+                    className="mt-4"
+                    onClick={() => navigate(`/novo-laudo?patient_id=${patient.id}`)}
+                  >
+                    Criar Laudo
+                  </Button>
                 </CardContent>
               </Card>
             ) : (
@@ -263,6 +322,13 @@ export default function HistoricoPaciente() {
                 <CardContent className="pt-6 text-center py-8">
                   <Pill className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                   <p className="text-muted-foreground">Nenhum receituário encontrado</p>
+                  <Button 
+                    className="mt-4"
+                    variant="outline"
+                    onClick={() => navigate('/receituarios')}
+                  >
+                    Criar Receita
+                  </Button>
                 </CardContent>
               </Card>
             ) : (
@@ -309,6 +375,14 @@ export default function HistoricoPaciente() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Image Comparison Dialog */}
+      <ImageComparison
+        patientId={patient.id}
+        patientName={patient.name}
+        open={showComparison}
+        onOpenChange={setShowComparison}
+      />
     </div>
   );
 }
