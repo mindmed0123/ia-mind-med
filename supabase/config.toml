@@ -20,3 +20,12 @@ verify_jwt = false
 
 [functions.generate-prescription-pdf]
 verify_jwt = true
+
+[functions.analyze-image]
+verify_jwt = true
+
+[functions.compare-images]
+verify_jwt = true
+
+[functions.generate-evolution-report]
+verify_jwt = true

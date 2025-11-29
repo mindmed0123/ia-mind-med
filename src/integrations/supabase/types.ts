@@ -83,6 +83,62 @@ export type Database = {
         }
         Relationships: []
       }
+      evolution_reports: {
+        Row: {
+          created_at: string
+          evolution_summary: string | null
+          findings: Json | null
+          id: string
+          patient_id: string
+          pdf_url: string | null
+          recommendations: string | null
+          report_markdown: string | null
+          theoretical_basis: string | null
+          timeline_data: Json | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          evolution_summary?: string | null
+          findings?: Json | null
+          id?: string
+          patient_id: string
+          pdf_url?: string | null
+          recommendations?: string | null
+          report_markdown?: string | null
+          theoretical_basis?: string | null
+          timeline_data?: Json | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          evolution_summary?: string | null
+          findings?: Json | null
+          id?: string
+          patient_id?: string
+          pdf_url?: string | null
+          recommendations?: string | null
+          report_markdown?: string | null
+          theoretical_basis?: string | null
+          timeline_data?: Json | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evolution_reports_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       laudos: {
         Row: {
           ai_model: string | null
@@ -220,6 +276,68 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patient_documents: {
+        Row: {
+          ai_analysis: Json | null
+          ai_description: string | null
+          analyzed_at: string | null
+          category: string | null
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string
+          file_url: string
+          id: string
+          notes: string | null
+          patient_id: string
+          updated_at: string
+          uploaded_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          ai_description?: string | null
+          analyzed_at?: string | null
+          category?: string | null
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type: string
+          file_url: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          updated_at?: string
+          uploaded_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_analysis?: Json | null
+          ai_description?: string | null
+          analyzed_at?: string | null
+          category?: string | null
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          updated_at?: string
+          uploaded_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_documents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
