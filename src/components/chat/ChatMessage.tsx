@@ -31,7 +31,7 @@ export function ChatMessage({ role, content, isStreaming }: ChatMessageProps) {
       
       <div className="flex-1 min-w-0">
         <div className="text-xs font-medium text-muted-foreground mb-1">
-          {isUser ? 'Você' : 'DAV Chat'}
+          {isUser ? 'Você' : 'MindChat'}
         </div>
         
         <div className="prose prose-sm dark:prose-invert max-w-none">

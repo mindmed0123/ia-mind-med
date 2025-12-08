@@ -50,7 +50,7 @@ export function ChatInterface({
           <Bot className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="font-semibold">DAV Chat</h1>
+          <h1 className="font-semibold">MindChat</h1>
           <p className="text-xs text-muted-foreground">Seu copiloto clínico</p>
         </div>
       </div>
@@ -67,7 +67,7 @@ export function ChatInterface({
                 Olá, doutor(a)! 👋
               </h2>
               <p className="text-muted-foreground max-w-md mb-6">
-                Sou o DAV, seu copiloto clínico. Estou aqui para ajudar com dúvidas médicas, 
+                Sou o MindChat, seu copiloto clínico. Estou aqui para ajudar com dúvidas médicas, 
                 diagnósticos diferenciais, condutas e muito mais.
               </p>
               <div className="grid gap-2 text-sm text-left max-w-md">

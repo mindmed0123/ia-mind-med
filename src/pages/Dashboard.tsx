@@ -228,7 +228,7 @@ const Dashboard = () => {
             className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90"
           >
             <Bot className="w-5 h-5 mr-2" />
-            DAV Chat - Copiloto Clínico
+            MindChat - Copiloto Clínico
           </Button>
           <Button 
             onClick={() => navigate("/novo-laudo")} 
