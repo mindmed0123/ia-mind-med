@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound";
 import PdfTest from "./pages/debug/PdfTest";
 import OcrTest from "./pages/debug/OcrTest";
 import StorageTest from "./pages/debug/StorageTest";
+import DavChat from "./pages/DavChat";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ const App = () => (
           <Route path="/historico-paciente/:patientId" element={<HistoricoPaciente />} />
           <Route path="/evolucao/:patientId" element={<EvolutionReport />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/dav-chat" element={<DavChat />} />
           <Route path="/debug/pdf" element={<PdfTest />} />
           <Route path="/debug/ocr" element={<OcrTest />} />
           <Route path="/debug/storage" element={<StorageTest />} />

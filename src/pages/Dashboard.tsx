@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, LogOut, FileAudio, FileText, Settings, Shield, Users, Pill } from "lucide-react";
+import { Activity, LogOut, FileAudio, FileText, Settings, Shield, Users, Pill, Bot } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
@@ -222,6 +222,14 @@ const Dashboard = () => {
         </div>
 
         <div className="mb-6 flex flex-wrap gap-3">
+          <Button 
+            onClick={() => navigate("/dav-chat")} 
+            size="lg"
+            className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90"
+          >
+            <Bot className="w-5 h-5 mr-2" />
+            DAV Chat - Copiloto Clínico
+          </Button>
           <Button 
             onClick={() => navigate("/novo-laudo")} 
             size="lg"
