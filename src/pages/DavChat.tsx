@@ -4,13 +4,16 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ChatInterface } from '@/components/chat/ChatInterface';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
+import { ProFeatureGate } from '@/components/pro/ProFeatureGate';
 import { useDavChat } from '@/hooks/useDavChat';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
 
 export default function DavChat() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { subscription, loading: subscriptionLoading } = useSubscription();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const {
@@ -41,7 +44,7 @@ export default function DavChat() {
     }
   }, [user, loadConversations]);
 
-  if (authLoading) {
+  if (authLoading || subscriptionLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -51,6 +54,30 @@ export default function DavChat() {
 
   if (!user) {
     return null;
+  }
+
+  // Check if user has PRO plan
+  if (!subscription?.isPro) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="flex items-center gap-2 p-2 border-b">
+          <Button
+            onClick={() => navigate('/dashboard')}
+            variant="ghost"
+            size="sm"
+            className="gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Voltar ao Dashboard</span>
+          </Button>
+        </div>
+        <div className="container mx-auto px-4 py-12 max-w-2xl">
+          <ProFeatureGate feature="o MindChat - Copiloto Clínico com IA">
+            <div />
+          </ProFeatureGate>
+        </div>
+      </div>
+    );
   }
 
   return (
