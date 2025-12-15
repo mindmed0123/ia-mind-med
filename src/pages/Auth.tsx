@@ -161,6 +161,18 @@ const Auth = () => {
           </span>
         </Link>
 
+        {/* Trial CTA Banner */}
+        <div className="mb-6 p-4 bg-primary/10 border border-primary/20 rounded-lg text-center">
+          <p className="text-sm text-foreground mb-2">
+            <strong>Novo por aqui?</strong> Teste grátis por 7 dias!
+          </p>
+          <Link to="/medicos/teste-gratis">
+            <Button variant="default" size="sm" className="gradient-primary">
+              Começar teste grátis
+            </Button>
+          </Link>
+        </div>
+
         <Card className="shadow-large">
           <CardHeader className="text-center pb-4">
             <h1 className="text-2xl font-bold">Bem-vindo</h1>

@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { SubscriptionGuard } from "@/components/guards/SubscriptionGuard";
 import Index from "./pages/Index";
 import Home from "./pages/Home";
 import Produto from "./pages/Produto";
@@ -24,6 +25,8 @@ import PdfTest from "./pages/debug/PdfTest";
 import OcrTest from "./pages/debug/OcrTest";
 import StorageTest from "./pages/debug/StorageTest";
 import DavChat from "./pages/DavChat";
+import MedicosTrial from "./pages/MedicosTrial";
+import AssinaturaExpirada from "./pages/AssinaturaExpirada";
 
 const queryClient = new QueryClient();
 
@@ -35,26 +38,70 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            {/* Public routes */}
             <Route path="/" element={<Auth />} />
             <Route path="/old" element={<Index />} />
             <Route path="/home" element={<Home />} />
             <Route path="/produto" element={<Produto />} />
             <Route path="/precos" element={<Precos />} />
             <Route path="/integracoes" element={<Integracoes />} />
-          <Route path="/contato" element={<Contato />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/novo-laudo" element={<NovoLaudo />} />
-          <Route path="/perfil" element={<Perfil />} />
-          <Route path="/receituarios" element={<Receituarios />} />
-          <Route path="/pacientes" element={<Pacientes />} />
-          <Route path="/historico-paciente/:patientId" element={<HistoricoPaciente />} />
-          <Route path="/evolucao/:patientId" element={<EvolutionReport />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/dav-chat" element={<DavChat />} />
-          <Route path="/debug/pdf" element={<PdfTest />} />
-          <Route path="/debug/ocr" element={<OcrTest />} />
-          <Route path="/debug/storage" element={<StorageTest />} />
-          <Route path="*" element={<NotFound />} />
+            <Route path="/contato" element={<Contato />} />
+            <Route path="/medicos/teste-gratis" element={<MedicosTrial />} />
+            <Route path="/medicos/assinatura-expirada" element={<AssinaturaExpirada />} />
+            
+            {/* Protected routes - require active subscription */}
+            <Route path="/dashboard" element={
+              <SubscriptionGuard>
+                <Dashboard />
+              </SubscriptionGuard>
+            } />
+            <Route path="/novo-laudo" element={
+              <SubscriptionGuard>
+                <NovoLaudo />
+              </SubscriptionGuard>
+            } />
+            <Route path="/perfil" element={
+              <SubscriptionGuard>
+                <Perfil />
+              </SubscriptionGuard>
+            } />
+            <Route path="/receituarios" element={
+              <SubscriptionGuard>
+                <Receituarios />
+              </SubscriptionGuard>
+            } />
+            <Route path="/pacientes" element={
+              <SubscriptionGuard>
+                <Pacientes />
+              </SubscriptionGuard>
+            } />
+            <Route path="/historico-paciente/:patientId" element={
+              <SubscriptionGuard>
+                <HistoricoPaciente />
+              </SubscriptionGuard>
+            } />
+            <Route path="/evolucao/:patientId" element={
+              <SubscriptionGuard>
+                <EvolutionReport />
+              </SubscriptionGuard>
+            } />
+            <Route path="/admin" element={
+              <SubscriptionGuard>
+                <Admin />
+              </SubscriptionGuard>
+            } />
+            <Route path="/dav-chat" element={
+              <SubscriptionGuard>
+                <DavChat />
+              </SubscriptionGuard>
+            } />
+            
+            {/* Debug routes */}
+            <Route path="/debug/pdf" element={<PdfTest />} />
+            <Route path="/debug/ocr" element={<OcrTest />} />
+            <Route path="/debug/storage" element={<StorageTest />} />
+            
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
