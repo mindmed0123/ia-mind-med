@@ -138,8 +138,8 @@ const Auth = () => {
           toast.error("Erro ao criar conta");
         }
       } else {
-        toast.success("Conta criada com sucesso! Redirecionando...");
-        navigate("/dashboard");
+        toast.success("Conta criada! Complete seu cadastro para começar.");
+        navigate("/medicos/teste-gratis");
       }
     } catch (error: any) {
       toast.error("Erro ao criar conta. Tente novamente.");

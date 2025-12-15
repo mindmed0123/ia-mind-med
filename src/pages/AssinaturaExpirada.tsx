@@ -1,16 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Brain, AlertTriangle, CreditCard, MessageCircle, LogOut, ArrowRight } from 'lucide-react';
+import { Brain, AlertTriangle, CreditCard, MessageCircle, LogOut, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function AssinaturaExpirada() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [hasSubscription, setHasSubscription] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      checkSubscription();
+    }
+  }, [user]);
+
+  const checkSubscription = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+    
+    setHasSubscription(!!data);
+  };
 
   const handleReactivate = async () => {
     if (!user) {
@@ -49,7 +69,7 @@ export default function AssinaturaExpirada() {
       }
     } catch (error: any) {
       console.error('Error:', error);
-      toast.error(error.message || 'Erro ao processar reativação');
+      toast.error(error.message || 'Erro ao processar');
     } finally {
       setLoading(false);
     }
@@ -60,8 +80,11 @@ export default function AssinaturaExpirada() {
     navigate('/');
   };
 
+  // Different messaging based on whether user ever had a subscription
+  const isNewUser = hasSubscription === false;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-destructive/5 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
       <div className="max-w-lg w-full">
         {/* Header */}
         <div className="text-center mb-6">
@@ -71,22 +94,32 @@ export default function AssinaturaExpirada() {
           </div>
         </div>
 
-        <Card className="shadow-xl border-destructive/20">
+        <Card className="shadow-xl border-primary/20">
           <CardHeader className="text-center pb-4">
-            <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle className="w-8 h-8 text-amber-600" />
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${isNewUser ? 'bg-primary/10' : 'bg-amber-100'}`}>
+              {isNewUser ? (
+                <Sparkles className="w-8 h-8 text-primary" />
+              ) : (
+                <AlertTriangle className="w-8 h-8 text-amber-600" />
+              )}
             </div>
             <CardTitle className="text-2xl text-foreground">
-              Seu acesso à MindMed foi interrompido
+              {isNewUser 
+                ? "Ative sua assinatura MindMed" 
+                : "Seu acesso à MindMed foi interrompido"}
             </CardTitle>
             <CardDescription className="text-base mt-2">
-              Seu período de teste gratuito terminou ou sua assinatura não está ativa no momento.
+              {isNewUser
+                ? "Para acessar a plataforma, você precisa ativar sua assinatura com 7 dias grátis."
+                : "Seu período de teste gratuito terminou ou sua assinatura não está ativa no momento."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="bg-muted/50 rounded-lg p-4 text-center">
               <p className="text-muted-foreground">
-                Para continuar usando a IA que gera laudos, CID e receituário automaticamente, reative sua assinatura.
+                {isNewUser
+                  ? "Comece agora com 7 dias grátis e descubra como a IA pode transformar sua prática médica."
+                  : "Para continuar usando a IA que gera laudos, CID e receituário automaticamente, reative sua assinatura."}
               </p>
             </div>
 
@@ -104,14 +137,16 @@ export default function AssinaturaExpirada() {
                 ) : (
                   <span className="flex items-center gap-2">
                     <CreditCard className="w-5 h-5" />
-                    Reativar minha assinatura MindMed PRO
+                    {isNewUser ? "Começar 7 dias grátis" : "Reativar minha assinatura"}
                     <ArrowRight className="w-5 h-5" />
                   </span>
                 )}
               </Button>
 
               <p className="text-xs text-center text-muted-foreground">
-                Plano PRO: R$ 299/mês • Cancele quando quiser
+                {isNewUser 
+                  ? "7 dias grátis • Depois R$ 299/mês • Cancele quando quiser"
+                  : "Plano PRO: R$ 299/mês • Cancele quando quiser"}
               </p>
             </div>
 
