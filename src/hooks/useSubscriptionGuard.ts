@@ -20,12 +20,14 @@ export function useSubscriptionGuard(): SubscriptionGuardResult {
   const [plan, setPlan] = useState<string | null>(null);
   const [trialEnd, setTrialEnd] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
     
     if (!user) {
       setLoading(false);
+      setChecked(true);
       return;
     }
 
@@ -43,48 +45,56 @@ export function useSubscriptionGuard(): SubscriptionGuardResult {
           console.error('Error checking subscription:', error);
           setStatus(null);
           setLoading(false);
+          setChecked(true);
           return;
         }
 
         if (!data) {
-          // No subscription at all
+          // No subscription at all - user must go through checkout
           setStatus(null);
           setLoading(false);
+          setChecked(true);
           return;
         }
 
-        setStatus(data.status as SubscriptionStatus);
-        setPlan(data.plan);
-        setTrialEnd(data.trial_end);
+        let currentStatus = data.status as SubscriptionStatus;
         
         // Check if trial has expired
-        if (data.status === 'TRIALING' && data.trial_end) {
+        if (currentStatus === 'TRIALING' && data.trial_end) {
           const now = new Date();
           const trialEndDate = new Date(data.trial_end);
           if (now > trialEndDate) {
-            setStatus('EXPIRED');
+            currentStatus = 'EXPIRED';
           }
         }
+
+        setStatus(currentStatus);
+        setPlan(data.plan);
+        setTrialEnd(data.trial_end);
       } catch (err) {
         console.error('Subscription check failed:', err);
         setStatus(null);
       } finally {
         setLoading(false);
+        setChecked(true);
       }
     };
 
     checkSubscription();
   }, [user, authLoading]);
 
-  // Determine if access is allowed
+  // Determine if access is allowed - ONLY ACTIVE or TRIALING
   const isAllowed = status === 'ACTIVE' || status === 'TRIALING';
 
-  // Redirect if not allowed (after loading is complete)
+  // Redirect if not allowed (after loading is complete and check is done)
   useEffect(() => {
-    if (!loading && !authLoading && user && !isAllowed && status !== null) {
-      navigate('/medicos/assinatura-expirada', { replace: true });
+    if (!loading && checked && user) {
+      if (!isAllowed) {
+        // Redirect to subscription expired/required page
+        navigate('/medicos/assinatura-expirada', { replace: true });
+      }
     }
-  }, [loading, authLoading, user, isAllowed, status, navigate]);
+  }, [loading, checked, user, isAllowed, navigate]);
 
   return { isAllowed, status, loading: loading || authLoading, plan, trialEnd };
 }
