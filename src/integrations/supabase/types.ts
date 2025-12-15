@@ -504,6 +504,7 @@ export type Database = {
           specialty: string | null
           stamp_image_url: string | null
           updated_at: string
+          whatsapp: string | null
         }
         Insert: {
           address?: string | null
@@ -526,6 +527,7 @@ export type Database = {
           specialty?: string | null
           stamp_image_url?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Update: {
           address?: string | null
@@ -548,6 +550,7 @@ export type Database = {
           specialty?: string | null
           stamp_image_url?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }
@@ -565,6 +568,8 @@ export type Database = {
           status: Database["public"]["Enums"]["subscription_status"]
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
+          trial_end: string | null
+          trial_start: string | null
           updated_at: string
           user_id: string
         }
@@ -581,6 +586,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["subscription_status"]
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          trial_end?: string | null
+          trial_start?: string | null
           updated_at?: string
           user_id: string
         }
@@ -597,6 +604,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["subscription_status"]
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          trial_end?: string | null
+          trial_start?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -658,7 +667,14 @@ export type Database = {
     Enums: {
       app_role: "admin" | "user"
       plan_type: "STARTER" | "PRO" | "CLINIC"
-      subscription_status: "ACTIVE" | "PAST_DUE" | "CANCELED" | "TRIALING"
+      subscription_status:
+        | "ACTIVE"
+        | "PAST_DUE"
+        | "CANCELED"
+        | "TRIALING"
+        | "PENDING_CHECKOUT"
+        | "INACTIVE"
+        | "EXPIRED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -788,7 +804,15 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user"],
       plan_type: ["STARTER", "PRO", "CLINIC"],
-      subscription_status: ["ACTIVE", "PAST_DUE", "CANCELED", "TRIALING"],
+      subscription_status: [
+        "ACTIVE",
+        "PAST_DUE",
+        "CANCELED",
+        "TRIALING",
+        "PENDING_CHECKOUT",
+        "INACTIVE",
+        "EXPIRED",
+      ],
     },
   },
 } as const
