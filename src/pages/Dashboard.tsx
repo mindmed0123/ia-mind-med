@@ -22,7 +22,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isAdmin, loading: adminLoading } = useAdmin();
-  const { needsOnboarding, checking: onboardingChecking } = useOnboardingCheck();
+  const { needsOnboarding, loading: onboardingChecking, state: onboardingState, updateStep, completeOnboarding } = useOnboarding();
 
   useEffect(() => {
     if (!loading && !user) {
