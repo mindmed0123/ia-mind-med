@@ -336,7 +336,7 @@ const Home = () => {
                 </div>
               </div>
 
-              <a href="https://pay.kiwify.com.br/lqNUb8t" target="_blank" rel="noopener noreferrer" className="block">
+              <a href="https://pay.cakto.com.br/3bsu2vi_607441" target="_blank" rel="noopener noreferrer" className="block">
                 <PremiumButton className="w-full text-lg py-6 shadow-xl">
                   🔵 Garantir minha vaga de early adopter!
                 </PremiumButton>
