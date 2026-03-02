@@ -10,6 +10,9 @@ import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
 import { LgpdConsent } from "@/components/consent/LgpdConsent";
 import { QuotaDisplay } from "@/components/quota/QuotaDisplay";
+import { ProductivityMetrics } from "@/components/dashboard/ProductivityMetrics";
+import { UpgradeBanner } from "@/components/upgrade/UpgradeBanner";
+import { OnboardingWizard, useOnboardingCheck } from "@/components/onboarding/OnboardingWizard";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,8 +21,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isAdmin, loading: adminLoading } = useAdmin();
-  const [transcriptionCount, setTranscriptionCount] = useState(0);
-  const [laudosCount, setLaudosCount] = useState(0);
+  const { needsOnboarding, checking: onboardingChecking } = useOnboardingCheck();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -27,29 +29,13 @@ const Dashboard = () => {
     }
   }, [user, loading, navigate]);
 
-  useEffect(() => {
-    if (user) {
-      loadStats();
-    }
-  }, [user]);
-
-  const loadStats = async () => {
-    const { data, error } = await supabase
-      .from('laudos')
-      .select('*', { count: 'exact', head: false })
-      .eq('user_id', user?.id);
-
-    if (!error && data) {
-      setLaudosCount(data.length);
-      setTranscriptionCount(data.filter(l => l.transcript).length);
-    }
-  };
-
   const handleAudioUploadComplete = async (url: string, path: string) => {
+    if (!user?.id) {
+      console.error('User ID is missing');
+      return;
+    }
     console.log('handleAudioUploadComplete called with:', { url, path, userId: user?.id });
     try {
-      // Create laudo
-      console.log('Creating laudo entry...');
       const { data: newLaudo, error: createError } = await supabase
         .from('laudos')
         .insert({
@@ -67,31 +53,26 @@ const Dashboard = () => {
         console.error('Error creating laudo:', createError);
         throw createError;
       }
-      console.log('Laudo created successfully:', newLaudo.id);
 
       toast({
         title: "Processando áudio...",
         description: "A transcrição e geração do laudo serão automáticas",
       });
 
-      // Navigate to laudo page immediately so user can see progress
       navigate(`/novo-laudo?id=${newLaudo.id}`);
 
-      // Start transcription in background - ensure fresh auth token
       const { data: initial } = await supabase.auth.getSession();
       let accessToken = initial?.session?.access_token;
       if (!accessToken) {
         console.error('No access token found');
-        return; // Don't throw, just log - user is already on laudo page
+        return;
       }
       
-      // Try to refresh session to avoid expired token issues
       const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
       if (!refreshError && refreshed?.session?.access_token) {
         accessToken = refreshed.session.access_token;
       }
 
-      // Invoke transcribe-audio (errors will be handled on the laudo page)
       await supabase.functions.invoke('transcribe-audio', {
         body: {
           audio_url: url,
@@ -125,7 +106,7 @@ const Dashboard = () => {
     navigate("/home");
   };
 
-  if (loading) {
+  if (loading || onboardingChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -136,13 +117,15 @@ const Dashboard = () => {
     );
   }
 
-  if (!user) {
-    return null;
+  if (!user) return null;
+
+  // Show onboarding wizard for new users
+  if (needsOnboarding) {
+    return <OnboardingWizard onComplete={() => window.location.reload()} />;
   }
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
-      {/* LGPD Consent Dialog */}
       {user && <LgpdConsent userId={user.id} />}
       
       {/* Header */}
@@ -179,84 +162,76 @@ const Dashboard = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-12">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">
-            Bem-vindo ao Dashboard!
-          </h1>
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold mb-1">Dashboard</h1>
           <p className="text-muted-foreground">
             Gerencie seus laudos e consultas de forma simples e eficiente
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <Card className="shadow-soft hover:shadow-medium transition-smooth">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <FileAudio className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{transcriptionCount}</p>
-                  <p className="text-sm text-muted-foreground">Transcrições</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-soft hover:shadow-medium transition-smooth">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-accent" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{laudosCount}</p>
-                  <p className="text-sm text-muted-foreground">Laudos gerados</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <QuotaDisplay />
+        {/* Upgrade Banner */}
+        <div className="mb-6">
+          <UpgradeBanner />
         </div>
 
-        <div className="mb-6 flex flex-wrap gap-3">
-          <Button 
-            onClick={() => navigate("/dav-chat")} 
-            size="lg"
-            className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90"
-          >
-            <Bot className="w-5 h-5 mr-2" />
-            MindChat - Copiloto Clínico
-            <span className="ml-2 text-xs bg-white/20 px-1.5 py-0.5 rounded">PRO</span>
-          </Button>
-          <Button 
-            onClick={() => navigate("/novo-laudo")} 
-            size="lg"
-            className="bg-gradient-to-r from-primary to-accent hover:opacity-90"
-          >
-            <FileText className="w-5 h-5 mr-2" />
-            Novo Laudo
-          </Button>
-          <Button 
-            onClick={() => navigate("/pacientes")} 
-            size="lg"
-            variant="outline"
-          >
-            <Users className="w-5 h-5 mr-2" />
-            Pacientes
-          </Button>
-          <Button 
-            onClick={() => navigate("/receituarios")} 
-            size="lg"
-            variant="outline"
-          >
-            <Pill className="w-5 h-5 mr-2" />
-            Receituários
-          </Button>
+        {/* Productivity Metrics */}
+        <div className="mb-8">
+          <ProductivityMetrics />
         </div>
 
+        {/* Quota + Quick Actions */}
+        <div className="grid lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-1">
+            <QuotaDisplay />
+          </div>
+          <div className="lg:col-span-2">
+            <Card className="shadow-soft h-full">
+              <CardContent className="pt-6">
+                <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wide">
+                  Ações Rápidas
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button 
+                    onClick={() => navigate("/dav-chat")} 
+                    className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 h-auto py-3"
+                  >
+                    <Bot className="w-5 h-5 mr-2" />
+                    <span>
+                      MindChat
+                      <span className="ml-1 text-xs bg-white/20 px-1.5 py-0.5 rounded">PRO</span>
+                    </span>
+                  </Button>
+                  <Button 
+                    onClick={() => navigate("/novo-laudo")} 
+                    className="bg-gradient-to-r from-primary to-accent hover:opacity-90 h-auto py-3"
+                  >
+                    <FileText className="w-5 h-5 mr-2" />
+                    Novo Laudo
+                  </Button>
+                  <Button 
+                    onClick={() => navigate("/pacientes")} 
+                    variant="outline"
+                    className="h-auto py-3"
+                  >
+                    <Users className="w-5 h-5 mr-2" />
+                    Pacientes
+                  </Button>
+                  <Button 
+                    onClick={() => navigate("/receituarios")} 
+                    variant="outline"
+                    className="h-auto py-3"
+                  >
+                    <Pill className="w-5 h-5 mr-2" />
+                    Receituários
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Audio Section */}
         <Card className="shadow-large">
           <CardContent className="pt-6">
             <h2 className="text-xl font-semibold mb-6">Nova transcrição</h2>
