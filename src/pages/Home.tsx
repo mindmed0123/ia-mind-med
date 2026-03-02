@@ -147,7 +147,7 @@ const Home = () => {
           <div className="text-center mb-16">
             <h2 className="mb-6 text-4xl md:text-5xl font-bold">A Solução Inteligente</h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              <strong className="text-primary">MindManage</strong> é a IA que transforma tempo perdido em faturamento médico.
+              <strong className="text-primary">MindMed</strong> é a IA que transforma tempo perdido em faturamento médico.
             </p>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto mt-4">
               <strong className="text-foreground">Você não precisa trabalhar mais</strong> — só precisa deixar a IA cuidar do que não exige o seu CRM:
