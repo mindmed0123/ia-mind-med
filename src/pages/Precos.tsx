@@ -63,7 +63,7 @@ const Precos = () => {
         "Personalização total",
       ],
       cta: "Falar com consultor",
-      ctaLink: "https://wa.me/55XXXXXXXXXXX",
+      ctaLink: "https://wa.me/5511958890212",
       highlighted: false,
       isWhatsApp: true,
     },
@@ -228,7 +228,7 @@ const Precos = () => {
             Fale com nosso time e descubra qual plano é o melhor para você
           </p>
           <a
-            href="https://wa.me/55XXXXXXXXXXX"
+            href="https://wa.me/5511958890212"
             target="_blank"
             rel="noopener noreferrer"
           >

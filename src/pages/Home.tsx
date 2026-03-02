@@ -77,17 +77,18 @@ const Home = () => {
             Transforme 2 Horas de Papelada em 10 Pacientes a Mais por Dia
           </h1>
 
-          <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto text-balance animate-fade-up leading-relaxed" style={{
+            <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto text-balance animate-fade-up leading-relaxed" style={{
           animationDelay: "0.1s"
         }}>
             A IA que <strong className="text-white font-bold">devolve tempo e aumenta o faturamento médico</strong> automaticamente. 
             Transcrição em tempo real, laudos prontos e diagnósticos sugeridos — sem você digitar uma linha.
           </p>
 
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up" style={{
           animationDelay: "0.2s"
         }}>
-            <a href="https://pay.kiwify.com.br/lqNUb8t" target="_blank" rel="noopener noreferrer">
+            <a href="https://pay.cakto.com.br/3bsu2vi_607441" target="_blank" rel="noopener noreferrer">
               <PremiumButton className="!bg-white !text-primary hover:!bg-white/90 shadow-xl text-lg px-8 py-6">
                 🔵 Quero recuperar meu tempo agora
               </PremiumButton>
@@ -146,7 +147,7 @@ const Home = () => {
           <div className="text-center mb-16">
             <h2 className="mb-6 text-4xl md:text-5xl font-bold">A Solução Inteligente</h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              <strong className="text-primary">MindManage</strong> é a IA que transforma tempo perdido em faturamento médico.
+              <strong className="text-primary">MindMed</strong> é a IA que transforma tempo perdido em faturamento médico.
             </p>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto mt-4">
               <strong className="text-foreground">Você não precisa trabalhar mais</strong> — só precisa deixar a IA cuidar do que não exige o seu CRM:
@@ -182,7 +183,7 @@ const Home = () => {
           <div className="text-center mb-16">
             <h2 className="mb-4 text-4xl md:text-5xl font-bold">Resultados Reais e Mensuráveis</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Médicos que usam MindManage recuperam tempo, aumentam atendimentos e elevam o faturamento
+              Médicos que usam MindMed recuperam tempo, aumentam atendimentos e elevam o faturamento
             </p>
           </div>
 
@@ -209,7 +210,7 @@ const Home = () => {
           <div className="text-center mb-16">
             <h2 className="mb-4 text-4xl md:text-5xl font-bold">Médicos Que Recuperaram Tempo e Faturamento</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Casos reais de profissionais que transformaram sua rotina com MindManage
+              Casos reais de profissionais que transformaram sua rotina com MindMed
             </p>
           </div>
 
@@ -282,7 +283,7 @@ const Home = () => {
                 </li>
               </ul>
 
-              <a href="https://pay.kiwify.com.br/lqNUb8t" target="_blank" rel="noopener noreferrer" className="block">
+              <a href="https://pay.cakto.com.br/3bsu2vi_607441" target="_blank" rel="noopener noreferrer" className="block">
                 <PremiumButton className="w-full text-lg py-6 whitespace-normal">
                   🔵 Recuperar meu tempo e aumentar meu faturamento
                 </PremiumButton>
@@ -335,7 +336,7 @@ const Home = () => {
                 </div>
               </div>
 
-              <a href="https://pay.kiwify.com.br/lqNUb8t" target="_blank" rel="noopener noreferrer" className="block">
+              <a href="https://pay.cakto.com.br/3bsu2vi_607441" target="_blank" rel="noopener noreferrer" className="block">
                 <PremiumButton className="w-full text-lg py-6 shadow-xl">
                   🔵 Garantir minha vaga de early adopter!
                 </PremiumButton>
@@ -363,7 +364,7 @@ const Home = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="https://pay.kiwify.com.br/lqNUb8t" target="_blank" rel="noopener noreferrer">
+            <a href="https://pay.cakto.com.br/3bsu2vi_607441" target="_blank" rel="noopener noreferrer">
               <PremiumButton className="bg-white text-primary hover:bg-white/90 shadow-xl text-lg px-8 py-6">
                 🔵 Quero recuperar meu tempo agora
               </PremiumButton>
