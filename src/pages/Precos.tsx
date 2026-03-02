@@ -63,7 +63,7 @@ const Precos = () => {
         "Personalização total",
       ],
       cta: "Falar com consultor",
-      ctaLink: "https://wa.me/55XXXXXXXXXXX",
+      ctaLink: "https://wa.me/5511958890212",
       highlighted: false,
       isWhatsApp: true,
     },
