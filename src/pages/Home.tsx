@@ -364,7 +364,7 @@ const Home = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="https://pay.kiwify.com.br/lqNUb8t" target="_blank" rel="noopener noreferrer">
+            <a href="https://pay.cakto.com.br/3bsu2vi_607441" target="_blank" rel="noopener noreferrer">
               <PremiumButton className="bg-white text-primary hover:bg-white/90 shadow-xl text-lg px-8 py-6">
                 🔵 Quero recuperar meu tempo agora
               </PremiumButton>
