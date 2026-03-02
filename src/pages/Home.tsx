@@ -77,12 +77,13 @@ const Home = () => {
             Transforme 2 Horas de Papelada em 10 Pacientes a Mais por Dia
           </h1>
 
-          <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto text-balance animate-fade-up leading-relaxed" style={{
+            <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto text-balance animate-fade-up leading-relaxed" style={{
           animationDelay: "0.1s"
         }}>
             A IA que <strong className="text-white font-bold">devolve tempo e aumenta o faturamento médico</strong> automaticamente. 
             Transcrição em tempo real, laudos prontos e diagnósticos sugeridos — sem você digitar uma linha.
           </p>
+
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up" style={{
           animationDelay: "0.2s"
