@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_events: {
+        Row: {
+          created_at: string
+          event_data: Json | null
+          event_name: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json | null
+          event_name: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json | null
+          event_name?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -335,6 +359,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      onboarding_progress: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          current_step: number
+          first_laudo_id: string | null
+          id: string
+          step1_completed_at: string | null
+          step2_completed_at: string | null
+          step3_completed_at: string | null
+          step4_completed_at: string | null
+          time_saved_seconds: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number
+          first_laudo_id?: string | null
+          id?: string
+          step1_completed_at?: string | null
+          step2_completed_at?: string | null
+          step3_completed_at?: string | null
+          step4_completed_at?: string | null
+          time_saved_seconds?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number
+          first_laudo_id?: string | null
+          id?: string
+          step1_completed_at?: string | null
+          step2_completed_at?: string | null
+          step3_completed_at?: string | null
+          step4_completed_at?: string | null
+          time_saved_seconds?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       patient_documents: {
         Row: {

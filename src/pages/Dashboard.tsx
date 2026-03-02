@@ -12,7 +12,8 @@ import { LgpdConsent } from "@/components/consent/LgpdConsent";
 import { QuotaDisplay } from "@/components/quota/QuotaDisplay";
 import { ProductivityMetrics } from "@/components/dashboard/ProductivityMetrics";
 import { UpgradeBanner } from "@/components/upgrade/UpgradeBanner";
-import { OnboardingWizard, useOnboardingCheck } from "@/components/onboarding/OnboardingWizard";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { useOnboarding } from "@/hooks/useOnboarding";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,7 +22,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isAdmin, loading: adminLoading } = useAdmin();
-  const { needsOnboarding, checking: onboardingChecking } = useOnboardingCheck();
+  const { needsOnboarding, loading: onboardingChecking, state: onboardingState, updateStep, completeOnboarding } = useOnboarding();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -121,7 +122,14 @@ const Dashboard = () => {
 
   // Show onboarding wizard for new users
   if (needsOnboarding) {
-    return <OnboardingWizard onComplete={() => window.location.reload()} />;
+    return (
+      <OnboardingWizard
+        onComplete={() => window.location.reload()}
+        initialStep={onboardingState.currentStep}
+        updateStep={updateStep}
+        completeOnboarding={completeOnboarding}
+      />
+    );
   }
 
   return (
