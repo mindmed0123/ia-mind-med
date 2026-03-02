@@ -230,9 +230,9 @@ const Auth = () => {
                   </div>
 
                   <div className="text-right">
-                    <a href="#" className="text-sm text-primary hover:text-primary-hover">
+                    <button type="button" onClick={handleForgotPassword} className="text-sm text-primary hover:text-primary-hover hover:underline">
                       Esqueceu a senha?
-                    </a>
+                    </button>
                   </div>
 
                   <Button type="submit" className="w-full gradient-primary" disabled={isLoading}>
