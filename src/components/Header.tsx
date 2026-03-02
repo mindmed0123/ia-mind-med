@@ -171,7 +171,7 @@ const Header = () => {
                     trackEvent("cta_mobile_demo");
                   }}
                 >
-                  <Link to="https://pay.kiwify.com.br/lqNUb8t" target="_blank">Começar Agora</Link>
+                  <Link to="https://pay.cakto.com.br/3bsu2vi_607441" target="_blank">Começar Agora</Link>
                 </Button>
               </div>
             </div>
