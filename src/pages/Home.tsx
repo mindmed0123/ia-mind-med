@@ -205,26 +205,31 @@ const Home = () => {
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="mb-4 text-4xl md:text-5xl font-bold">Médicos Que Recuperaram Tempo e Faturamento</h2>
+            <h2 className="mb-4 text-4xl md:text-5xl font-bold">Resultados Esperados com MindMed</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Casos reais de profissionais que transformaram sua rotina com MindMed
+              Estimativas baseadas no tempo médio que médicos gastam com documentação manual
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => <Card key={index} className="shadow-soft hover:shadow-medium transition-smooth animate-fade-up border-2" style={{
+            {expectedResults.map((item, index) => <Card key={index} className="shadow-soft hover:shadow-medium transition-smooth animate-fade-up border-2" style={{
             animationDelay: `${index * 0.1}s`
           }}>
                 <CardContent className="pt-6 pb-6">
                   <div className="mb-4">
-                    <div className="text-2xl font-bold text-primary mb-1">{testimonial.result}</div>
-                    <div className="text-sm text-muted-foreground">{testimonial.specialty}</div>
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                      <item.icon className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="text-2xl font-bold text-primary mb-1">{item.result}</div>
                   </div>
-                  <p className="text-base text-foreground italic mb-4 leading-relaxed">"{testimonial.quote}"</p>
-                  <p className="text-sm font-semibold text-foreground">— {testimonial.name}</p>
+                  <p className="text-base text-muted-foreground leading-relaxed">{item.description}</p>
                 </CardContent>
               </Card>)}
           </div>
+
+          <p className="text-center text-xs text-muted-foreground mt-6">
+            * Estimativas baseadas em médias do setor. Resultados individuais podem variar.
+          </p>
         </div>
       </section>
 
