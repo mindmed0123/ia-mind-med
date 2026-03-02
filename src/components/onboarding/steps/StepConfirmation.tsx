@@ -15,8 +15,8 @@ export const StepConfirmation = ({ firstLaudoId, onFinish, onGoToLaudo }: StepCo
     <Card className="shadow-large">
       <CardContent className="pt-8 pb-8">
         <div className="space-y-6 text-center">
-          <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto">
-            <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <CheckCircle className="w-10 h-10 text-primary" />
           </div>
 
           <div>

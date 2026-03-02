@@ -122,7 +122,14 @@ const Dashboard = () => {
 
   // Show onboarding wizard for new users
   if (needsOnboarding) {
-    return <OnboardingWizard onComplete={() => window.location.reload()} />;
+    return (
+      <OnboardingWizard
+        onComplete={() => window.location.reload()}
+        initialStep={onboardingState.currentStep}
+        updateStep={updateStep}
+        completeOnboarding={completeOnboarding}
+      />
+    );
   }
 
   return (
