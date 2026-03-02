@@ -239,9 +239,6 @@ const Auth = () => {
                     {isLoading ? "Entrando..." : "Entrar"}
                   </Button>
 
-                </form>
-              </TabsContent>
-                </form>
               </TabsContent>
 
               {/* Signup Tab */}
