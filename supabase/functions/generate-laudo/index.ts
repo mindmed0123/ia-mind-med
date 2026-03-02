@@ -201,7 +201,7 @@ IMPORTANTE:
     }
 
     const data = await response.json();
-    console.log('OpenAI response structure:', JSON.stringify(data, null, 2));
+    console.log('AI response received, model:', data.model, 'usage:', JSON.stringify(data.usage));
     
     let content = data.choices?.[0]?.message?.content;
     let usage = data.usage;
