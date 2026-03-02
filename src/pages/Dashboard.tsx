@@ -12,7 +12,8 @@ import { LgpdConsent } from "@/components/consent/LgpdConsent";
 import { QuotaDisplay } from "@/components/quota/QuotaDisplay";
 import { ProductivityMetrics } from "@/components/dashboard/ProductivityMetrics";
 import { UpgradeBanner } from "@/components/upgrade/UpgradeBanner";
-import { OnboardingWizard, useOnboardingCheck } from "@/components/onboarding/OnboardingWizard";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { useOnboarding } from "@/hooks/useOnboarding";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
