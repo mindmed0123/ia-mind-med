@@ -76,7 +76,7 @@ const Precos = () => {
     },
     {
       q: "Como funciona o período de teste?",
-      a: "Faça 10 consultas testes em qualquer plano, sem cartão de crédito. Explore todos os recursos sem compromisso.",
+      a: "O plano Starter inclui 10 consultas para você testar todas as funcionalidades. Após o uso, faça upgrade para continuar.",
     },
     {
       q: "Posso cancelar a qualquer momento?",
@@ -84,11 +84,11 @@ const Precos = () => {
     },
     {
       q: "Os dados são seguros?",
-      a: "Absolutamente. Seguimos LGPD, temos certificação HIPAA-ready e criptografia end-to-end em todos os dados.",
+      a: "Sim. Seguimos as diretrizes da LGPD com criptografia em trânsito e em repouso para todos os dados clínicos.",
     },
     {
-      q: "Quais PEPs vocês integram?",
-      a: "Principais sistemas como TOTVS, iClinic, MV, Tasy e outros. Integrações customizadas disponíveis no plano Clínicas.",
+      q: "Vocês integram com prontuários eletrônicos?",
+      a: "Atualmente os laudos podem ser exportados em PDF e Markdown para uso em qualquer PEP. Integrações diretas estão no roadmap.",
     },
   ];
 

@@ -46,21 +46,18 @@ const Home = () => {
     description: "Laudos estruturados reduzem erros e aumentam qualidade"
   }];
 
-  const testimonials = [{
-    name: "Dr. Carlos Mendes",
-    specialty: "Clínico Geral",
+  const expectedResults = [{
+    icon: TrendingUp,
     result: "+8 pacientes/dia",
-    quote: "Recuperei 1h30 por dia que gastava digitando. Hoje atendo mais e ganho mais sem trabalhar além do horário."
+    description: "Potencial de atendimentos extras ao eliminar tempo com documentação manual"
   }, {
-    name: "Dra. Ana Paula Silva",
-    specialty: "Psiquiatria",
-    result: "+R$ 15k/mês",
-    quote: "A IA me permite focar na consulta. Os laudos ficam prontos automaticamente e meu faturamento aumentou 25%."
+    icon: DollarSign,
+    result: "Até R$ 15k/mês",
+    description: "Receita adicional estimada ao converter tempo burocrático em consultas"
   }, {
-    name: "Dr. Roberto Lima",
-    specialty: "Cardiologia",
+    icon: Clock,
     result: "2h economizadas/dia",
-    quote: "Eliminou completamente a papelada pós-consulta. Agora termino meu dia no horário e com qualidade superior."
+    description: "Tempo médio recuperado por dia com geração automática de laudos"
   }];
   return <div className="min-h-screen">
       <Navbar />
