@@ -210,7 +210,7 @@ const Home = () => {
           <div className="text-center mb-16">
             <h2 className="mb-4 text-4xl md:text-5xl font-bold">Médicos Que Recuperaram Tempo e Faturamento</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Casos reais de profissionais que transformaram sua rotina com MindManage
+              Casos reais de profissionais que transformaram sua rotina com MindMed
             </p>
           </div>
 
