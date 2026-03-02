@@ -9,7 +9,7 @@ const Precos = () => {
   const plans = [
     {
       name: "Starter",
-      price: "R$ 97",
+      price: "R$ 99,90",
       period: "/mês",
       description: "Perfeito para médicos iniciantes ou consultórios pequenos",
       features: [
@@ -28,7 +28,7 @@ const Precos = () => {
     },
     {
       name: "Pro",
-      price: "R$ 297",
+      price: "R$ 299",
       period: "/mês",
       description: "Para médicos com alta demanda de atendimentos",
       features: [
