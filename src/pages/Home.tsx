@@ -41,26 +41,23 @@ const Home = () => {
     description: "Potencial de receita adicional mensal sem aumentar carga horária"
   }, {
     icon: Target,
-    value: "99,8%",
+    value: "Alta",
     title: "Precisão clínica",
-    description: "Laudos estruturados reduzem erros e aumentam qualidade"
+    description: "Laudos estruturados com IA reduzem erros e aumentam qualidade da documentação"
   }];
 
-  const testimonials = [{
-    name: "Dr. Carlos Mendes",
-    specialty: "Clínico Geral",
+  const expectedResults = [{
+    icon: TrendingUp,
     result: "+8 pacientes/dia",
-    quote: "Recuperei 1h30 por dia que gastava digitando. Hoje atendo mais e ganho mais sem trabalhar além do horário."
+    description: "Potencial de atendimentos extras ao eliminar tempo com documentação manual"
   }, {
-    name: "Dra. Ana Paula Silva",
-    specialty: "Psiquiatria",
-    result: "+R$ 15k/mês",
-    quote: "A IA me permite focar na consulta. Os laudos ficam prontos automaticamente e meu faturamento aumentou 25%."
+    icon: DollarSign,
+    result: "Até R$ 15k/mês",
+    description: "Receita adicional estimada ao converter tempo burocrático em consultas"
   }, {
-    name: "Dr. Roberto Lima",
-    specialty: "Cardiologia",
+    icon: Clock,
     result: "2h economizadas/dia",
-    quote: "Eliminou completamente a papelada pós-consulta. Agora termino meu dia no horário e com qualidade superior."
+    description: "Tempo médio recuperado por dia com geração automática de laudos"
   }];
   return <div className="min-h-screen">
       <Navbar />
@@ -208,26 +205,31 @@ const Home = () => {
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="mb-4 text-4xl md:text-5xl font-bold">Médicos Que Recuperaram Tempo e Faturamento</h2>
+            <h2 className="mb-4 text-4xl md:text-5xl font-bold">Resultados Esperados com MindMed</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Casos reais de profissionais que transformaram sua rotina com MindMed
+              Estimativas baseadas no tempo médio que médicos gastam com documentação manual
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => <Card key={index} className="shadow-soft hover:shadow-medium transition-smooth animate-fade-up border-2" style={{
+            {expectedResults.map((item, index) => <Card key={index} className="shadow-soft hover:shadow-medium transition-smooth animate-fade-up border-2" style={{
             animationDelay: `${index * 0.1}s`
           }}>
                 <CardContent className="pt-6 pb-6">
                   <div className="mb-4">
-                    <div className="text-2xl font-bold text-primary mb-1">{testimonial.result}</div>
-                    <div className="text-sm text-muted-foreground">{testimonial.specialty}</div>
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                      <item.icon className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="text-2xl font-bold text-primary mb-1">{item.result}</div>
                   </div>
-                  <p className="text-base text-foreground italic mb-4 leading-relaxed">"{testimonial.quote}"</p>
-                  <p className="text-sm font-semibold text-foreground">— {testimonial.name}</p>
+                  <p className="text-base text-muted-foreground leading-relaxed">{item.description}</p>
                 </CardContent>
               </Card>)}
           </div>
+
+          <p className="text-center text-xs text-muted-foreground mt-6">
+            * Estimativas baseadas em médias do setor. Resultados individuais podem variar.
+          </p>
         </div>
       </section>
 
