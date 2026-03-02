@@ -228,7 +228,7 @@ const Precos = () => {
             Fale com nosso time e descubra qual plano é o melhor para você
           </p>
           <a
-            href="https://wa.me/55XXXXXXXXXXX"
+            href="https://wa.me/5511958890212"
             target="_blank"
             rel="noopener noreferrer"
           >

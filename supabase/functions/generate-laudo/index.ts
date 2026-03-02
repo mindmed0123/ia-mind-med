@@ -227,7 +227,7 @@ IMPORTANTE:
 
       if (fallbackResp.ok) {
         const fallbackData = await fallbackResp.json();
-        console.log('Fallback response structure:', JSON.stringify(fallbackData, null, 2));
+        console.log('Fallback response received, model:', fallbackData.model);
         content = fallbackData.choices?.[0]?.message?.content;
         usage = fallbackData.usage;
         finishReason = fallbackData.choices?.[0]?.finish_reason;

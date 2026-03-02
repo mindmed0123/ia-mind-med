@@ -40,7 +40,7 @@ const App = () => (
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<Auth />} />
-            <Route path="/old" element={<Index />} />
+            {/* /old route removed - consolidated to /home */}
             <Route path="/home" element={<Home />} />
             <Route path="/produto" element={<Produto />} />
             <Route path="/precos" element={<Precos />} />
