@@ -146,9 +146,25 @@ const Auth = () => {
       setIsLoading(false);
     }
   };
-  const handleGoogleLogin = () => {
-    toast.info("Login com Google em breve!");
-    // Em produção, integrar com Supabase Auth Google
+  const handleForgotPassword = async () => {
+    if (!loginData.email) {
+      toast.error("Digite seu email primeiro");
+      return;
+    }
+    const emailResult = emailSchema.safeParse(loginData.email);
+    if (!emailResult.success) {
+      toast.error("Email inválido");
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(emailResult.data, {
+        redirectTo: `${window.location.origin}/dashboard`,
+      });
+      if (error) throw error;
+      toast.success("Email de recuperação enviado! Verifique sua caixa de entrada.");
+    } catch {
+      toast.error("Erro ao enviar email de recuperação. Tente novamente.");
+    }
   };
   return <div className="min-h-screen flex items-center justify-center px-4 py-12 gradient-subtle">
       <div className="w-full max-w-md">

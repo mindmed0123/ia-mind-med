@@ -41,9 +41,9 @@ const Home = () => {
     description: "Potencial de receita adicional mensal sem aumentar carga horária"
   }, {
     icon: Target,
-    value: "99,8%",
+    value: "Alta",
     title: "Precisão clínica",
-    description: "Laudos estruturados reduzem erros e aumentam qualidade"
+    description: "Laudos estruturados com IA reduzem erros e aumentam qualidade da documentação"
   }];
 
   const expectedResults = [{
