@@ -183,7 +183,7 @@ const Home = () => {
           <div className="text-center mb-16">
             <h2 className="mb-4 text-4xl md:text-5xl font-bold">Resultados Reais e Mensuráveis</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Médicos que usam MindManage recuperam tempo, aumentam atendimentos e elevam o faturamento
+              Médicos que usam MindMed recuperam tempo, aumentam atendimentos e elevam o faturamento
             </p>
           </div>
 
