@@ -22,6 +22,34 @@ export const useOnboarding = () => {
     }
 
     const check = async () => {
+      // Users with active subscription skip onboarding entirely
+      const { data: sub } = await supabase
+        .from("subscriptions")
+        .select("status")
+        .eq("user_id", user.id)
+        .in("status", ["ACTIVE", "TRIALING"])
+        .limit(1)
+        .maybeSingle();
+
+      if (sub) {
+        setNeedsOnboarding(false);
+        setLoading(false);
+        return;
+      }
+
+      // Also check if profile is already complete (existing user before onboarding feature)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, crm")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.full_name && profile?.crm) {
+        setNeedsOnboarding(false);
+        setLoading(false);
+        return;
+      }
+
       const { data } = await supabase
         .from("onboarding_progress" as any)
         .select("*")
@@ -41,7 +69,6 @@ export const useOnboarding = () => {
       } else {
         // No record yet — new user
         setNeedsOnboarding(true);
-        // Create progress record
         await supabase.from("onboarding_progress" as any).insert({
           user_id: user.id,
           current_step: 1,
