@@ -201,7 +201,7 @@ const NovoLaudo = () => {
     if (!user || isSubmitting) return;
 
     setIsSubmitting(true);
-    setPipelineStage('generating');
+    setPipelineStage('preparing');
 
     try {
       const { data: newLaudo, error: createError } = await supabase
