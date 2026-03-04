@@ -376,7 +376,7 @@ const NovoLaudo = () => {
                 <p className="text-sm text-muted-foreground">Analisando dados clínicos e gerando laudo estruturado...</p>
               )}
             </div>
-            {pipelineStage !== 'idle' && pipelineStage !== 'error' && pipelineStage !== 'completed' && (
+            {pipelineStage !== 'error' && (
               <Badge variant="outline" className="animate-pulse">Em progresso</Badge>
             )}
           </div>
