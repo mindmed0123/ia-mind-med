@@ -402,14 +402,9 @@ const NovoLaudo = () => {
     }
   };
 
-  const handlePatientDataChange = async (data: any) => {
+  const handlePatientDataChange = (data: any) => {
     setPatientData(data);
-    
-    if (laudoId && transcript && laudo?.status === 'completed') {
-      hasTriggeredGeneration.current = false;
-      setIsSubmitting(false);
-      await handleGenerateLaudo();
-    }
+    // Don't auto-regenerate on patient data change - user must explicitly click "Gerar Laudo"
   };
 
   // Pipeline status indicator component
