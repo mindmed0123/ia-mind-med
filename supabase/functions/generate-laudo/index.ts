@@ -22,6 +22,26 @@ const LAUDO_TOOL = {
       type: "object",
       properties: {
         resumo_clinico: { type: "string", description: "Resumo clínico em até 120 palavras" },
+        dados_paciente_extraidos: {
+          type: "object",
+          description: "Dados do paciente extraídos da transcrição/texto da consulta",
+          properties: {
+            iniciais: { type: "string", description: "Iniciais do paciente mencionadas na consulta" },
+            idade: { type: "string", description: "Idade do paciente mencionada" },
+            sexo: { type: "string", description: "Sexo do paciente: M, F ou Não informado" },
+            queixa_principal: { type: "string", description: "Queixa principal identificada" },
+            medicacoes: { type: "array", items: { type: "string" }, description: "Medicações em uso mencionadas" },
+            alergias: { type: "array", items: { type: "string" }, description: "Alergias mencionadas" },
+            historico: { type: "string", description: "Histórico médico relevante mencionado" },
+            sinais_vitais: {
+              type: "object",
+              properties: {
+                PA: { type: "string" }, FC: { type: "string" },
+                FR: { type: "string" }, Temp: { type: "string" }, SpO2: { type: "string" }
+              }
+            }
+          }
+        },
         hipotese_principal: {
           type: "object",
           properties: {
@@ -49,7 +69,7 @@ const LAUDO_TOOL = {
         texto_laudo_md: { type: "string", description: "Laudo em Markdown, máximo 600 palavras" },
         texto_paciente_md: { type: "string", description: "Resumo acessível ao paciente, máximo 100 palavras" },
       },
-      required: ["resumo_clinico", "hipotese_principal", "hipotese_diferencial", "condutas", "exames", "red_flags", "cid10", "texto_laudo_md", "texto_paciente_md"],
+      required: ["resumo_clinico", "dados_paciente_extraidos", "hipotese_principal", "hipotese_diferencial", "condutas", "exames", "red_flags", "cid10", "texto_laudo_md", "texto_paciente_md"],
       additionalProperties: false,
     },
   },
@@ -147,7 +167,7 @@ serve(async (req) => {
       : transcriptText;
 
     // ===== BUILD COMPACT PROMPT =====
-    const systemPrompt = `Assistente clínico PT-BR. Gere laudo estruturado. REGRAS: sem diagnóstico definitivo, 2 hipóteses (provável + diferencial), red flags, CID-10. Use apenas iniciais/idade/sexo (LGPD). Disclaimer: "Conteúdo IA para apoio; não substitui avaliação clínica."`;
+    const systemPrompt = `Assistente clínico PT-BR. Gere laudo estruturado. REGRAS: sem diagnóstico definitivo, 2 hipóteses (provável + diferencial), red flags, CID-10. Use apenas iniciais/idade/sexo (LGPD). Disclaimer: "Conteúdo IA para apoio; não substitui avaliação clínica." IMPORTANTE: extraia dados do paciente (iniciais, idade, sexo, queixa principal, medicações, alergias, histórico, sinais vitais) a partir da transcrição e preencha o campo dados_paciente_extraidos.`;
 
     const parts: string[] = [];
     parts.push(`PAC: ${patient?.iniciais || 'N/I'}, ${patient?.sexo || 'N/I'}, ${patient?.idade || 'N/I'}a`);
@@ -314,7 +334,7 @@ serve(async (req) => {
     const { error: updateError } = await supabase
       .from('laudos')
       .update({
-        patient_data: laudoData.dados_paciente || patient,
+        patient_data: laudoData.dados_paciente_extraidos || laudoData.dados_paciente || patient,
         clinical_context: { specialty, chief_complaint, vitals, meds, allergies, exam_findings, contexto_clinico, historico },
         summary: { resumo_clinico: resumo },
         hypotheses: hipoteses,

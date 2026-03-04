@@ -3,7 +3,7 @@ import { crypto } from "https://deno.land/std@0.224.0/crypto/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 interface PdfSection {
@@ -23,18 +23,32 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // ===== AUTH (same pattern as generate-laudo) =====
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) throw new Error('Não autorizado');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Não autorizado' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const jwtMatch = authHeader.match(/^Bearer\s+(.+)$/);
+    if (!jwtMatch) {
+      return new Response(JSON.stringify({ error: 'Formato de token inválido' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: { persistSession: false },
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) throw new Error('Não autorizado');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(jwtMatch[1]);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Não autenticado' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const { laudo_id } = await req.json();
     if (!laudo_id) throw new Error('ID do laudo não fornecido');
@@ -70,22 +84,23 @@ Deno.serve(async (req) => {
 
     if (laudoError || !laudo) throw new Error('Laudo não encontrado');
 
-    // Buscar perfil do médico completo
-    const { data: profile } = await supabase
+    // Buscar perfil do médico - use service role to ensure we get it
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const adminClient = createClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false }
+    });
+    
+    const { data: profile } = await adminClient
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single();
 
-    // Build sections from individual fields if sections is empty (auto-generated flow)
+    // Build sections from individual fields if sections is empty
     let sections = laudo.sections as PdfSection || {};
-    
     const isSectionsEmpty = !sections.hipoteses?.principal && !sections.conduta;
     
     if (isSectionsEmpty) {
-      console.log('[export-pdf] sections is empty, building from individual laudo fields');
-      
-      // Build sections from the data saved by generate-laudo
       const hypotheses = laudo.hypotheses as any;
       const conducts = laudo.conducts as any;
       const patientData = laudo.patient_data as any;
@@ -112,75 +127,49 @@ Deno.serve(async (req) => {
           : '',
       };
       
-      // If still no hipoteses after building, try to extract from report_markdown
       if (!sections.hipoteses?.principal && reportMd) {
-        console.log('[export-pdf] Falling back to report_markdown for content');
         sections.hipoteses = { principal: 'Ver laudo completo em anexo', diferencial: '' };
         sections.conduta = sections.conduta || 'Ver laudo completo em anexo';
       }
     }
 
-    console.log('[export-pdf] sections ready:', {
-      laudoId: laudo.id,
-      hasSections: !isSectionsEmpty,
-      builtFromFields: isSectionsEmpty,
-      hasHipoteses: !!sections.hipoteses?.principal,
-      hasConduta: !!sections.conduta,
-    });
-
-    // Validate: at minimum we need some content
+    // Validate
     if (!sections.hipoteses?.principal && !laudo.report_markdown) {
       throw new Error('Laudo incompleto: gere o laudo antes de exportar o PDF');
     }
 
-    // Gerar hash do conteúdo
+    // Gerar hash
     const contentForHash = JSON.stringify({
-      id: laudo.id,
-      sections,
-      user_id: user.id,
+      id: laudo.id, sections, user_id: user.id,
       timestamp: new Date().toISOString()
     });
-    
-    const hashBuffer = await crypto.subtle.digest(
-      'SHA-256',
-      new TextEncoder().encode(contentForHash)
-    );
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(contentForHash));
+    const hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 
-    // Gerar token de verificação (expira em 90 dias)
+    // Token de verificação
     const verifyToken = btoa(JSON.stringify({
-      id: laudo.id,
-      hash,
-      exp: Date.now() + (90 * 24 * 60 * 60 * 1000)
+      id: laudo.id, hash, exp: Date.now() + (90 * 24 * 60 * 60 * 1000)
     }));
 
-    // Criar HTML para PDF
+    // Gerar HTML
     const html = generatePdfHtml(laudo, sections, profile, hash, verifyToken);
 
-    const pdfData = {
-      html,
-      fileName: `laudo-${laudo.id}-${Date.now()}.pdf`,
-      hash,
-      verifyToken
-    };
+    const pdfData = { html, fileName: `laudo-${laudo.id}-${Date.now()}.pdf`, hash, verifyToken };
 
-    // Atualizar laudo com hash e token
-    await supabase
-      .from('laudos')
-      .update({
-        pdf_hash: hash,
-        pdf_verify_token: verifyToken
-      })
-      .eq('id', laudo.id);
+    // Atualizar laudo com hash
+    await adminClient.from('laudos').update({
+      pdf_hash: hash, pdf_verify_token: verifyToken
+    }).eq('id', laudo.id);
 
-    // Registrar auditoria
-    await supabase.rpc('log_audit_action', {
-      p_entity: 'REPORT',
-      p_entity_id: laudo.id,
-      p_action: 'EXPORT',
-      p_diff: { hash, timestamp: new Date().toISOString() }
-    });
+    // Audit log
+    try {
+      await supabase.rpc('log_audit_action', {
+        p_entity: 'REPORT', p_entity_id: laudo.id, p_action: 'EXPORT',
+        p_diff: { hash, timestamp: new Date().toISOString() }
+      });
+    } catch (e) {
+      console.warn('Audit log failed:', e);
+    }
 
     console.log('PDF gerado com sucesso:', laudo.id);
 
@@ -197,7 +186,7 @@ Deno.serve(async (req) => {
     });
     
     return new Response(JSON.stringify({ 
-      error: 'Erro ao processar exportação',
+      error: error instanceof Error ? error.message : 'Erro ao processar exportação',
       error_id: errorId
     }), {
       status: 500,
@@ -207,11 +196,8 @@ Deno.serve(async (req) => {
 });
 
 function generatePdfHtml(
-  laudo: any,
-  sections: PdfSection,
-  profile: any,
-  hash: string,
-  verifyToken: string
+  laudo: any, sections: PdfSection, profile: any,
+  hash: string, verifyToken: string
 ): string {
   const baseUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '');
   const verifyUrl = `${baseUrl}/functions/v1/verify-pdf/${laudo.id}?token=${verifyToken}`;
@@ -224,6 +210,15 @@ function generatePdfHtml(
     ? `<img src="${profile.signature_image_url}" alt="Assinatura" style="max-height: 60px; max-width: 200px; object-fit: contain; margin-bottom: 8px;" />`
     : '';
 
+  const doctorName = profile?.full_name || 'Médico Responsável';
+  const doctorCrm = profile?.crm || '';
+  const doctorCrmUf = profile?.crm_uf || '';
+  const doctorSpecialty = profile?.specialty || '';
+  const clinicName = profile?.clinic_name || '';
+  const doctorPhone = profile?.phone || '';
+  const doctorEmail = profile?.email_public || '';
+  const doctorAddress = profile?.address || '';
+
   return `
 <!DOCTYPE html>
 <html>
@@ -231,282 +226,106 @@ function generatePdfHtml(
   <meta charset="UTF-8">
   <style>
     @page { size: A4; margin: 1.5cm 2cm; }
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
       font-family: 'Segoe UI', 'Arial', sans-serif; 
-      font-size: 10pt; 
-      line-height: 1.6;
-      color: #1a1a2e;
-      background: #fff;
+      font-size: 10pt; line-height: 1.6; color: #1a1a2e; background: #fff;
     }
-    
-    /* Header com Logo */
     .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      padding-bottom: 16px;
-      margin-bottom: 20px;
-      border-bottom: 3px solid #2563eb;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding-bottom: 16px; margin-bottom: 20px; border-bottom: 3px solid #2563eb;
     }
-    .header-left {
-      flex: 1;
-    }
-    .header-right {
-      text-align: right;
-    }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
+    .header-left { flex: 1; }
+    .header-right { text-align: right; }
+    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
     .brand-icon {
-      width: 40px;
-      height: 40px;
+      width: 40px; height: 40px;
       background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 20px;
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 20px;
     }
-    .brand h1 { 
-      color: #1e40af; 
-      font-size: 24pt;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      margin: 0;
+    .brand h1 { color: #1e40af; font-size: 22pt; font-weight: 800; letter-spacing: -0.5px; margin: 0; }
+    .brand-subtitle { color: #64748b; font-size: 9pt; margin-top: 2px; }
+    .doctor-header {
+      background: #f0f4ff; padding: 12px 16px; border-radius: 8px;
+      margin-bottom: 20px; border: 1px solid #dbeafe;
     }
-    .brand-subtitle {
-      color: #64748b;
-      font-size: 9pt;
-      margin-top: 2px;
+    .doctor-header-grid { display: flex; justify-content: space-between; align-items: center; }
+    .doctor-info h2 { color: #1e40af; font-size: 14pt; font-weight: 700; margin: 0 0 4px 0; }
+    .doctor-info p { color: #475569; font-size: 9pt; margin: 2px 0; }
+    .doctor-info .specialty-badge {
+      display: inline-block; background: #2563eb; color: white;
+      padding: 2px 10px; border-radius: 12px; font-size: 8pt; font-weight: 600; margin-top: 4px;
     }
-    
-    /* Título do Documento */
+    .doctor-contact { text-align: right; font-size: 8pt; color: #64748b; }
+    .doctor-contact p { margin: 2px 0; }
     .document-title {
       background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-      color: white;
-      text-align: center;
-      padding: 12px 20px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      font-size: 14pt;
-      font-weight: 700;
-      letter-spacing: 1px;
-      text-transform: uppercase;
+      color: white; text-align: center; padding: 12px 20px; border-radius: 8px;
+      margin-bottom: 20px; font-size: 14pt; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase;
     }
-    
-    /* Grid de Informações */
-    .info-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-    .info-card {
-      background: #f8fafc;
-      padding: 16px;
-      border-radius: 8px;
-      border: 1px solid #e2e8f0;
-    }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .info-card { background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; }
     .info-card h3 {
-      color: #1e40af;
-      font-size: 10pt;
-      font-weight: 700;
-      margin-bottom: 10px;
-      padding-bottom: 6px;
-      border-bottom: 2px solid #3b82f6;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      color: #1e40af; font-size: 10pt; font-weight: 700; margin-bottom: 10px;
+      padding-bottom: 6px; border-bottom: 2px solid #3b82f6;
+      text-transform: uppercase; letter-spacing: 0.5px;
     }
-    .info-row {
-      display: flex;
-      margin: 6px 0;
-      font-size: 9pt;
-    }
-    .info-label {
-      color: #64748b;
-      min-width: 100px;
-      font-weight: 500;
-    }
-    .info-value {
-      color: #1e293b;
-      font-weight: 600;
-    }
-    
-    /* Seções do Laudo */
-    .section {
-      margin: 20px 0;
-      page-break-inside: avoid;
-    }
-    .section-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
+    .info-row { display: flex; margin: 6px 0; font-size: 9pt; }
+    .info-label { color: #64748b; min-width: 100px; font-weight: 500; }
+    .info-value { color: #1e293b; font-weight: 600; }
+    .section { margin: 20px 0; page-break-inside: avoid; }
+    .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
     .section-icon {
-      width: 28px;
-      height: 28px;
+      width: 28px; height: 28px;
       background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 14px;
+      border-radius: 6px; display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 14px;
     }
-    .section h2 {
-      color: #1e3a8a;
-      font-size: 12pt;
-      font-weight: 700;
-      margin: 0;
-    }
+    .section h2 { color: #1e3a8a; font-size: 12pt; font-weight: 700; margin: 0; }
     .section-content {
-      background: #fafbfc;
-      padding: 16px;
-      border-radius: 8px;
-      border-left: 4px solid #3b82f6;
-      font-size: 10pt;
-      line-height: 1.7;
+      background: #fafbfc; padding: 16px; border-radius: 8px;
+      border-left: 4px solid #3b82f6; font-size: 10pt; line-height: 1.7;
     }
-    .section-content p {
-      margin: 0;
-      text-align: justify;
-    }
-    
-    /* Destaque para Diagnóstico */
-    .highlight-section {
-      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-      border-left-color: #f59e0b;
-    }
-    .highlight-section h3 {
-      color: #92400e;
-      font-size: 9pt;
-      font-weight: 700;
-      margin-bottom: 8px;
-      text-transform: uppercase;
-    }
+    .section-content p { margin: 0; text-align: justify; }
+    .highlight-section { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left-color: #f59e0b; }
+    .highlight-section h3 { color: #92400e; font-size: 9pt; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; }
     .highlight-main {
-      background: white;
-      padding: 12px;
-      border-radius: 6px;
-      font-weight: 600;
-      color: #1e3a8a;
-      margin-bottom: 12px;
-      border: 1px solid #fbbf24;
+      background: white; padding: 12px; border-radius: 6px;
+      font-weight: 600; color: #1e3a8a; margin-bottom: 12px; border: 1px solid #fbbf24;
     }
-    
-    /* CID Tags */
-    .cid-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
-    }
+    .cid-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
     .cid-tag {
-      display: inline-block;
-      padding: 4px 12px;
+      display: inline-block; padding: 4px 12px;
       background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
-      color: white;
-      border-radius: 20px;
-      font-size: 8pt;
-      font-weight: 600;
+      color: white; border-radius: 20px; font-size: 8pt; font-weight: 600;
     }
-    
-    /* Embasamento Teórico */
-    .embasamento-section {
-      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-      border-left-color: #10b981;
-    }
-    .embasamento-section h3 {
-      color: #065f46;
-      font-size: 9pt;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-    
-    /* Assinatura */
-    .signature-area {
-      margin-top: 40px;
-      text-align: center;
-      page-break-inside: avoid;
-    }
+    .embasamento-section { background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-left-color: #10b981; }
+    .embasamento-section h3 { color: #065f46; font-size: 9pt; font-weight: 700; margin-bottom: 8px; }
+    .signature-area { margin-top: 40px; text-align: center; page-break-inside: avoid; }
     .signature-box {
-      display: inline-block;
-      min-width: 300px;
-      padding: 20px;
-      background: #f8fafc;
-      border-radius: 8px;
-      border: 1px solid #e2e8f0;
+      display: inline-block; min-width: 300px; padding: 20px;
+      background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;
     }
-    .signature-line {
-      border-top: 2px solid #1e3a8a;
-      width: 100%;
-      margin: 12px 0;
-    }
-    .signature-name {
-      color: #1e3a8a;
-      font-weight: 700;
-      font-size: 11pt;
-      margin: 4px 0;
-    }
-    .signature-info {
-      color: #64748b;
-      font-size: 9pt;
-    }
-    
-    /* Rodapé */
+    .signature-line { border-top: 2px solid #1e3a8a; width: 100%; margin: 12px 0; }
+    .signature-name { color: #1e3a8a; font-weight: 700; font-size: 11pt; margin: 4px 0; }
+    .signature-info { color: #64748b; font-size: 9pt; }
     .footer {
-      margin-top: 30px;
-      padding-top: 16px;
-      border-top: 1px solid #e2e8f0;
-      font-size: 8pt;
-      color: #64748b;
+      margin-top: 30px; padding-top: 16px; border-top: 1px solid #e2e8f0;
+      font-size: 8pt; color: #64748b;
     }
-    .footer-grid {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 20px;
-    }
-    .footer-info p {
-      margin: 4px 0;
-    }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+    .footer-info p { margin: 4px 0; }
     .verify-box {
-      background: #f1f5f9;
-      padding: 12px;
-      border-radius: 8px;
-      text-align: center;
+      background: #f1f5f9; padding: 12px; border-radius: 8px; text-align: center;
     }
-    .verify-box p {
-      margin: 4px 0;
-      font-size: 7pt;
-    }
+    .verify-box p { margin: 4px 0; font-size: 7pt; }
     .hash-code {
-      font-family: monospace;
-      font-size: 6pt;
-      background: white;
-      padding: 4px 8px;
-      border-radius: 4px;
-      word-break: break-all;
-      margin-top: 8px;
+      font-family: monospace; font-size: 6pt; background: white;
+      padding: 4px 8px; border-radius: 4px; word-break: break-all; margin-top: 8px;
     }
-    
-    /* Watermark */
-    .watermark {
-      position: fixed;
-      bottom: 10px;
-      right: 10px;
-      font-size: 7pt;
-      color: #cbd5e1;
-    }
+    .watermark { position: fixed; bottom: 10px; right: 10px; font-size: 7pt; color: #cbd5e1; }
   </style>
 </head>
 <body>
@@ -522,6 +341,22 @@ function generatePdfHtml(
     </div>
     <div class="header-right">
       ${logoHtml}
+    </div>
+  </div>
+
+  <div class="doctor-header">
+    <div class="doctor-header-grid">
+      <div class="doctor-info">
+        <h2>Dr(a). ${doctorName}</h2>
+        ${doctorCrm ? `<p><strong>CRM:</strong> ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</p>` : ''}
+        ${doctorSpecialty ? `<span class="specialty-badge">${doctorSpecialty}</span>` : ''}
+        ${clinicName ? `<p style="margin-top: 6px;">${clinicName}</p>` : ''}
+      </div>
+      <div class="doctor-contact">
+        ${doctorPhone ? `<p>📞 ${doctorPhone}</p>` : ''}
+        ${doctorEmail ? `<p>✉ ${doctorEmail}</p>` : ''}
+        ${doctorAddress ? `<p>📍 ${doctorAddress}</p>` : ''}
+      </div>
     </div>
   </div>
 
@@ -548,15 +383,15 @@ function generatePdfHtml(
       <h3>🩺 Médico Responsável</h3>
       <div class="info-row">
         <span class="info-label">Nome:</span>
-        <span class="info-value">${profile?.full_name || 'Não informado'}</span>
+        <span class="info-value">${doctorName}</span>
       </div>
       <div class="info-row">
         <span class="info-label">CRM:</span>
-        <span class="info-value">${profile?.crm || 'N/I'}${profile?.crm_uf ? ' - ' + profile.crm_uf : ''}</span>
+        <span class="info-value">${doctorCrm || 'N/I'}${doctorCrmUf ? ' - ' + doctorCrmUf : ''}</span>
       </div>
       <div class="info-row">
         <span class="info-label">Especialidade:</span>
-        <span class="info-value">${profile?.specialty || 'N/I'}</span>
+        <span class="info-value">${doctorSpecialty || 'N/I'}</span>
       </div>
       <div class="info-row">
         <span class="info-label">Data:</span>
@@ -571,11 +406,8 @@ function generatePdfHtml(
       <div class="section-icon">💬</div>
       <h2>Queixa Principal</h2>
     </div>
-    <div class="section-content">
-      <p>${sections.queixa}</p>
-    </div>
-  </div>
-  ` : ''}
+    <div class="section-content"><p>${sections.queixa}</p></div>
+  </div>` : ''}
 
   ${sections.hda ? `
   <div class="section">
@@ -583,11 +415,8 @@ function generatePdfHtml(
       <div class="section-icon">📝</div>
       <h2>História da Doença Atual</h2>
     </div>
-    <div class="section-content">
-      <p>${sections.hda}</p>
-    </div>
-  </div>
-  ` : ''}
+    <div class="section-content"><p>${sections.hda}</p></div>
+  </div>` : ''}
 
   ${sections.exame_fisico ? `
   <div class="section">
@@ -595,11 +424,8 @@ function generatePdfHtml(
       <div class="section-icon">🔬</div>
       <h2>Exame Físico / Achados</h2>
     </div>
-    <div class="section-content">
-      <p>${sections.exame_fisico}</p>
-    </div>
-  </div>
-  ` : ''}
+    <div class="section-content"><p>${sections.exame_fisico}</p></div>
+  </div>` : ''}
 
   <div class="section">
     <div class="section-header">
@@ -624,11 +450,8 @@ function generatePdfHtml(
       <div class="section-icon">💊</div>
       <h2>Conduta / Plano Terapêutico</h2>
     </div>
-    <div class="section-content">
-      <p>${sections.conduta}</p>
-    </div>
-  </div>
-  ` : ''}
+    <div class="section-content"><p>${sections.conduta}</p></div>
+  </div>` : ''}
 
   ${sections.cid10 && sections.cid10.length > 0 ? `
   <div class="section">
@@ -639,8 +462,7 @@ function generatePdfHtml(
     <div class="cid-container">
       ${sections.cid10.map(c => `<span class="cid-tag">${c}</span>`).join('')}
     </div>
-  </div>
-  ` : ''}
+  </div>` : ''}
 
   ${sections.embasamento_teorico ? `
   <div class="section">
@@ -648,19 +470,16 @@ function generatePdfHtml(
       <div class="section-icon">📚</div>
       <h2>Embasamento Teórico</h2>
     </div>
-    <div class="section-content embasamento-section">
-      <p>${sections.embasamento_teorico}</p>
-    </div>
-  </div>
-  ` : ''}
+    <div class="section-content embasamento-section"><p>${sections.embasamento_teorico}</p></div>
+  </div>` : ''}
 
   <div class="signature-area">
     <div class="signature-box">
       ${signatureHtml}
       <div class="signature-line"></div>
-      <p class="signature-name">${profile?.full_name || 'Médico Responsável'}</p>
-      ${profile?.crm ? `<p class="signature-info">CRM ${profile.crm}${profile?.crm_uf ? '/' + profile.crm_uf : ''}</p>` : ''}
-      ${profile?.specialty ? `<p class="signature-info">${profile.specialty}</p>` : ''}
+      <p class="signature-name">Dr(a). ${doctorName}</p>
+      ${doctorCrm ? `<p class="signature-info">CRM ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</p>` : ''}
+      ${doctorSpecialty ? `<p class="signature-info">${doctorSpecialty}</p>` : ''}
     </div>
   </div>
 

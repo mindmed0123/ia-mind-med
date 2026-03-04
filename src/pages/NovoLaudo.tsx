@@ -75,6 +75,22 @@ const NovoLaudo = () => {
             setTranscript(updated.transcript.text);
           }
 
+          // Auto-populate patient data from AI extraction
+          if (updated.patient_data && updated.status === 'completed') {
+            const extracted = updated.patient_data;
+            setPatientData((prev: any) => ({
+              ...prev,
+              iniciais: extracted.iniciais || prev?.iniciais || '',
+              sexo: extracted.sexo || prev?.sexo || '',
+              idade: extracted.idade || prev?.idade || '',
+              queixa_principal: extracted.queixa_principal || prev?.queixa_principal || '',
+              medicacoes: extracted.medicacoes || prev?.medicacoes || [],
+              alergias: extracted.alergias || prev?.alergias || [],
+              historico: extracted.historico || prev?.historico || '',
+              sinais_vitais: extracted.sinais_vitais || prev?.sinais_vitais || {},
+            }));
+          }
+
           // Update pipeline stage based on status
           if (updated.transcript_status === 'error' || updated.audio_processing_status === 'error' || updated.status === 'error') {
             setPipelineStage('error');
