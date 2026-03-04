@@ -17,13 +17,16 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 
-type PipelineStage = 'idle' | 'uploading' | 'transcribing' | 'generating' | 'completed' | 'error';
+type PipelineStage = 'idle' | 'uploading' | 'transcribing' | 'preparing' | 'calling_ai' | 'structuring' | 'saving' | 'completed' | 'error';
 
 const STAGE_LABELS: Record<PipelineStage, string> = {
   idle: 'Aguardando',
   uploading: 'Enviando áudio...',
   transcribing: 'Transcrevendo consulta...',
-  generating: 'Gerando laudo com IA...',
+  preparing: 'Preparando dados clínicos...',
+  calling_ai: 'Chamando IA...',
+  structuring: 'Estruturando laudo...',
+  saving: 'Salvando...',
   completed: 'Laudo pronto!',
   error: 'Erro no processamento',
 };
@@ -83,7 +86,7 @@ const NovoLaudo = () => {
             }
             setIsSubmitting(false);
           } else if (updated.status === 'generating') {
-            setPipelineStage('generating');
+            setPipelineStage('calling_ai');
           } else if (updated.transcript_status === 'processing' || updated.audio_processing_status === 'processing') {
             setPipelineStage('transcribing');
           }
@@ -135,7 +138,7 @@ const NovoLaudo = () => {
       if (data.status === 'completed') {
         setPipelineStage('completed');
       } else if (data.status === 'generating') {
-        setPipelineStage('generating');
+        setPipelineStage('calling_ai');
       } else if (data.status === 'error' || data.transcript_status === 'error') {
         setPipelineStage('error');
       } else if (data.transcript_status === 'processing' || data.audio_processing_status === 'processing') {
@@ -157,7 +160,7 @@ const NovoLaudo = () => {
     }
 
     setIsSubmitting(true);
-    setPipelineStage('generating');
+    setPipelineStage('preparing');
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -198,7 +201,7 @@ const NovoLaudo = () => {
     if (!user || isSubmitting) return;
 
     setIsSubmitting(true);
-    setPipelineStage('generating');
+    setPipelineStage('preparing');
 
     try {
       const { data: newLaudo, error: createError } = await supabase
@@ -356,7 +359,10 @@ const NovoLaudo = () => {
     const stageConfig: Record<string, { icon: React.ReactNode; color: string }> = {
       uploading: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-primary bg-primary/5' },
       transcribing: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-primary bg-primary/5' },
-      generating: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-accent bg-accent/5' },
+      preparing: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-primary bg-primary/5' },
+      calling_ai: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-accent bg-accent/5' },
+      structuring: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-accent bg-accent/5' },
+      saving: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-accent bg-accent/5' },
       error: { icon: <AlertCircle className="w-5 h-5 text-destructive" />, color: 'border-destructive bg-destructive/5' },
     };
 
@@ -372,8 +378,11 @@ const NovoLaudo = () => {
               {pipelineStage === 'transcribing' && (
                 <p className="text-sm text-muted-foreground">A transcrição e geração do laudo serão automáticas</p>
               )}
-              {pipelineStage === 'generating' && (
+              {(pipelineStage === 'calling_ai' || pipelineStage === 'preparing') && (
                 <p className="text-sm text-muted-foreground">Analisando dados clínicos e gerando laudo estruturado...</p>
+              )}
+              {pipelineStage === 'saving' && (
+                <p className="text-sm text-muted-foreground">Salvando laudo no banco de dados...</p>
               )}
             </div>
             {pipelineStage !== 'error' && (
@@ -556,7 +565,7 @@ const NovoLaudo = () => {
               <Card>
                 <CardContent className="py-12 text-center">
                   <p className="text-muted-foreground">
-                    {pipelineStage === 'transcribing' || pipelineStage === 'generating'
+                    {pipelineStage === 'transcribing' || pipelineStage === 'calling_ai' || pipelineStage === 'preparing' || pipelineStage === 'structuring' || pipelineStage === 'saving'
                       ? 'Processando... Os resultados aparecerão automaticamente.'
                       : 'Preencha os dados do paciente e clique em "Gerar Laudo com IA"'
                     }
