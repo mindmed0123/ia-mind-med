@@ -182,7 +182,7 @@ serve(async (req) => {
       : transcriptText;
 
     // ===== BUILD COMPACT PROMPT =====
-    const systemPrompt = `Assistente clínico PT-BR. Gere laudo estruturado. REGRAS: sem diagnóstico definitivo, 2 hipóteses (provável + diferencial), red flags, CID-10. Use apenas iniciais/idade/sexo (LGPD). Disclaimer: "Conteúdo IA para apoio; não substitui avaliação clínica." IMPORTANTE: extraia dados do paciente (iniciais, idade, sexo, queixa principal, medicações, alergias, histórico, sinais vitais) a partir da transcrição e preencha o campo dados_paciente_extraidos.`;
+    const systemPrompt = `Assistente clínico PT-BR. Gere laudo estruturado. REGRAS: sem diagnóstico definitivo, 2 hipóteses (provável + diferencial), red flags, CID-10. Use apenas iniciais/idade/sexo (LGPD). Disclaimer: "Conteúdo IA para apoio; não substitui avaliação clínica." IMPORTANTE: extraia dados do paciente (iniciais, idade, sexo, queixa principal, medicações, alergias, histórico, sinais vitais) a partir da transcrição e preencha o campo dados_paciente_extraidos. Extraia TODOS os medicamentos prescritos ou sugeridos durante a consulta e preencha prescricoes_sugeridas com medicamento, dosagem, posologia, duração e observações.`;
 
     const parts: string[] = [];
     parts.push(`PAC: ${patient?.iniciais || 'N/I'}, ${patient?.sexo || 'N/I'}, ${patient?.idade || 'N/I'}a`);
