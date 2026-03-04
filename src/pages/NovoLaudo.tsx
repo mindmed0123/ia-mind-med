@@ -378,8 +378,11 @@ const NovoLaudo = () => {
               {pipelineStage === 'transcribing' && (
                 <p className="text-sm text-muted-foreground">A transcrição e geração do laudo serão automáticas</p>
               )}
-              {pipelineStage === 'generating' && (
+              {(pipelineStage === 'calling_ai' || pipelineStage === 'preparing') && (
                 <p className="text-sm text-muted-foreground">Analisando dados clínicos e gerando laudo estruturado...</p>
+              )}
+              {pipelineStage === 'saving' && (
+                <p className="text-sm text-muted-foreground">Salvando laudo no banco de dados...</p>
               )}
             </div>
             {pipelineStage !== 'error' && (
