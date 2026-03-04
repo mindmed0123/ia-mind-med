@@ -183,30 +183,17 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
       if (error) throw error;
 
       if (data?.html && data?.verifyToken) {
-        // Importar dinamicamente as funções de PDF
-        const { generatePdf, downloadPdf, uploadPdfToStorage } = await import('@/lib/pdf-generator');
+        const { generatePdf, downloadPdf } = await import('@/lib/pdf-generator');
         
         const baseUrl = window.location.origin;
         const verifyUrl = `${baseUrl}/api/verify-pdf/${laudoId}?token=${data.verifyToken}`;
         
-        // Gerar PDF no cliente
         const pdfBlob = await generatePdf({
           html: data.html,
           fileName: data.fileName,
           verifyUrl
         });
 
-        // Upload para storage
-        const filePath = `reports/${laudoId}/exports/${Date.now()}.pdf`;
-        const signedUrl = await uploadPdfToStorage(pdfBlob, filePath, supabase);
-
-        // Atualizar laudo com URL do PDF
-        await supabase
-          .from('laudos')
-          .update({ pdf_url: signedUrl })
-          .eq('id', laudoId);
-
-        // Download automático
         downloadPdf(pdfBlob, data.fileName);
 
         toast({
