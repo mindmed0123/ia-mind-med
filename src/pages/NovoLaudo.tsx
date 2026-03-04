@@ -609,13 +609,17 @@ const NovoLaudo = () => {
           <div className="lg:col-span-2">
             {laudo?.status === 'completed' ? (
               <Tabs defaultValue={showEditor ? "editor" : "viewer"} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="viewer" onClick={() => setShowEditor(false)}>
                     Visualizar
                   </TabsTrigger>
                   <TabsTrigger value="editor" onClick={() => setShowEditor(true)}>
                     <Edit className="w-4 h-4 mr-2" />
                     Editar
+                  </TabsTrigger>
+                  <TabsTrigger value="prescription">
+                    <Pill className="w-4 h-4 mr-2" />
+                    Receituário
                   </TabsTrigger>
                 </TabsList>
                 
@@ -630,6 +634,13 @@ const NovoLaudo = () => {
                     onStatusChange={(newStatus) => {
                       setLaudo({ ...laudo, status: newStatus });
                     }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="prescription" className="mt-6">
+                  <PrescriptionTab
+                    laudoData={laudo}
+                    patientData={patientData}
                   />
                 </TabsContent>
               </Tabs>
