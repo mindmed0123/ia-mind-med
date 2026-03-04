@@ -63,6 +63,21 @@ const LAUDO_TOOL = {
           required: ["descricao", "probabilidade", "racional"],
         },
         condutas: { type: "array", items: { type: "string" }, description: "Máximo 6 condutas" },
+        prescricoes_sugeridas: {
+          type: "array",
+          description: "Medicamentos prescritos ou sugeridos durante a consulta. Extraia do contexto da conversa.",
+          items: {
+            type: "object",
+            properties: {
+              medicamento: { type: "string", description: "Nome do medicamento" },
+              dosagem: { type: "string", description: "Dosagem ex: 500mg" },
+              posologia: { type: "string", description: "Posologia ex: 1 comprimido a cada 8h" },
+              duracao: { type: "string", description: "Duração do tratamento ex: 7 dias" },
+              observacoes: { type: "string", description: "Observações adicionais" },
+            },
+            required: ["medicamento", "dosagem", "posologia"],
+          },
+        },
         exames: { type: "array", items: { type: "string" }, description: "Máximo 5 exames" },
         red_flags: { type: "array", items: { type: "string" }, description: "Máximo 4 red flags" },
         cid10: { type: "array", items: { type: "string" }, description: "Máximo 3 CID-10" },
@@ -167,7 +182,7 @@ serve(async (req) => {
       : transcriptText;
 
     // ===== BUILD COMPACT PROMPT =====
-    const systemPrompt = `Assistente clínico PT-BR. Gere laudo estruturado. REGRAS: sem diagnóstico definitivo, 2 hipóteses (provável + diferencial), red flags, CID-10. Use apenas iniciais/idade/sexo (LGPD). Disclaimer: "Conteúdo IA para apoio; não substitui avaliação clínica." IMPORTANTE: extraia dados do paciente (iniciais, idade, sexo, queixa principal, medicações, alergias, histórico, sinais vitais) a partir da transcrição e preencha o campo dados_paciente_extraidos.`;
+    const systemPrompt = `Assistente clínico PT-BR. Gere laudo estruturado. REGRAS: sem diagnóstico definitivo, 2 hipóteses (provável + diferencial), red flags, CID-10. Use apenas iniciais/idade/sexo (LGPD). Disclaimer: "Conteúdo IA para apoio; não substitui avaliação clínica." IMPORTANTE: extraia dados do paciente (iniciais, idade, sexo, queixa principal, medicações, alergias, histórico, sinais vitais) a partir da transcrição e preencha o campo dados_paciente_extraidos. Extraia TODOS os medicamentos prescritos ou sugeridos durante a consulta e preencha prescricoes_sugeridas com medicamento, dosagem, posologia, duração e observações.`;
 
     const parts: string[] = [];
     parts.push(`PAC: ${patient?.iniciais || 'N/I'}, ${patient?.sexo || 'N/I'}, ${patient?.idade || 'N/I'}a`);
@@ -321,6 +336,7 @@ serve(async (req) => {
       menos_provavel: laudoData.hipotese_diferencial || {},
     };
     const condutas = laudoData.condutas_recomendadas || laudoData.condutas || [];
+    const prescricoesSugeridas = laudoData.prescricoes_sugeridas || [];
     const exames = laudoData.exames_sugeridos || laudoData.exames || [];
     const redFlags = laudoData.red_flags || [];
     const cid10 = laudoData.cid10_sugeridos || laudoData.cid10 || [];
@@ -339,6 +355,7 @@ serve(async (req) => {
         summary: { resumo_clinico: resumo },
         hypotheses: hipoteses,
         conducts: condutas,
+        sections: { ...(laudoData.sections || {}), prescricoes_sugeridas: prescricoesSugeridas },
         complementary_exams: exames,
         red_flags: redFlags,
         cid10_codes: cid10,

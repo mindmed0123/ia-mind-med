@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Edit, Mic, FileText, CheckCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, Loader2, Edit, Mic, FileText, CheckCircle, AlertCircle, Pill } from "lucide-react";
 import { PatientDataForm } from "@/components/laudos/PatientDataForm";
 import { LaudoViewer } from "@/components/laudos/LaudoViewer";
 import { LaudoEditor } from "@/components/laudos/LaudoEditor";
 import { TextInputMode } from "@/components/laudos/TextInputMode";
+import { PrescriptionTab } from "@/components/laudos/PrescriptionTab";
 import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
@@ -608,13 +609,17 @@ const NovoLaudo = () => {
           <div className="lg:col-span-2">
             {laudo?.status === 'completed' ? (
               <Tabs defaultValue={showEditor ? "editor" : "viewer"} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="viewer" onClick={() => setShowEditor(false)}>
                     Visualizar
                   </TabsTrigger>
                   <TabsTrigger value="editor" onClick={() => setShowEditor(true)}>
                     <Edit className="w-4 h-4 mr-2" />
                     Editar
+                  </TabsTrigger>
+                  <TabsTrigger value="prescription">
+                    <Pill className="w-4 h-4 mr-2" />
+                    Receituário
                   </TabsTrigger>
                 </TabsList>
                 
@@ -629,6 +634,13 @@ const NovoLaudo = () => {
                     onStatusChange={(newStatus) => {
                       setLaudo({ ...laudo, status: newStatus });
                     }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="prescription" className="mt-6">
+                  <PrescriptionTab
+                    laudoData={laudo}
+                    patientData={patientData}
                   />
                 </TabsContent>
               </Tabs>
