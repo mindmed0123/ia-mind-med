@@ -565,7 +565,7 @@ const NovoLaudo = () => {
               <Card>
                 <CardContent className="py-12 text-center">
                   <p className="text-muted-foreground">
-                    {pipelineStage === 'transcribing' || pipelineStage === 'generating'
+                    {pipelineStage === 'transcribing' || pipelineStage === 'calling_ai' || pipelineStage === 'preparing' || pipelineStage === 'structuring' || pipelineStage === 'saving'
                       ? 'Processando... Os resultados aparecerão automaticamente.'
                       : 'Preencha os dados do paciente e clique em "Gerar Laudo com IA"'
                     }
