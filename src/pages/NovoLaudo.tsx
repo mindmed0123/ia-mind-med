@@ -86,7 +86,7 @@ const NovoLaudo = () => {
             }
             setIsSubmitting(false);
           } else if (updated.status === 'generating') {
-            setPipelineStage('generating');
+            setPipelineStage('calling_ai');
           } else if (updated.transcript_status === 'processing' || updated.audio_processing_status === 'processing') {
             setPipelineStage('transcribing');
           }
