@@ -63,6 +63,21 @@ const LAUDO_TOOL = {
           required: ["descricao", "probabilidade", "racional"],
         },
         condutas: { type: "array", items: { type: "string" }, description: "Máximo 6 condutas" },
+        prescricoes_sugeridas: {
+          type: "array",
+          description: "Medicamentos prescritos ou sugeridos durante a consulta. Extraia do contexto da conversa.",
+          items: {
+            type: "object",
+            properties: {
+              medicamento: { type: "string", description: "Nome do medicamento" },
+              dosagem: { type: "string", description: "Dosagem ex: 500mg" },
+              posologia: { type: "string", description: "Posologia ex: 1 comprimido a cada 8h" },
+              duracao: { type: "string", description: "Duração do tratamento ex: 7 dias" },
+              observacoes: { type: "string", description: "Observações adicionais" },
+            },
+            required: ["medicamento", "dosagem", "posologia"],
+          },
+        },
         exames: { type: "array", items: { type: "string" }, description: "Máximo 5 exames" },
         red_flags: { type: "array", items: { type: "string" }, description: "Máximo 4 red flags" },
         cid10: { type: "array", items: { type: "string" }, description: "Máximo 3 CID-10" },
