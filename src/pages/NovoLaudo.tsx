@@ -160,7 +160,7 @@ const NovoLaudo = () => {
     }
 
     setIsSubmitting(true);
-    setPipelineStage('generating');
+    setPipelineStage('preparing');
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
