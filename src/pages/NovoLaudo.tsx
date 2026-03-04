@@ -17,13 +17,16 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 
-type PipelineStage = 'idle' | 'uploading' | 'transcribing' | 'generating' | 'completed' | 'error';
+type PipelineStage = 'idle' | 'uploading' | 'transcribing' | 'preparing' | 'calling_ai' | 'structuring' | 'saving' | 'completed' | 'error';
 
 const STAGE_LABELS: Record<PipelineStage, string> = {
   idle: 'Aguardando',
   uploading: 'Enviando áudio...',
   transcribing: 'Transcrevendo consulta...',
-  generating: 'Gerando laudo com IA...',
+  preparing: 'Preparando dados clínicos...',
+  calling_ai: 'Chamando IA...',
+  structuring: 'Estruturando laudo...',
+  saving: 'Salvando...',
   completed: 'Laudo pronto!',
   error: 'Erro no processamento',
 };
