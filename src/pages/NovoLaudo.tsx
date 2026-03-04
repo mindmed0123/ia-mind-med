@@ -304,6 +304,8 @@ const NovoLaudo = () => {
         }
       };
       setTimeout(() => pollForCompletion(), 3000);
+
+      navigate(`/novo-laudo?id=${newLaudo.id}`, { replace: true });
     } catch (error: any) {
       console.error('Error generating laudo from text:', error);
       setPipelineStage('error');
