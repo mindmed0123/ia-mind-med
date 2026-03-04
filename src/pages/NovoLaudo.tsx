@@ -359,7 +359,10 @@ const NovoLaudo = () => {
     const stageConfig: Record<string, { icon: React.ReactNode; color: string }> = {
       uploading: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-primary bg-primary/5' },
       transcribing: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-primary bg-primary/5' },
-      generating: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-accent bg-accent/5' },
+      preparing: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-primary bg-primary/5' },
+      calling_ai: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-accent bg-accent/5' },
+      structuring: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-accent bg-accent/5' },
+      saving: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-accent bg-accent/5' },
       error: { icon: <AlertCircle className="w-5 h-5 text-destructive" />, color: 'border-destructive bg-destructive/5' },
     };
 
