@@ -94,10 +94,7 @@ const App = () => (
               </SubscriptionGuard>
             } />
             
-            {/* Debug routes */}
-            <Route path="/debug/pdf" element={<PdfTest />} />
-            <Route path="/debug/ocr" element={<OcrTest />} />
-            <Route path="/debug/storage" element={<StorageTest />} />
+            {/* Debug routes removed - not accessible in production */}
             
             <Route path="*" element={<NotFound />} />
           </Routes>
