@@ -58,11 +58,60 @@ Deno.serve(async (req) => {
       .eq('id', user.id)
       .single();
 
-    const sections = laudo.sections as PdfSection || {};
+    // Build sections from individual fields if sections is empty (auto-generated flow)
+    let sections = laudo.sections as PdfSection || {};
     
-    // Validação
-    if (!sections.hipoteses?.principal || !sections.conduta) {
-      throw new Error('Laudo incompleto: necessário hipótese principal e conduta');
+    const isSectionsEmpty = !sections.hipoteses?.principal && !sections.conduta;
+    
+    if (isSectionsEmpty) {
+      console.log('[export-pdf] sections is empty, building from individual laudo fields');
+      
+      // Build sections from the data saved by generate-laudo
+      const hypotheses = laudo.hypotheses as any;
+      const conducts = laudo.conducts as any;
+      const patientData = laudo.patient_data as any;
+      const cid10 = laudo.cid10_codes as any;
+      const reportMd = laudo.report_markdown as string;
+      
+      sections = {
+        identificacao: {
+          nome: patientData?.iniciais || patientData?.nome || 'Não informado',
+          idade: patientData?.idade ? String(patientData.idade) : 'N/I',
+          sexo: patientData?.sexo || 'N/I',
+        },
+        queixa: laudo.clinical_context?.chief_complaint || '',
+        hda: laudo.summary?.resumo_clinico || '',
+        exame_fisico: laudo.clinical_context?.exam_findings || '',
+        hipoteses: {
+          principal: hypotheses?.mais_provavel?.descricao || laudo.diagnosis_main || '',
+          diferencial: hypotheses?.menos_provavel?.descricao || laudo.diagnosis_diff || '',
+        },
+        conduta: Array.isArray(conducts) ? conducts.join('\n• ') : (typeof conducts === 'string' ? conducts : ''),
+        cid10: Array.isArray(cid10) ? cid10 : [],
+        embasamento_teorico: typeof laudo.hypotheses?.embasamento_teorico === 'object' 
+          ? (laudo.hypotheses.embasamento_teorico.fundamentacao || '') 
+          : '',
+      };
+      
+      // If still no hipoteses after building, try to extract from report_markdown
+      if (!sections.hipoteses?.principal && reportMd) {
+        console.log('[export-pdf] Falling back to report_markdown for content');
+        sections.hipoteses = { principal: 'Ver laudo completo em anexo', diferencial: '' };
+        sections.conduta = sections.conduta || 'Ver laudo completo em anexo';
+      }
+    }
+
+    console.log('[export-pdf] sections ready:', {
+      laudoId: laudo.id,
+      hasSections: !isSectionsEmpty,
+      builtFromFields: isSectionsEmpty,
+      hasHipoteses: !!sections.hipoteses?.principal,
+      hasConduta: !!sections.conduta,
+    });
+
+    // Validate: at minimum we need some content
+    if (!sections.hipoteses?.principal && !laudo.report_markdown) {
+      throw new Error('Laudo incompleto: gere o laudo antes de exportar o PDF');
     }
 
     // Gerar hash do conteúdo

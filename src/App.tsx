@@ -21,9 +21,7 @@ import HistoricoPaciente from "./pages/HistoricoPaciente";
 import EvolutionReport from "./pages/EvolutionReport";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
-import PdfTest from "./pages/debug/PdfTest";
-import OcrTest from "./pages/debug/OcrTest";
-import StorageTest from "./pages/debug/StorageTest";
+// Debug imports removed for production safety
 import DavChat from "./pages/DavChat";
 import MedicosTrial from "./pages/MedicosTrial";
 import AssinaturaExpirada from "./pages/AssinaturaExpirada";
@@ -96,10 +94,7 @@ const App = () => (
               </SubscriptionGuard>
             } />
             
-            {/* Debug routes */}
-            <Route path="/debug/pdf" element={<PdfTest />} />
-            <Route path="/debug/ocr" element={<OcrTest />} />
-            <Route path="/debug/storage" element={<StorageTest />} />
+            {/* Debug routes removed - not accessible in production */}
             
             <Route path="*" element={<NotFound />} />
           </Routes>
