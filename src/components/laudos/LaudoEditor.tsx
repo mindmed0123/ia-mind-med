@@ -15,7 +15,8 @@ import {
   Upload, 
   AlertTriangle,
   Clock,
-  FileText
+  FileText,
+  Pencil
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -129,8 +130,27 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
     }
   };
 
+  const handleUnlockForEditing = async () => {
+    try {
+      const { error } = await supabase
+        .from('laudos')
+        .update({ status: 'draft' })
+        .eq('id', laudoId);
+
+      if (error) throw error;
+
+      setStatus('draft');
+      onStatusChange?.('draft');
+      toast({
+        title: "Laudo desbloqueado",
+        description: "Agora você pode editar o laudo.",
+      });
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
   const handleFinalize = async () => {
-    // Validações
     if (!sections.hipoteses.principal || !sections.conduta) {
       toast({
         title: "Laudo incompleto",
@@ -213,7 +233,6 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
 
   const handleImportPdf = async (file: File) => {
     try {
-      // Upload do arquivo
       const filePath = `imports/${laudoId}/${file.name}`;
       const { error: uploadError } = await supabase.storage
         .from('audio-files')
@@ -221,12 +240,10 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: urlData } = supabase.storage
         .from('audio-files')
         .getPublicUrl(filePath);
 
-      // Importar PDF
       const { data, error } = await supabase.functions.invoke('import-pdf', {
         body: { 
           laudo_id: laudoId,
@@ -237,7 +254,6 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
 
       if (error) throw error;
 
-      // Atualizar sections com dados importados
       if (data.sections) {
         setSections(data.sections);
         toast({
@@ -312,6 +328,17 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
             </div>
             
             <div className="flex items-center gap-2">
+              {status === 'completed' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUnlockForEditing}
+                  className="gap-1"
+                >
+                  <Pencil className="w-4 h-4" />
+                  Desbloquear Edição
+                </Button>
+              )}
               <input
                 type="file"
                 accept=".pdf"
@@ -323,7 +350,6 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
                 variant="outline"
                 size="sm"
                 onClick={() => document.getElementById('pdf-upload')?.click()}
-                disabled={status === 'completed'}
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Importar PDF
@@ -381,7 +407,6 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
                   identificacao: { ...prev.identificacao, nome: e.target.value }
                 }))}
                 placeholder="N/I"
-                disabled={status === 'completed'}
               />
             </div>
             <div>
@@ -394,7 +419,6 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
                   identificacao: { ...prev.identificacao, idade: e.target.value }
                 }))}
                 placeholder="45 anos"
-                disabled={status === 'completed'}
               />
             </div>
             <div>
@@ -407,7 +431,6 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
                   identificacao: { ...prev.identificacao, sexo: e.target.value }
                 }))}
                 placeholder="Masculino/Feminino"
-                disabled={status === 'completed'}
               />
             </div>
           </div>
@@ -425,7 +448,6 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
             onChange={(e) => setSections(prev => ({ ...prev, queixa: e.target.value }))}
             placeholder="Descreva a queixa principal do paciente..."
             rows={3}
-            disabled={status === 'completed'}
           />
         </CardContent>
       </Card>
@@ -441,7 +463,6 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
             onChange={(e) => setSections(prev => ({ ...prev, hda: e.target.value }))}
             placeholder="Descreva a evolução dos sintomas, duração, características..."
             rows={6}
-            disabled={status === 'completed'}
           />
         </CardContent>
       </Card>
@@ -457,13 +478,12 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
             onChange={(e) => setSections(prev => ({ ...prev, exame_fisico: e.target.value }))}
             placeholder="Descreva os achados do exame físico..."
             rows={5}
-            disabled={status === 'completed'}
           />
         </CardContent>
       </Card>
 
       {/* Seção 5: Hipóteses Diagnósticas */}
-      <Card className={!sections.hipoteses.principal ? 'border-red-200' : ''}>
+      <Card className={!sections.hipoteses.principal ? 'border-destructive/50' : ''}>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             5. Hipóteses Diagnósticas
@@ -486,13 +506,9 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
               }))}
               placeholder="Descreva a hipótese diagnóstica mais provável..."
               rows={4}
-              disabled={status === 'completed'}
-              className={!sections.hipoteses.principal ? 'border-red-300' : ''}
+              className={!sections.hipoteses.principal ? 'border-destructive/50' : ''}
             />
           </div>
-          
-          <Separator />
-          
           <div>
             <Label htmlFor="hipotese-diferencial" className="font-semibold">
               B) Diferencial (Menos Provável)
@@ -506,14 +522,13 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
               }))}
               placeholder="Descreva hipóteses diagnósticas alternativas..."
               rows={4}
-              disabled={status === 'completed'}
             />
           </div>
         </CardContent>
       </Card>
 
       {/* Seção 6: Conduta */}
-      <Card className={!sections.conduta ? 'border-red-200' : ''}>
+      <Card className={!sections.conduta ? 'border-destructive/50' : ''}>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             6. Conduta / Plano Terapêutico
@@ -528,8 +543,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
             onChange={(e) => setSections(prev => ({ ...prev, conduta: e.target.value }))}
             placeholder="Descreva o plano de tratamento, medicações, orientações..."
             rows={6}
-            disabled={status === 'completed'}
-            className={!sections.conduta ? 'border-red-300' : ''}
+            className={!sections.conduta ? 'border-destructive/50' : ''}
           />
         </CardContent>
       </Card>
@@ -546,12 +560,8 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
               onChange={(e) => setCid10Input(e.target.value)}
               placeholder="Ex: K29.1"
               onKeyPress={(e) => e.key === 'Enter' && addCid10()}
-              disabled={status === 'completed'}
             />
-            <Button
-              onClick={addCid10}
-              disabled={status === 'completed'}
-            >
+            <Button onClick={addCid10}>
               Adicionar
             </Button>
           </div>
@@ -563,9 +573,9 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
                   key={index}
                   variant="secondary"
                   className="cursor-pointer"
-                  onClick={() => status !== 'completed' && removeCid10(index)}
+                  onClick={() => removeCid10(index)}
                 >
-                  {cid} {status !== 'completed' && '×'}
+                  {cid} ×
                 </Badge>
               ))}
             </div>
@@ -580,7 +590,6 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
             laudoId={laudoId}
             patientName={sections.identificacao.nome}
             onAnonymized={() => {
-              // Recarregar dados
               window.location.reload();
             }}
           />
@@ -602,7 +611,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
             size="lg"
             onClick={handleFinalize}
             disabled={!isComplete}
-            className="whitespace-nowrap bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all"
+            className="whitespace-nowrap"
           >
             <CheckCircle className="w-4 h-4 mr-2" />
             Concluir Laudo
