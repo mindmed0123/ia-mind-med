@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Edit, Mic, FileText } from "lucide-react";
+import { ArrowLeft, Loader2, Edit, Mic, FileText, CheckCircle, AlertCircle } from "lucide-react";
 import { PatientDataForm } from "@/components/laudos/PatientDataForm";
 import { LaudoViewer } from "@/components/laudos/LaudoViewer";
 import { LaudoEditor } from "@/components/laudos/LaudoEditor";
@@ -15,6 +15,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+
+type PipelineStage = 'idle' | 'uploading' | 'transcribing' | 'generating' | 'completed' | 'error';
+
+const STAGE_LABELS: Record<PipelineStage, string> = {
+  idle: 'Aguardando',
+  uploading: 'Enviando áudio...',
+  transcribing: 'Transcrevendo consulta...',
+  generating: 'Gerando laudo com IA...',
+  completed: 'Laudo pronto!',
+  error: 'Erro no processamento',
+};
 
 const NovoLaudo = () => {
   const navigate = useNavigate();
@@ -23,24 +35,79 @@ const NovoLaudo = () => {
   const { user } = useAuth();
   const [laudoId, setLaudoId] = useState<string | null>(searchParams.get('id'));
   const [laudo, setLaudo] = useState<any>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isGeneratingLaudo, setIsGeneratingLaudo] = useState(false);
   const [patientData, setPatientData] = useState<any>(null);
   const [transcript, setTranscript] = useState("");
   const [hasShownSuccessToast, setHasShownSuccessToast] = useState(false);
   const hasTriggeredGeneration = useRef(false);
   const [showEditor, setShowEditor] = useState(false);
   const [inputMode, setInputMode] = useState<'audio' | 'text'>('audio');
+  const [pipelineStage, setPipelineStage] = useState<PipelineStage>('idle');
+  const [isSubmitting, setIsSubmitting] = useState(false); // double-submit guard
+  const channelRef = useRef<any>(null);
 
+  // ===== SUPABASE REALTIME (replaces polling) =====
   useEffect(() => {
-    if (laudoId) {
-      loadLaudo();
-      // Poll for transcription updates
-      const interval = setInterval(() => {
-        checkTranscriptionStatus();
-      }, 3000);
-      return () => clearInterval(interval);
-    }
+    if (!laudoId) return;
+    
+    // Initial load
+    loadLaudo();
+
+    // Subscribe to realtime changes on this specific laudo
+    const channel = supabase
+      .channel(`laudo-${laudoId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'laudos',
+          filter: `id=eq.${laudoId}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          setLaudo(updated);
+          
+          // Update transcript
+          if (updated.transcript?.text && updated.transcript.text !== transcript) {
+            setTranscript(updated.transcript.text);
+          }
+
+          // Update pipeline stage based on status
+          if (updated.transcript_status === 'error' || updated.audio_processing_status === 'error' || updated.status === 'error') {
+            setPipelineStage('error');
+          } else if (updated.status === 'completed') {
+            setPipelineStage('completed');
+            if (!hasShownSuccessToast) {
+              toast({ title: 'Laudo gerado!', description: 'O laudo foi gerado com sucesso' });
+              setHasShownSuccessToast(true);
+            }
+            setIsSubmitting(false);
+          } else if (updated.status === 'generating') {
+            setPipelineStage('generating');
+          } else if (updated.transcript_status === 'processing' || updated.audio_processing_status === 'processing') {
+            setPipelineStage('transcribing');
+          }
+
+          // Auto-trigger generation when transcription completes
+          if (
+            updated.transcript_status === 'completed' &&
+            updated.status !== 'completed' &&
+            updated.status !== 'generating' &&
+            !hasTriggeredGeneration.current &&
+            updated.transcript?.text
+          ) {
+            hasTriggeredGeneration.current = true;
+            handleGenerateLaudo(updated.transcript.text);
+          }
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [laudoId]);
 
   const loadLaudo = async () => {
@@ -63,63 +130,34 @@ const NovoLaudo = () => {
       if (data.patient_data) {
         setPatientData(data.patient_data);
       }
+
+      // Set initial pipeline stage
+      if (data.status === 'completed') {
+        setPipelineStage('completed');
+      } else if (data.status === 'generating') {
+        setPipelineStage('generating');
+      } else if (data.status === 'error' || data.transcript_status === 'error') {
+        setPipelineStage('error');
+      } else if (data.transcript_status === 'processing' || data.audio_processing_status === 'processing') {
+        setPipelineStage('transcribing');
+      }
     } catch (error: any) {
       console.error('Error loading laudo:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar o laudo',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro', description: 'Não foi possível carregar o laudo', variant: 'destructive' });
     }
   };
 
-  const checkTranscriptionStatus = async () => {
-    if (!laudoId) return;
-
-    const { data } = await supabase
-      .from('laudos')
-      .select('transcript_status, transcript, audio_processing_status, status, source_audio_url')
-      .eq('id', laudoId)
-      .single();
-
-    if (data) {
-      setIsProcessing(data.transcript_status === 'processing' || data.audio_processing_status === 'processing');
-      
-      const transcriptData = data.transcript as any;
-      if (transcriptData?.text && transcriptData.text !== transcript) {
-        setTranscript(transcriptData.text);
-        
-        // Auto-generate laudo when transcription is ready and not already generated
-        if (
-          data.transcript_status === 'completed' && 
-          data.status !== 'completed' && 
-          !isGeneratingLaudo && 
-          !hasTriggeredGeneration.current
-        ) {
-          hasTriggeredGeneration.current = true;
-          handleGenerateLaudo(transcriptData.text);
-        }
-      }
-      
-      // Update laudo state with latest statuses
-      setLaudo(data);
-    }
-  };
-
-  const handleGenerateLaudo = async (transcriptText?: string) => {
-    if (!laudoId) return;
+  const handleGenerateLaudo = useCallback(async (transcriptText?: string) => {
+    if (!laudoId || isSubmitting) return;
     
     const textToUse = transcriptText || transcript;
     if (!textToUse) {
-      toast({
-        title: 'Atenção',
-        description: 'Aguarde a transcrição ser concluída',
-        variant: 'destructive',
-      });
+      toast({ title: 'Atenção', description: 'Aguarde a transcrição ser concluída', variant: 'destructive' });
       return;
     }
 
-    setIsGeneratingLaudo(true);
+    setIsSubmitting(true);
+    setPipelineStage('generating');
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -147,35 +185,22 @@ const NovoLaudo = () => {
       });
 
       if (error) throw error;
-
-      if (!hasShownSuccessToast) {
-        toast({
-          title: 'Laudo gerado!',
-          description: 'O laudo foi gerado com sucesso',
-        });
-        setHasShownSuccessToast(true);
-      }
-
-      await loadLaudo();
+      // Status updates come via Realtime - no need to manually reload
     } catch (error: any) {
       console.error('Error generating laudo:', error);
-      toast({
-        title: 'Erro',
-        description: error.message || 'Erro ao gerar laudo',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsGeneratingLaudo(false);
+      setPipelineStage('error');
+      setIsSubmitting(false);
+      toast({ title: 'Erro', description: error.message || 'Erro ao gerar laudo', variant: 'destructive' });
     }
-  };
+  }, [laudoId, isSubmitting, transcript, patientData, toast]);
 
   const handleTextGenerate = async (text: string) => {
-    if (!user) return;
+    if (!user || isSubmitting) return;
 
-    setIsGeneratingLaudo(true);
+    setIsSubmitting(true);
+    setPipelineStage('generating');
 
     try {
-      // Create a new laudo for text mode
       const { data: newLaudo, error: createError } = await supabase
         .from('laudos')
         .insert({
@@ -194,7 +219,6 @@ const NovoLaudo = () => {
       setLaudoId(newLaudo.id);
       setTranscript(text);
 
-      // Generate laudo
       const { error } = await supabase.functions.invoke('generate-laudo', {
         body: {
           patient: {
@@ -218,29 +242,21 @@ const NovoLaudo = () => {
 
       if (error) throw error;
 
-      toast({
-        title: 'Laudo gerado!',
-        description: 'O laudo foi gerado com sucesso',
-      });
-
-      // Navigate to the laudo
       navigate(`/novo-laudo?id=${newLaudo.id}`, { replace: true });
-      await loadLaudo();
     } catch (error: any) {
       console.error('Error generating laudo from text:', error);
-      toast({
-        title: 'Erro',
-        description: error.message || 'Erro ao gerar laudo',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsGeneratingLaudo(false);
+      setPipelineStage('error');
+      setIsSubmitting(false);
+      toast({ title: 'Erro', description: error.message || 'Erro ao gerar laudo', variant: 'destructive' });
     }
   };
 
   const handleAudioUploadComplete = async (url: string, path: string) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setPipelineStage('uploading');
+
     try {
-      // Create laudo
       const { data: newLaudo, error: createError } = await supabase
         .from('laudos')
         .insert({
@@ -257,13 +273,10 @@ const NovoLaudo = () => {
       if (createError) throw createError;
 
       setLaudoId(newLaudo.id);
+      setPipelineStage('transcribing');
 
-      toast({
-        title: "Processando áudio...",
-        description: "A transcrição e geração do laudo serão automáticas",
-      });
+      toast({ title: "Processando áudio...", description: "A transcrição e geração do laudo serão automáticas" });
 
-      // Start transcription
       const { data: initial } = await supabase.auth.getSession();
       let accessToken = initial?.session?.access_token;
       if (!accessToken) return;
@@ -286,22 +299,20 @@ const NovoLaudo = () => {
         },
       });
 
-      // Update URL
       navigate(`/novo-laudo?id=${newLaudo.id}`, { replace: true });
     } catch (error: any) {
       console.error('Error processing audio:', error);
-      toast({
-        title: 'Erro ao processar',
-        description: error.message || 'Tente novamente',
-        variant: 'destructive',
-      });
+      setPipelineStage('error');
+      setIsSubmitting(false);
+      toast({ title: 'Erro ao processar', description: error.message || 'Tente novamente', variant: 'destructive' });
     }
   };
 
   const retryTranscription = async () => {
-    if (!laudoId) return;
+    if (!laudoId || isSubmitting) return;
     try {
-      setIsProcessing(true);
+      setIsSubmitting(true);
+      setPipelineStage('transcribing');
       const { data: initial } = await supabase.auth.getSession();
       let accessToken = initial?.session?.access_token;
       if (!accessToken) throw new Error('Sessão expirada. Faça login novamente.');
@@ -320,21 +331,63 @@ const NovoLaudo = () => {
     } catch (err: any) {
       const status = err?.context?.status || err?.status;
       let description = err?.message || 'Falha ao reenviar transcrição';
-      if (status === 429) description = 'Limite de uso atingido. Aguarde alguns minutos ou verifique seus créditos.';
+      if (status === 429) description = 'Limite de uso atingido. Aguarde alguns minutos.';
       if (status === 402) description = 'Créditos insuficientes na API de transcrição.';
+      setPipelineStage('error');
+      setIsSubmitting(false);
       toast({ title: 'Erro', description, variant: 'destructive' });
-    } finally {
-      setIsProcessing(false);
     }
   };
 
   const handlePatientDataChange = async (data: any) => {
     setPatientData(data);
     
-    // If laudo exists and transcript is ready, auto-update
     if (laudoId && transcript && laudo?.status === 'completed') {
+      hasTriggeredGeneration.current = false;
+      setIsSubmitting(false);
       await handleGenerateLaudo();
     }
+  };
+
+  // Pipeline status indicator component
+  const PipelineStatus = () => {
+    if (pipelineStage === 'idle' || pipelineStage === 'completed') return null;
+
+    const stageConfig: Record<string, { icon: React.ReactNode; color: string }> = {
+      uploading: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-primary bg-primary/5' },
+      transcribing: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-primary bg-primary/5' },
+      generating: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-accent bg-accent/5' },
+      error: { icon: <AlertCircle className="w-5 h-5 text-destructive" />, color: 'border-destructive bg-destructive/5' },
+    };
+
+    const config = stageConfig[pipelineStage] || stageConfig.error;
+
+    return (
+      <Card className={`mb-6 border-2 ${config.color}`}>
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-4">
+            {config.icon}
+            <div className="flex-1">
+              <p className="font-medium">{STAGE_LABELS[pipelineStage]}</p>
+              {pipelineStage === 'transcribing' && (
+                <p className="text-sm text-muted-foreground">A transcrição e geração do laudo serão automáticas</p>
+              )}
+              {pipelineStage === 'generating' && (
+                <p className="text-sm text-muted-foreground">Analisando dados clínicos e gerando laudo estruturado...</p>
+              )}
+            </div>
+            {pipelineStage !== 'error' && (
+              <Badge variant="outline" className="animate-pulse">Em progresso</Badge>
+            )}
+          </div>
+          {pipelineStage === 'error' && (
+            <Button onClick={retryTranscription} className="mt-4" disabled={isSubmitting}>
+              Tentar novamente
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
   };
 
   // If no laudo exists yet, show the input mode selector
@@ -343,11 +396,7 @@ const NovoLaudo = () => {
       <div className="min-h-screen bg-gradient-subtle">
         <div className="container mx-auto px-4 py-8">
           <div className="mb-6">
-            <Button
-              variant="ghost"
-              onClick={() => navigate('/dashboard')}
-              className="mb-4"
-            >
+            <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-4">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Voltar ao Dashboard
             </Button>
@@ -359,11 +408,7 @@ const NovoLaudo = () => {
 
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1">
-              <PatientDataForm
-                initialData={patientData}
-                onDataChange={setPatientData}
-                autoSave={false}
-              />
+              <PatientDataForm initialData={patientData} onDataChange={setPatientData} autoSave={false} />
             </div>
 
             <div className="lg:col-span-2">
@@ -407,7 +452,7 @@ const NovoLaudo = () => {
                 <TabsContent value="text">
                   <TextInputMode 
                     onGenerate={handleTextGenerate}
-                    isGenerating={isGeneratingLaudo}
+                    isGenerating={isSubmitting}
                   />
                 </TabsContent>
               </Tabs>
@@ -422,11 +467,7 @@ const NovoLaudo = () => {
     <div className="min-h-screen bg-gradient-subtle">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/dashboard')}
-            className="mb-4"
-          >
+          <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-4">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar ao Dashboard
           </Button>
@@ -434,45 +475,11 @@ const NovoLaudo = () => {
             {laudo?.status === 'completed' ? 'Editar Laudo' : 'Novo Laudo com IA'}
           </h1>
           <p className="text-muted-foreground mt-2">
-            {isProcessing
-              ? 'Processando transcrição do áudio...'
-              : (laudo?.transcript_status === 'error' || laudo?.audio_processing_status === 'error')
-              ? 'Falha na transcrição do áudio'
-              : laudo?.status === 'completed'
-              ? 'Laudo gerado - edite os dados do paciente para atualizar'
-              : 'Preencha os dados e gere o laudo estruturado'
-            }
+            {STAGE_LABELS[pipelineStage]}
           </p>
         </div>
 
-        {isProcessing && (
-          <Card className="mb-6 border-primary">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <div>
-                  <p className="font-medium">Processando áudio...</p>
-                  <p className="text-sm text-muted-foreground">
-                    A transcrição e geração do laudo serão automáticas
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        {laudo && (laudo.transcript_status === 'error' || laudo.audio_processing_status === 'error') && (
-          <Card className="mb-6 border-destructive">
-            <CardContent className="pt-6">
-              <p className="font-medium text-destructive">Falha na transcrição do áudio.</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Limite de uso/ créditos da API pode ter sido atingido. Tente novamente mais tarde.
-              </p>
-              <Button onClick={retryTranscription} className="mt-4">
-                Tentar novamente
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        <PipelineStatus />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
@@ -494,17 +501,17 @@ const NovoLaudo = () => {
                   onChange={(e) => setTranscript(e.target.value)}
                   rows={10}
                   className="mt-2"
-                  placeholder={isProcessing ? "Aguardando transcrição..." : "Transcrição aparecerá aqui"}
-                  disabled={isProcessing}
+                  placeholder={pipelineStage === 'transcribing' ? "Transcrevendo..." : "Transcrição aparecerá aqui"}
+                  disabled={pipelineStage === 'transcribing'}
                 />
                 
-                {transcript && !isProcessing && laudo?.status !== 'completed' && (
+                {transcript && pipelineStage !== 'transcribing' && laudo?.status !== 'completed' && laudo?.status !== 'generating' && (
                   <Button
                     onClick={() => handleGenerateLaudo()}
-                    disabled={isGeneratingLaudo}
+                    disabled={isSubmitting}
                     className="w-full mt-4 whitespace-nowrap"
                   >
-                    {isGeneratingLaudo ? (
+                    {isSubmitting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Gerando...
@@ -549,8 +556,8 @@ const NovoLaudo = () => {
               <Card>
                 <CardContent className="py-12 text-center">
                   <p className="text-muted-foreground">
-                    {isProcessing 
-                      ? 'Aguarde a transcrição e geração automática do laudo...'
+                    {pipelineStage === 'transcribing' || pipelineStage === 'generating'
+                      ? 'Processando... Os resultados aparecerão automaticamente.'
                       : 'Preencha os dados do paciente e clique em "Gerar Laudo com IA"'
                     }
                   </p>

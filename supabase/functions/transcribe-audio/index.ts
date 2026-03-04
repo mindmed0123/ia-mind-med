@@ -7,34 +7,37 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Structured logger - never logs PHI/PII
+function log(correlationId: string, step: string, data?: Record<string, unknown>) {
+  const entry = { ts: new Date().toISOString(), fn: 'transcribe-audio', cid: correlationId, step, ...data };
+  console.log(JSON.stringify(entry));
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const correlationId = crypto.randomUUID();
   let currentLaudoId: string | null = null;
   let currentUserId: string | null = null;
   let currentAuthHeader: string | null = null;
 
   try {
-    console.log('transcribe-audio: Starting request');
+    log(correlationId, 'start');
     
     const authHeader = req.headers.get('Authorization');
     currentAuthHeader = authHeader;
-    console.log('transcribe-audio: Has auth header:', !!authHeader);
     
     if (!authHeader) {
-      console.error('transcribe-audio: Missing Authorization header');
       return new Response(JSON.stringify({ error: 'Não autorizado: header ausente' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Extract JWT from "Bearer <token>"
     const jwtMatch = authHeader.match(/^Bearer\s+(.+)$/);
     if (!jwtMatch) {
-      console.error('transcribe-audio: Invalid Authorization header format');
       return new Response(JSON.stringify({ error: 'Formato de autorização inválido' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -48,37 +51,65 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } }
     });
 
-    console.log('transcribe-audio: Getting user with JWT');
     const { data: { user }, error: userError } = await supabase.auth.getUser(jwt);
     
-    if (userError) {
-      console.error('transcribe-audio: Auth error:', userError);
-      return new Response(JSON.stringify({ error: 'Erro ao autenticar: ' + userError.message }), {
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: 'Usuário não autenticado' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    
-    if (!user) {
-      console.error('transcribe-audio: No user found');
-      return new Response(JSON.stringify({ error: 'Usuário não encontrado' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    console.log('transcribe-audio: User authenticated:', user.id);
 
     currentUserId = user.id;
+    log(correlationId, 'auth_ok', { uid: user.id.substring(0, 8) });
 
     const { audio_url, audio_path, laudo_id, mode = 'fast' } = await req.json();
-
     currentLaudoId = laudo_id;
 
     if ((!audio_url && !audio_path) || !laudo_id) {
       return new Response(JSON.stringify({ error: 'Forneça audio_path (preferido) ou audio_url e o laudo_id' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ===== IDEMPOTENCY CHECK =====
+    const { data: existingLaudo } = await supabase
+      .from('laudos')
+      .select('transcript_status')
+      .eq('id', laudo_id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (existingLaudo?.transcript_status === 'completed') {
+      log(correlationId, 'idempotent_skip', { laudo_id });
+      return new Response(JSON.stringify({
+        success: true,
+        idempotent: true,
+        message: 'Transcrição já concluída.',
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ===== RATE LIMITING =====
+    // Max 3 transcriptions per user per minute
+    const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+    const { count: recentCount } = await supabase
+      .from('laudos')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .in('audio_processing_status', ['processing', 'completed'])
+      .gte('updated_at', oneMinuteAgo);
+
+    if (recentCount !== null && recentCount >= 3) {
+      log(correlationId, 'rate_limited', { count: recentCount });
+      return new Response(JSON.stringify({
+        error: 'Limite de transcrições atingido. Aguarde 1 minuto.',
+        retry_after: 60,
+      }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' },
       });
     }
 
@@ -97,7 +128,7 @@ serve(async (req) => {
       throw new Error('OpenAI API key não configurada');
     }
 
-    // Baixar áudio (preferir storage path)
+    // Download audio
     let audioBlob: Blob;
     let fileName = 'audio.webm';
     let mimeType = 'audio/webm';
@@ -109,27 +140,19 @@ serve(async (req) => {
         .download(audio_path);
 
       if (downloadError || !blob) {
-        console.error('Erro ao baixar do storage:', downloadError);
         throw new Error('Falha ao baixar áudio do storage');
       }
 
       const ext = (audio_path.split('.').pop() || 'webm').toLowerCase();
       fileName = `audio.${ext}`;
       
-      // Map extensions to MIME types
       const mimeMap: Record<string, string> = {
-        'webm': 'audio/webm',
-        'mp3': 'audio/mpeg',
-        'wav': 'audio/wav',
-        'm4a': 'audio/mp4',
-        'ogg': 'audio/ogg',
-        'flac': 'audio/flac',
+        'webm': 'audio/webm', 'mp3': 'audio/mpeg', 'wav': 'audio/wav',
+        'm4a': 'audio/mp4', 'ogg': 'audio/ogg', 'flac': 'audio/flac',
       };
       mimeType = mimeMap[ext] || 'audio/webm';
-      
-      // Create new blob with correct MIME type
       audioBlob = new Blob([blob], { type: mimeType });
-      console.log(`Audio downloaded: ${fileName}, type: ${mimeType}`);
+      log(correlationId, 'audio_downloaded', { ext, size: blob.size });
     } else if (audio_url) {
       const audioResponse = await fetch(audio_url);
       if (!audioResponse.ok) {
@@ -137,8 +160,6 @@ serve(async (req) => {
       }
       const originalBlob = await audioResponse.blob();
 
-      // Infer extension and MIME type
-      const contentType = audioResponse.headers.get('content-type') || '';
       let ext = 'webm';
       if (audio_url.match(/\.(mp3)(\?.*)?$/i)) ext = 'mp3';
       else if (audio_url.match(/\.(wav)(\?.*)?$/i)) ext = 'wav';
@@ -146,17 +167,12 @@ serve(async (req) => {
       else if (audio_url.match(/\.(ogg|oga)(\?.*)?$/i)) ext = 'ogg';
       else if (audio_url.match(/\.(flac)(\?.*)?$/i)) ext = 'flac';
       else if (audio_url.match(/\.(mp4)(\?.*)?$/i)) ext = 'mp4';
-      else if (audio_url.match(/\.(webm)(\?.*)?$/i)) ext = 'webm';
 
       const mimeMap: Record<string, string> = {
-        'webm': 'audio/webm',
-        'mp3': 'audio/mpeg',
-        'wav': 'audio/wav',
-        'm4a': 'audio/mp4',
-        'ogg': 'audio/ogg',
-        'flac': 'audio/flac',
-        'mp4': 'audio/mp4',
+        'webm': 'audio/webm', 'mp3': 'audio/mpeg', 'wav': 'audio/wav',
+        'm4a': 'audio/mp4', 'ogg': 'audio/ogg', 'flac': 'audio/flac', 'mp4': 'audio/mp4',
       };
+      const contentType = audioResponse.headers.get('content-type') || '';
       mimeType = contentType && contentType.startsWith('audio/') ? contentType : (mimeMap[ext] || 'audio/webm');
       fileName = `audio.${ext}`;
 
@@ -168,14 +184,13 @@ serve(async (req) => {
         });
       }
 
-      // Normalize blob with correct MIME
       audioBlob = new Blob([originalBlob], { type: mimeType });
-      console.log(`Audio fetched from URL: ${fileName}, type: ${mimeType}`);
+      log(correlationId, 'audio_fetched_url', { ext, size: originalBlob.size });
     } else {
       throw new Error('Nenhuma fonte de áudio fornecida');
     }
 
-    // Prepare FormData for Whisper API
+    // Whisper API
     const formData = new FormData();
     formData.append('file', audioBlob, fileName);
     formData.append('model', 'whisper-1');
@@ -191,9 +206,7 @@ serve(async (req) => {
     try {
       transcribeResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        },
+        headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` },
         body: formData,
         signal: ac.signal,
       });
@@ -202,17 +215,15 @@ serve(async (req) => {
     }
 
     const latencyMs = Date.now() - startTime;
+    log(correlationId, 'whisper_response', { status: transcribeResponse.status, latency_ms: latencyMs });
 
     if (!transcribeResponse.ok) {
       const errorText = await transcribeResponse.text();
-      console.error('OpenAI Whisper transcription error:', transcribeResponse.status, errorText);
+      log(correlationId, 'whisper_error', { status: transcribeResponse.status });
       
       await supabase
         .from('laudos')
-        .update({ 
-          transcript_status: 'error',
-          audio_processing_status: 'error' 
-        })
+        .update({ transcript_status: 'error', audio_processing_status: 'error' })
         .eq('id', laudo_id)
         .eq('user_id', user.id);
 
@@ -227,9 +238,7 @@ serve(async (req) => {
         } else if (err?.message) {
           message = err.message;
         }
-      } catch (_) {
-        // ignore parse errors
-      }
+      } catch (_) { /* ignore parse errors */ }
 
       return new Response(JSON.stringify({ error: message, provider_status: transcribeResponse.status }), {
         status: clientStatus,
@@ -244,7 +253,6 @@ serve(async (req) => {
       throw new Error('Transcrição vazia retornada pela API');
     }
 
-    // Use Whisper's segments if available
     const segments = (transcriptionData.segments || []).map((seg: any) => ({
       text: seg.text,
       start: seg.start,
@@ -259,7 +267,6 @@ serve(async (req) => {
       segments,
     };
 
-    // Update laudo with transcription
     const { error: updateError } = await supabase
       .from('laudos')
       .update({
@@ -273,11 +280,10 @@ serve(async (req) => {
       .eq('user_id', user.id);
 
     if (updateError) {
-      console.error('Erro ao atualizar laudo com transcrição:', updateError);
       throw new Error('Erro ao salvar transcrição');
     }
 
-    console.log('Transcrição concluída:', {
+    log(correlationId, 'complete', {
       laudo_id,
       duration: transcriptionData.duration,
       segments: segments.length,
@@ -291,15 +297,19 @@ serve(async (req) => {
         duration: transcriptionData.duration,
         segments: segments.length,
         latency_ms: latencyMs,
+        correlation_id: correlationId,
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Erro na função transcribe-audio:', error);
+    log(correlationId, 'error', {
+      message: error instanceof Error ? error.message : 'unknown',
+      laudo_id: currentLaudoId,
+    });
 
-    // Garantir que o laudo não fique travado em "processing"
+    // Ensure laudo doesn't stay stuck in "processing"
     try {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
       const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -318,11 +328,12 @@ serve(async (req) => {
           .eq('user_id', currentUserId);
       }
     } catch (updateErr) {
-      console.error('Falha ao marcar laudo como erro após exceção:', updateErr);
+      log(correlationId, 'error_status_update_fail');
     }
 
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      correlation_id: correlationId,
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

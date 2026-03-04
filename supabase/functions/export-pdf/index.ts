@@ -39,7 +39,26 @@ Deno.serve(async (req) => {
     const { laudo_id } = await req.json();
     if (!laudo_id) throw new Error('ID do laudo não fornecido');
 
-    console.log('Exportando PDF para laudo:', laudo_id);
+    // ===== RATE LIMITING =====
+    const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+    const { count: recentExports } = await supabase
+      .from('laudos')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .not('pdf_hash', 'is', null)
+      .gte('updated_at', oneMinuteAgo);
+
+    if (recentExports !== null && recentExports >= 10) {
+      return new Response(JSON.stringify({
+        error: 'Limite de exportações atingido. Aguarde 1 minuto.',
+        retry_after: 60,
+      }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' },
+      });
+    }
+
+    console.log('[export-pdf] Starting export:', { laudo_id, uid: user.id.substring(0, 8) });
 
     // Buscar laudo
     const { data: laudo, error: laudoError } = await supabase
