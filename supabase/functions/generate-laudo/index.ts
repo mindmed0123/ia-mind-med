@@ -334,7 +334,7 @@ serve(async (req) => {
     const { error: updateError } = await supabase
       .from('laudos')
       .update({
-        patient_data: laudoData.dados_paciente || patient,
+        patient_data: laudoData.dados_paciente_extraidos || laudoData.dados_paciente || patient,
         clinical_context: { specialty, chief_complaint, vitals, meds, allergies, exam_findings, contexto_clinico, historico },
         summary: { resumo_clinico: resumo },
         hypotheses: hipoteses,
