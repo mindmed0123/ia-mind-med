@@ -336,6 +336,7 @@ serve(async (req) => {
       menos_provavel: laudoData.hipotese_diferencial || {},
     };
     const condutas = laudoData.condutas_recomendadas || laudoData.condutas || [];
+    const prescricoesSugeridas = laudoData.prescricoes_sugeridas || [];
     const exames = laudoData.exames_sugeridos || laudoData.exames || [];
     const redFlags = laudoData.red_flags || [];
     const cid10 = laudoData.cid10_sugeridos || laudoData.cid10 || [];
