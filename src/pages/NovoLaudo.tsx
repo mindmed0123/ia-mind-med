@@ -351,18 +351,16 @@ const NovoLaudo = () => {
 
   // Pipeline status indicator component
   const PipelineStatus = () => {
-    if (pipelineStage === 'idle') return null;
+    if (pipelineStage === 'idle' || pipelineStage === 'completed') return null;
 
-    const stageConfig: Record<PipelineStage, { icon: React.ReactNode; color: string }> = {
-      idle: { icon: null, color: '' },
-      uploading: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-blue-500 bg-blue-50 dark:bg-blue-950' },
-      transcribing: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-amber-500 bg-amber-50 dark:bg-amber-950' },
-      generating: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-purple-500 bg-purple-50 dark:bg-purple-950' },
-      completed: { icon: <CheckCircle className="w-5 h-5 text-green-600" />, color: 'border-green-500 bg-green-50 dark:bg-green-950' },
-      error: { icon: <AlertCircle className="w-5 h-5 text-red-600" />, color: 'border-destructive bg-red-50 dark:bg-red-950' },
+    const stageConfig: Record<string, { icon: React.ReactNode; color: string }> = {
+      uploading: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-primary bg-primary/5' },
+      transcribing: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-primary bg-primary/5' },
+      generating: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-accent bg-accent/5' },
+      error: { icon: <AlertCircle className="w-5 h-5 text-destructive" />, color: 'border-destructive bg-destructive/5' },
     };
 
-    const config = stageConfig[pipelineStage];
+    const config = stageConfig[pipelineStage] || stageConfig.error;
 
     return (
       <Card className={`mb-6 border-2 ${config.color}`}>
