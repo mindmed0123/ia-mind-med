@@ -8,38 +8,35 @@ const corsHeaders = {
 };
 
 // Structured logger - never logs PHI/PII
-function log(correlationId: string, step: string, data?: Record<string, unknown>) {
-  const entry = { ts: new Date().toISOString(), cid: correlationId, step, ...data };
-  console.log(JSON.stringify(entry));
+function log(cid: string, step: string, data?: Record<string, unknown>) {
+  console.log(JSON.stringify({ ts: new Date().toISOString(), cid, step, ...data }));
 }
+
+function now() { return Date.now(); }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const correlationId = crypto.randomUUID();
+  const cid = crypto.randomUUID();
+  const t0 = now();
   let currentLaudoId: string | null = null;
 
   try {
-    log(correlationId, 'start');
-
+    // ===== AUTH =====
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Não autorizado' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
     const jwtMatch = authHeader.match(/^Bearer\s+(.+)$/);
     if (!jwtMatch) {
       return new Response(JSON.stringify({ error: 'Formato de autorização inválido' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    const jwt = jwtMatch[1];
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -47,36 +44,25 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } }
     });
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser(jwt);
+    const { data: { user }, error: userError } = await supabase.auth.getUser(jwtMatch[1]);
     if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Usuário não autenticado' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    const t1 = now();
+    log(cid, 'auth_ok', { uid: user.id.substring(0, 8), ms: t1 - t0 });
 
-    log(correlationId, 'auth_ok', { uid: user.id.substring(0, 8) });
-
+    // ===== PARSE BODY =====
     const {
-      patient,
-      specialty,
-      chief_complaint,
-      transcript,
-      vitals,
-      meds,
-      allergies,
-      exam_findings,
-      contexto_clinico,
-      historico,
-      hipoteses_previas,
-      laudo_id,
-      mode = 'fast'
+      patient, specialty, chief_complaint, transcript, vitals, meds, allergies,
+      exam_findings, contexto_clinico, historico, hipoteses_previas,
+      laudo_id, mode = 'fast'
     } = await req.json();
 
     currentLaudoId = laudo_id;
 
-    // ===== IDEMPOTENCY CHECK =====
-    // Prevent double-submit: if laudo is already completed or being generated, skip
+    // ===== IDEMPOTENCY =====
     const { data: existingLaudo } = await supabase
       .from('laudos')
       .select('status, updated_at')
@@ -85,18 +71,19 @@ serve(async (req) => {
       .single();
 
     if (existingLaudo?.status === 'completed') {
-      log(correlationId, 'idempotent_skip', { laudo_id, status: 'completed' });
-      return new Response(JSON.stringify({
-        success: true,
-        idempotent: true,
-        message: 'Laudo já foi gerado anteriormente.',
-      }), {
+      log(cid, 'idempotent_skip', { laudo_id });
+      return new Response(JSON.stringify({ success: true, idempotent: true, message: 'Laudo já foi gerado.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (existingLaudo?.status === 'generating') {
+      log(cid, 'already_generating', { laudo_id });
+      return new Response(JSON.stringify({ success: true, idempotent: true, message: 'Laudo já está sendo gerado.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     // ===== RATE LIMITING =====
-    // Max 5 laudo generations per user per minute
     const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
     const { count: recentCount } = await supabase
       .from('laudos')
@@ -106,103 +93,80 @@ serve(async (req) => {
       .gte('updated_at', oneMinuteAgo);
 
     if (recentCount !== null && recentCount >= 5) {
-      log(correlationId, 'rate_limited', { uid: user.id.substring(0, 8), count: recentCount });
+      log(cid, 'rate_limited', { count: recentCount });
       return new Response(JSON.stringify({
-        error: 'Limite de requisições atingido. Aguarde 1 minuto antes de gerar outro laudo.',
-        retry_after: 60,
+        error: 'Limite atingido. Aguarde 1 minuto.', retry_after: 60,
       }), {
-        status: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' },
+        status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' },
       });
     }
 
-    log(correlationId, 'rate_check_ok', { recent: recentCount });
+    const t2 = now();
+    log(cid, 'checks_ok', { ms: t2 - t0 });
 
-    const systemPrompt = `Você é um assistente clínico em PT-BR. Gere **laudos estruturados** sem diagnóstico definitivo, explicitando incertezas. Sempre produza **duas hipóteses**: **Mais provável** e **Menos provável (diferencial)**. Para cada hipótese, liste: **racional** (com base na transcrição e dados informados), **achados de suporte**, **achados que contrariam**, **fatores de risco**, **probabilidade (Alta/Média/Baixa)** e **próximos passos** (condutas e exames). Liste **red flags**, **lacunas de dados** (perguntas que faltam) e **CID‑10 sugeridos** (indicativos). Se algo não estiver na transcrição/dados, marque **"não informado"** (não invente). Inclua **disclaimer**: "Conteúdo gerado por IA para apoio; não substitui avaliação clínica presencial e julgamento médico." Siga **LGPD by design**: restrinja identificadores a iniciais/idade/sexo; não registre dados sensíveis desnecessários; minimize. Evite alucinações.
-
-IMPORTANTE: Ao final do laudo, inclua uma seção de **Embasamento Teórico** com:
-- Referências a diretrizes médicas relevantes (Ministério da Saúde, sociedades médicas brasileiras)
-- Fundamentação científica para as hipóteses diagnósticas
-- Base teórica para as condutas recomendadas
-- Se aplicável, mencione protocolos clínicos estabelecidos`;
-
-    const userPrompt = `
-**DADOS DO PACIENTE:**
-- Iniciais: ${patient?.iniciais || 'N/I'}
-- Sexo: ${patient?.sexo || 'N/I'}
-- Idade: ${patient?.idade || 'N/I'}
-
-**ESPECIALIDADE:** ${specialty || 'Não especificada'}
-
-**QUEIXA PRINCIPAL:** ${chief_complaint || 'Não informada'}
-
-**TRANSCRIÇÃO DA CONSULTA:**
-${transcript || 'Não fornecida'}
-
-**SINAIS VITAIS:**
-${vitals ? Object.entries(vitals).map(([k, v]) => `- ${k}: ${v}`).join('\n') : 'Não informados'}
-
-**MEDICAÇÕES EM USO:**
-${meds?.length ? meds.map((m: string) => `- ${m}`).join('\n') : 'Nenhuma informada'}
-
-**ALERGIAS:**
-${allergies?.length ? allergies.map((a: string) => `- ${a}`).join('\n') : 'Nenhuma informada'}
-
-**ACHADOS DO EXAME FÍSICO:**
-${exam_findings || 'Não informados'}
-
-**CONTEXTO CLÍNICO:**
-${contexto_clinico || 'Não informado'}
-
-**HISTÓRICO:**
-${historico || 'Não informado'}
-
-**HIPÓTESES PRÉVIAS:**
-${hipoteses_previas?.length ? hipoteses_previas.map((h: string) => `- ${h}`).join('\n') : 'Nenhuma informada'}
-
-**INSTRUÇÕES DE FORMATAÇÃO:**
-Retorne um JSON estruturado com os seguintes campos:
-1. dados_paciente: object - {iniciais, sexo, idade, especialidade}
-2. resumo_clinico: string - Resumo objetivo do caso
-3. hipoteses: object com:
-   - mais_provavel: {descricao, probabilidade, racional, achados_suporte[], achados_contra[], fatores_risco[], proximos_passos[], trechos_timestamp[]}
-   - menos_provavel: {descricao, probabilidade, racional, achados_suporte[], achados_contra[], fatores_risco[], proximos_passos[], trechos_timestamp[]}
-4. condutas_recomendadas: array - Lista de condutas recomendadas
-5. exames_sugeridos: array - Lista de exames sugeridos
-6. red_flags: array - Sinais de alerta importantes
-7. lacunas_dados: array - Perguntas/dados que faltam
-8. cid10_sugeridos: array - Códigos CID-10 sugeridos
-9. texto_laudo_md: string - Laudo completo em Markdown (incluir seção de Embasamento Teórico ao final)
-10. texto_paciente_md: string - Resumo acessível ao paciente
-11. avisos_legais: string - Disclaimer padrão
-12. referencias: array - Referências e diretrizes utilizadas
-13. embasamento_teorico: object - {diretrizes: string[], fundamentacao: string, protocolos: string[]}
-
-IMPORTANTE: 
-- Retorne APENAS o JSON, sem texto adicional antes ou depois.
-- A seção embasamento_teorico deve conter fundamentação científica real baseada em diretrizes médicas brasileiras.
-- Inclua o embasamento teórico também no texto_laudo_md como última seção.
-`;
-
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!lovableApiKey) {
-      throw new Error('Lovable AI não configurada');
-    }
-
-    const startTime = Date.now();
-    let modelUsed = 'google/gemini-2.5-flash';
-
-    // Mark laudo as generating to prevent double-submit
+    // ===== CLAIM GENERATION (atomic) =====
     await supabase
       .from('laudos')
       .update({ status: 'generating', updated_at: new Date().toISOString() })
       .eq('id', laudo_id)
       .eq('user_id', user.id);
 
-    log(correlationId, 'ai_request_start', { model: modelUsed, laudo_id });
+    // ===== TRUNCATE TRANSCRIPT (perf optimization) =====
+    const transcriptText = typeof transcript === 'string' ? transcript : transcript?.text || '';
+    const MAX_TRANSCRIPT_CHARS = 4000;
+    const truncatedTranscript = transcriptText.length > MAX_TRANSCRIPT_CHARS
+      ? transcriptText.substring(0, MAX_TRANSCRIPT_CHARS) + '\n[...texto truncado por limite de caracteres]'
+      : transcriptText;
 
+    // ===== BUILD PROMPT (optimized for speed) =====
+    const isFast = mode === 'fast';
+    
+    const systemPrompt = `Você é um assistente clínico em PT-BR. Gere laudos estruturados sem diagnóstico definitivo. Produza DUAS hipóteses: mais provável e menos provável (diferencial). Para cada: racional, achados de suporte, achados contra, fatores de risco, probabilidade (Alta/Média/Baixa) e próximos passos. Liste red flags, lacunas de dados e CID-10 sugeridos. Se algo não constar, marque "não informado". Inclua disclaimer: "Conteúdo gerado por IA para apoio; não substitui avaliação clínica." LGPD: use apenas iniciais/idade/sexo.${isFast ? '' : ' Ao final inclua Embasamento Teórico com referências a diretrizes médicas brasileiras (máximo 300 palavras).'}
+
+FORMATO: Retorne APENAS JSON válido (sem markdown fences). Campos:
+1. dados_paciente: {iniciais, sexo, idade, especialidade}
+2. resumo_clinico: string (máximo 150 palavras)
+3. hipoteses: {mais_provavel: {descricao, probabilidade, racional, achados_suporte[], achados_contra[], fatores_risco[], proximos_passos[]}, menos_provavel: {idem}}
+4. condutas_recomendadas: string[] (máximo 8 itens)
+5. exames_sugeridos: string[] (máximo 6 itens)
+6. red_flags: string[] (máximo 5 itens)
+7. lacunas_dados: string[] (máximo 5 itens)
+8. cid10_sugeridos: string[] (máximo 4 itens)
+9. texto_laudo_md: string (laudo em Markdown, máximo ${isFast ? '600' : '800'} palavras)
+10. texto_paciente_md: string (resumo acessível, máximo 120 palavras)
+11. avisos_legais: string
+${isFast ? '' : '12. embasamento_teorico: {diretrizes: string[], fundamentacao: string, protocolos: string[]} (máximo 300 palavras total)'}
+
+CRÍTICO: Seja conciso. Retorne APENAS JSON válido.`;
+
+    const userPrompt = `PACIENTE: ${patient?.iniciais || 'N/I'}, ${patient?.sexo || 'N/I'}, ${patient?.idade || 'N/I'} anos
+ESPECIALIDADE: ${specialty || 'N/E'}
+QUEIXA: ${chief_complaint || 'N/I'}
+TRANSCRIÇÃO: ${truncatedTranscript || 'Não fornecida'}
+SINAIS VITAIS: ${vitals ? Object.entries(vitals).map(([k, v]) => `${k}:${v}`).join(', ') : 'N/I'}
+MEDICAÇÕES: ${meds?.length ? meds.join(', ') : 'N/I'}
+ALERGIAS: ${allergies?.length ? allergies.join(', ') : 'N/I'}
+EXAME FÍSICO: ${exam_findings || 'N/I'}
+CONTEXTO: ${contexto_clinico || 'N/I'}
+HISTÓRICO: ${historico || 'N/I'}
+HIPÓTESES PRÉVIAS: ${hipoteses_previas?.length ? hipoteses_previas.join(', ') : 'N/I'}`;
+
+    const promptChars = systemPrompt.length + userPrompt.length;
+    const maxTokens = isFast ? 4000 : 6000;
+    const modelUsed = 'google/gemini-2.5-flash';
+
+    log(cid, 'llm_start', {
+      laudo_id, model: modelUsed, mode, prompt_chars: promptChars,
+      transcript_chars: transcriptText.length, max_tokens: maxTokens,
+    });
+
+    // ===== LLM CALL =====
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) throw new Error('Lovable AI não configurada');
+
+    const t4 = now();
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 180000);
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout (was 180s)
 
     let response;
     try {
@@ -213,114 +177,93 @@ IMPORTANTE:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: modelUsed,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
           ],
-          max_tokens: 16000
+          max_tokens: maxTokens,
+          temperature: 0.3,
         }),
         signal: controller.signal,
       });
     } catch (fetchError: any) {
       clearTimeout(timeoutId);
       if (fetchError.name === 'AbortError') {
-        log(correlationId, 'timeout', { after_ms: 180000 });
-        throw new Error('Tempo limite de geração excedido. Tente novamente.');
+        log(cid, 'timeout', { after_ms: 60000 });
+        throw new Error('Tempo limite excedido (60s). Tente novamente.');
       }
       throw fetchError;
     } finally {
       clearTimeout(timeoutId);
     }
 
-    const latencyMs = Date.now() - startTime;
-    log(correlationId, 'ai_response', { status: response.status, latency_ms: latencyMs });
+    const t5 = now();
+    const llmLatency = t5 - t4;
 
     if (!response.ok) {
-      const errorText = await response.text();
-      log(correlationId, 'ai_error', { status: response.status });
-      
+      log(cid, 'llm_error', { status: response.status, llm_ms: llmLatency });
+      await response.text(); // consume body
       if (response.status === 429) {
-        return new Response(JSON.stringify({ 
-          error: 'Limite de requisições atingido. Tente novamente em alguns minutos.' 
-        }), {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        return new Response(JSON.stringify({ error: 'Limite de requisições atingido. Tente em alguns minutos.' }), {
+          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      
       if (response.status === 402) {
-        return new Response(JSON.stringify({ 
-          error: 'Créditos insuficientes. Entre em contato com o suporte.' 
-        }), {
-          status: 402,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        return new Response(JSON.stringify({ error: 'Créditos insuficientes.' }), {
+          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-
-      throw new Error(`Erro na geração do laudo: ${response.status}`);
+      throw new Error(`Erro na IA: ${response.status}`);
     }
 
     const data = await response.json();
     let content = data.choices?.[0]?.message?.content;
-    let usage = data.usage;
-    let finishReason = data.choices?.[0]?.finish_reason;
+    const usage = data.usage;
+    const finishReason = data.choices?.[0]?.finish_reason;
 
-    log(correlationId, 'ai_content_received', { 
-      tokens: usage?.total_tokens, 
-      finish_reason: finishReason,
-      content_length: content?.length 
+    log(cid, 'llm_done', {
+      llm_ms: llmLatency, tokens: usage?.total_tokens,
+      finish_reason: finishReason, content_len: content?.length,
     });
 
-    if (!content || finishReason === 'length') {
-      log(correlationId, 'fallback_start', { reason: !content ? 'empty' : 'length_capped' });
-      const fallbackResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${lovableApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash-lite',
-          messages: [
-            { role: 'system', content: systemPrompt + ' Seja conciso. Limite texto_laudo_md a 700 palavras e texto_paciente_md a 150 palavras. Retorne APENAS JSON válido.' },
-            { role: 'user', content: userPrompt }
-          ],
-          max_tokens: 8000
-        }),
-      });
-
-      if (fallbackResp.ok) {
-        const fallbackData = await fallbackResp.json();
-        content = fallbackData.choices?.[0]?.message?.content;
-        usage = fallbackData.usage;
-        finishReason = fallbackData.choices?.[0]?.finish_reason;
-        modelUsed = 'google/gemini-2.5-flash-lite';
-        log(correlationId, 'fallback_ok', { model: modelUsed });
-      } else {
-        const fbErr = await fallbackResp.text();
-        log(correlationId, 'fallback_error', { status: fallbackResp.status });
-      }
-    }
-
     if (!content) {
-      log(correlationId, 'empty_after_fallback');
-      throw new Error('Resposta vazia da IA. Verifique se a API key está configurada corretamente.');
+      throw new Error('Resposta vazia da IA.');
     }
 
-    // Parse JSON from AI response
+    // ===== PARSE JSON (robust) =====
     let laudoData;
+    const t6 = now();
+
     try {
-      let cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      cleanContent = cleanContent.replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F]/g, '');
-      laudoData = JSON.parse(cleanContent);
-      log(correlationId, 'parse_ok');
-    } catch (parseError) {
-      log(correlationId, 'parse_error', { content_length: content?.length });
+      // Strip markdown fences and control chars
+      let clean = content
+        .replace(/^```(?:json)?\s*/gm, '')
+        .replace(/```\s*$/gm, '')
+        .trim();
+      clean = clean.replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F]/g, '');
       
-      // Recovery attempt
-      log(correlationId, 'recovery_start');
-      const recoveryResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      // Handle truncated JSON from finish_reason=length
+      if (finishReason === 'length' && !clean.endsWith('}')) {
+        // Try to close the JSON
+        const openBraces = (clean.match(/{/g) || []).length;
+        const closeBraces = (clean.match(/}/g) || []).length;
+        const missing = openBraces - closeBraces;
+        if (missing > 0) {
+          // Close any open strings/arrays
+          if (clean.match(/:\s*"[^"]*$/)) clean += '"';
+          if (clean.match(/\[[^\]]*$/)) clean += ']';
+          clean += '}'.repeat(missing);
+        }
+      }
+      
+      laudoData = JSON.parse(clean);
+      log(cid, 'parse_ok', { ms: now() - t6 });
+    } catch (parseError) {
+      log(cid, 'parse_fail', { content_len: content?.length, finish_reason: finishReason });
+      
+      // Recovery: ask LLM to fix JSON (short prompt, cheap)
+      const fixResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${lovableApiKey}`,
@@ -329,56 +272,48 @@ IMPORTANTE:
         body: JSON.stringify({
           model: 'google/gemini-2.5-flash-lite',
           messages: [
-            { role: 'system', content: systemPrompt + ' CRÍTICO: Seja MUITO conciso. Máximo 500 palavras em texto_laudo_md. Retorne APENAS JSON válido.' },
-            { role: 'user', content: userPrompt }
+            { role: 'system', content: 'Corrija o JSON abaixo para que seja válido. Retorne APENAS o JSON corrigido, sem explicações.' },
+            { role: 'user', content: content.substring(0, 8000) }
           ],
-          max_tokens: 6000
+          max_tokens: 4000,
+          temperature: 0.1,
         }),
       });
-      
-      if (recoveryResp.ok) {
-        const recoveryData = await recoveryResp.json();
-        const recoveryContent = recoveryData.choices?.[0]?.message?.content;
-        if (recoveryContent) {
-          let cleanRecovery = recoveryContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-          cleanRecovery = cleanRecovery.replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+
+      if (fixResp.ok) {
+        const fixData = await fixResp.json();
+        const fixContent = fixData.choices?.[0]?.message?.content;
+        if (fixContent) {
+          let cleanFix = fixContent.replace(/^```(?:json)?\s*/gm, '').replace(/```\s*$/gm, '').trim();
+          cleanFix = cleanFix.replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F]/g, '');
           try {
-            laudoData = JSON.parse(cleanRecovery);
-            modelUsed = 'google/gemini-2.5-flash-lite (recovery)';
-            log(correlationId, 'recovery_ok');
-          } catch (retryError) {
-            log(correlationId, 'recovery_parse_fail');
-            throw new Error('Formato de resposta inválido da IA após tentativa de recuperação');
+            laudoData = JSON.parse(cleanFix);
+            log(cid, 'fix_parse_ok');
+          } catch {
+            log(cid, 'fix_parse_fail');
+            throw new Error('Formato de resposta inválido da IA. Tente novamente.');
           }
         } else {
-          throw new Error('Resposta vazia na tentativa de recuperação');
+          throw new Error('Resposta vazia na recuperação.');
         }
       } else {
-        throw new Error('Formato de resposta inválido da IA e falha na recuperação');
+        await fixResp.text(); // consume
+        throw new Error('Falha na recuperação do JSON.');
       }
     }
 
-    // Add legal disclaimer if not present
+    // ===== DEFAULTS =====
     if (!laudoData.avisos_legais) {
-      laudoData.avisos_legais = 'Este conteúdo foi gerado por inteligência artificial como ferramenta de apoio à decisão clínica. Não substitui o julgamento clínico profissional, a avaliação presencial do paciente ou exames complementares. O médico assistente é o único responsável pelas decisões diagnósticas e terapêuticas.';
+      laudoData.avisos_legais = 'Conteúdo gerado por IA para apoio à decisão clínica. Não substitui julgamento médico profissional.';
     }
 
-    // Update laudo in database
+    // ===== DB UPDATE =====
+    const t7 = now();
     const { error: updateError } = await supabase
       .from('laudos')
       .update({
         patient_data: laudoData.dados_paciente || patient,
-        clinical_context: {
-          specialty,
-          chief_complaint,
-          vitals,
-          meds,
-          allergies,
-          exam_findings,
-          contexto_clinico,
-          historico,
-          hipoteses_previas,
-        },
+        clinical_context: { specialty, chief_complaint, vitals, meds, allergies, exam_findings, contexto_clinico, historico, hipoteses_previas },
         summary: { resumo_clinico: laudoData.resumo_clinico },
         hypotheses: laudoData.hipoteses,
         conducts: laudoData.condutas_recomendadas,
@@ -393,12 +328,14 @@ IMPORTANTE:
           prompt_tokens: usage?.prompt_tokens,
           completion_tokens: usage?.completion_tokens,
           total_tokens: usage?.total_tokens,
-          latency_ms: latencyMs,
+          latency_ms: llmLatency,
+          latency_total_ms: now() - t0,
           finish_reason: finishReason,
-          correlation_id: correlationId,
+          correlation_id: cid,
+          mode,
         },
         generation_mode: mode,
-        last_update_type: mode === 'delta' ? 'patient_data' : 'complete',
+        last_update_type: 'complete',
         status: 'completed',
         updated_at: new Date().toISOString(),
       })
@@ -406,62 +343,55 @@ IMPORTANTE:
       .eq('user_id', user.id);
 
     if (updateError) {
-      log(correlationId, 'db_update_error', { error: updateError.message });
-      throw new Error('Erro ao salvar laudo no banco de dados');
+      log(cid, 'db_error', { error: updateError.message });
+      throw new Error('Erro ao salvar laudo.');
     }
 
-    log(correlationId, 'complete', {
-      laudo_id,
-      model: modelUsed,
+    const t8 = now();
+    log(cid, 'complete', {
+      laudo_id, model: modelUsed, mode,
       tokens: usage?.total_tokens,
-      latency_ms: latencyMs,
+      llm_ms: llmLatency,
+      total_ms: t8 - t0,
+      t_auth: t1 - t0,
+      t_checks: t2 - t1,
+      t_llm: llmLatency,
+      t_parse: t7 - t5,
+      t_db: t8 - t7,
     });
 
     return new Response(JSON.stringify({
       success: true,
       laudo: laudoData,
       metadata: {
-        model: modelUsed,
-        usage,
-        latency_ms: latencyMs,
-        finish_reason: finishReason,
-        correlation_id: correlationId,
+        model: modelUsed, mode, usage,
+        latency_ms: t8 - t0, llm_ms: llmLatency,
+        finish_reason: finishReason, correlation_id: cid,
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    log(correlationId, 'error', { 
+    log(cid, 'error', {
       message: error instanceof Error ? error.message : 'unknown',
-      laudo_id: currentLaudoId,
+      laudo_id: currentLaudoId, total_ms: now() - t0,
     });
-    
-    // Update laudo status to error
+
+    // Mark laudo as error
     try {
       const authHeader = req.headers.get('Authorization');
       if (authHeader && currentLaudoId) {
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-        const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-        const supabase = createClient(supabaseUrl, supabaseKey, {
+        const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
           global: { headers: { Authorization: authHeader } }
         });
-        
-        await supabase
-          .from('laudos')
-          .update({ 
-            status: 'error',
-            updated_at: new Date().toISOString() 
-          })
-          .eq('id', currentLaudoId);
+        await supabase.from('laudos').update({ status: 'error', updated_at: new Date().toISOString() }).eq('id', currentLaudoId);
       }
-    } catch (updateError) {
-      log(correlationId, 'error_status_update_fail');
-    }
-    
-    return new Response(JSON.stringify({ 
+    } catch { /* best effort */ }
+
+    return new Response(JSON.stringify({
       error: error instanceof Error ? error.message : 'Erro desconhecido',
-      correlation_id: correlationId,
+      correlation_id: cid,
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
