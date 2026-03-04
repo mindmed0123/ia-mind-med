@@ -355,6 +355,7 @@ serve(async (req) => {
         summary: { resumo_clinico: resumo },
         hypotheses: hipoteses,
         conducts: condutas,
+        sections: { ...(laudoData.sections || {}), prescricoes_sugeridas: prescricoesSugeridas },
         complementary_exams: exames,
         red_flags: redFlags,
         cid10_codes: cid10,
