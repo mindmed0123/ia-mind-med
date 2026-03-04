@@ -22,6 +22,26 @@ const LAUDO_TOOL = {
       type: "object",
       properties: {
         resumo_clinico: { type: "string", description: "Resumo clínico em até 120 palavras" },
+        dados_paciente_extraidos: {
+          type: "object",
+          description: "Dados do paciente extraídos da transcrição/texto da consulta",
+          properties: {
+            iniciais: { type: "string", description: "Iniciais do paciente mencionadas na consulta" },
+            idade: { type: "string", description: "Idade do paciente mencionada" },
+            sexo: { type: "string", description: "Sexo do paciente: M, F ou Não informado" },
+            queixa_principal: { type: "string", description: "Queixa principal identificada" },
+            medicacoes: { type: "array", items: { type: "string" }, description: "Medicações em uso mencionadas" },
+            alergias: { type: "array", items: { type: "string" }, description: "Alergias mencionadas" },
+            historico: { type: "string", description: "Histórico médico relevante mencionado" },
+            sinais_vitais: {
+              type: "object",
+              properties: {
+                PA: { type: "string" }, FC: { type: "string" },
+                FR: { type: "string" }, Temp: { type: "string" }, SpO2: { type: "string" }
+              }
+            }
+          }
+        },
         hipotese_principal: {
           type: "object",
           properties: {
@@ -49,7 +69,7 @@ const LAUDO_TOOL = {
         texto_laudo_md: { type: "string", description: "Laudo em Markdown, máximo 600 palavras" },
         texto_paciente_md: { type: "string", description: "Resumo acessível ao paciente, máximo 100 palavras" },
       },
-      required: ["resumo_clinico", "hipotese_principal", "hipotese_diferencial", "condutas", "exames", "red_flags", "cid10", "texto_laudo_md", "texto_paciente_md"],
+      required: ["resumo_clinico", "dados_paciente_extraidos", "hipotese_principal", "hipotese_diferencial", "condutas", "exames", "red_flags", "cid10", "texto_laudo_md", "texto_paciente_md"],
       additionalProperties: false,
     },
   },
