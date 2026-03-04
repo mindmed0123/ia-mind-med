@@ -7,14 +7,23 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Structured logger - never logs PHI/PII
+function log(correlationId: string, step: string, data?: Record<string, unknown>) {
+  const entry = { ts: new Date().toISOString(), cid: correlationId, step, ...data };
+  console.log(JSON.stringify(entry));
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const correlationId = crypto.randomUUID();
   let currentLaudoId: string | null = null;
 
   try {
+    log(correlationId, 'start');
+
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Não autorizado' }), {
@@ -23,7 +32,6 @@ serve(async (req) => {
       });
     }
 
-    // Extract JWT from "Bearer <token>"
     const jwtMatch = authHeader.match(/^Bearer\s+(.+)$/);
     if (!jwtMatch) {
       return new Response(JSON.stringify({ error: 'Formato de autorização inválido' }), {
@@ -47,6 +55,8 @@ serve(async (req) => {
       });
     }
 
+    log(correlationId, 'auth_ok', { uid: user.id.substring(0, 8) });
+
     const {
       patient,
       specialty,
@@ -59,12 +69,54 @@ serve(async (req) => {
       contexto_clinico,
       historico,
       hipoteses_previas,
-      regras_produto,
       laudo_id,
       mode = 'fast'
     } = await req.json();
 
     currentLaudoId = laudo_id;
+
+    // ===== IDEMPOTENCY CHECK =====
+    // Prevent double-submit: if laudo is already completed or being generated, skip
+    const { data: existingLaudo } = await supabase
+      .from('laudos')
+      .select('status, updated_at')
+      .eq('id', laudo_id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (existingLaudo?.status === 'completed') {
+      log(correlationId, 'idempotent_skip', { laudo_id, status: 'completed' });
+      return new Response(JSON.stringify({
+        success: true,
+        idempotent: true,
+        message: 'Laudo já foi gerado anteriormente.',
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ===== RATE LIMITING =====
+    // Max 5 laudo generations per user per minute
+    const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+    const { count: recentCount } = await supabase
+      .from('laudos')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('status', 'completed')
+      .gte('updated_at', oneMinuteAgo);
+
+    if (recentCount !== null && recentCount >= 5) {
+      log(correlationId, 'rate_limited', { uid: user.id.substring(0, 8), count: recentCount });
+      return new Response(JSON.stringify({
+        error: 'Limite de requisições atingido. Aguarde 1 minuto antes de gerar outro laudo.',
+        retry_after: 60,
+      }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' },
+      });
+    }
+
+    log(correlationId, 'rate_check_ok', { recent: recentCount });
 
     const systemPrompt = `Você é um assistente clínico em PT-BR. Gere **laudos estruturados** sem diagnóstico definitivo, explicitando incertezas. Sempre produza **duas hipóteses**: **Mais provável** e **Menos provável (diferencial)**. Para cada hipótese, liste: **racional** (com base na transcrição e dados informados), **achados de suporte**, **achados que contrariam**, **fatores de risco**, **probabilidade (Alta/Média/Baixa)** e **próximos passos** (condutas e exames). Liste **red flags**, **lacunas de dados** (perguntas que faltam) e **CID‑10 sugeridos** (indicativos). Se algo não estiver na transcrição/dados, marque **"não informado"** (não invente). Inclua **disclaimer**: "Conteúdo gerado por IA para apoio; não substitui avaliação clínica presencial e julgamento médico." Siga **LGPD by design**: restrinja identificadores a iniciais/idade/sexo; não registre dados sensíveis desnecessários; minimize. Evite alucinações.
 
@@ -140,7 +192,15 @@ IMPORTANTE:
     const startTime = Date.now();
     let modelUsed = 'google/gemini-2.5-flash';
 
-    // Add 180 second timeout
+    // Mark laudo as generating to prevent double-submit
+    await supabase
+      .from('laudos')
+      .update({ status: 'generating', updated_at: new Date().toISOString() })
+      .eq('id', laudo_id)
+      .eq('user_id', user.id);
+
+    log(correlationId, 'ai_request_start', { model: modelUsed, laudo_id });
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 180000);
 
@@ -165,7 +225,7 @@ IMPORTANTE:
     } catch (fetchError: any) {
       clearTimeout(timeoutId);
       if (fetchError.name === 'AbortError') {
-        console.error('OpenAI request timeout after 180s');
+        log(correlationId, 'timeout', { after_ms: 180000 });
         throw new Error('Tempo limite de geração excedido. Tente novamente.');
       }
       throw fetchError;
@@ -174,10 +234,11 @@ IMPORTANTE:
     }
 
     const latencyMs = Date.now() - startTime;
+    log(correlationId, 'ai_response', { status: response.status, latency_ms: latencyMs });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI Gateway error:', response.status, errorText);
+      log(correlationId, 'ai_error', { status: response.status });
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ 
@@ -201,14 +262,18 @@ IMPORTANTE:
     }
 
     const data = await response.json();
-    console.log('AI response received, model:', data.model, 'usage:', JSON.stringify(data.usage));
-    
     let content = data.choices?.[0]?.message?.content;
     let usage = data.usage;
     let finishReason = data.choices?.[0]?.finish_reason;
 
+    log(correlationId, 'ai_content_received', { 
+      tokens: usage?.total_tokens, 
+      finish_reason: finishReason,
+      content_length: content?.length 
+    });
+
     if (!content || finishReason === 'length') {
-      console.warn('Primary model returned empty/length-capped output. Falling back to gemini-2.5-flash-lite with stricter limits.');
+      log(correlationId, 'fallback_start', { reason: !content ? 'empty' : 'length_capped' });
       const fallbackResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -227,41 +292,34 @@ IMPORTANTE:
 
       if (fallbackResp.ok) {
         const fallbackData = await fallbackResp.json();
-        console.log('Fallback response received, model:', fallbackData.model);
         content = fallbackData.choices?.[0]?.message?.content;
         usage = fallbackData.usage;
         finishReason = fallbackData.choices?.[0]?.finish_reason;
         modelUsed = 'google/gemini-2.5-flash-lite';
+        log(correlationId, 'fallback_ok', { model: modelUsed });
       } else {
         const fbErr = await fallbackResp.text();
-        console.error('Fallback model error:', fallbackResp.status, fbErr);
+        log(correlationId, 'fallback_error', { status: fallbackResp.status });
       }
     }
 
     if (!content) {
-      console.error('Empty AI response after fallback.');
+      log(correlationId, 'empty_after_fallback');
       throw new Error('Resposta vazia da IA. Verifique se a API key está configurada corretamente.');
     }
 
     // Parse JSON from AI response
     let laudoData;
     try {
-      // Remove markdown code blocks if present
       let cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      
-      // Remove control characters that break JSON parsing
-      // Keep only valid JSON whitespace (space, tab, newline, carriage return)
       cleanContent = cleanContent.replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F]/g, '');
-      
       laudoData = JSON.parse(cleanContent);
+      log(correlationId, 'parse_ok');
     } catch (parseError) {
-      console.error('Erro ao parsear JSON:', parseError);
-      console.error('Content length:', content?.length);
-      console.error('First 500 chars:', content?.substring(0, 500));
-      console.error('Last 500 chars:', content?.substring(content.length - 500));
+      log(correlationId, 'parse_error', { content_length: content?.length });
       
-      // Try one more time with lite model and reduced output
-      console.log('Attempting recovery with gemini-2.5-flash-lite...');
+      // Recovery attempt
+      log(correlationId, 'recovery_start');
       const recoveryResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -283,14 +341,13 @@ IMPORTANTE:
         const recoveryContent = recoveryData.choices?.[0]?.message?.content;
         if (recoveryContent) {
           let cleanRecovery = recoveryContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-          // Remove control characters
           cleanRecovery = cleanRecovery.replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F]/g, '');
           try {
             laudoData = JSON.parse(cleanRecovery);
             modelUsed = 'google/gemini-2.5-flash-lite (recovery)';
-            console.log('Recovery successful with lite model');
+            log(correlationId, 'recovery_ok');
           } catch (retryError) {
-            console.error('Recovery parse also failed:', retryError);
+            log(correlationId, 'recovery_parse_fail');
             throw new Error('Formato de resposta inválido da IA após tentativa de recuperação');
           }
         } else {
@@ -338,6 +395,7 @@ IMPORTANTE:
           total_tokens: usage?.total_tokens,
           latency_ms: latencyMs,
           finish_reason: finishReason,
+          correlation_id: correlationId,
         },
         generation_mode: mode,
         last_update_type: mode === 'delta' ? 'patient_data' : 'complete',
@@ -348,16 +406,15 @@ IMPORTANTE:
       .eq('user_id', user.id);
 
     if (updateError) {
-      console.error('Erro ao atualizar laudo:', updateError);
+      log(correlationId, 'db_update_error', { error: updateError.message });
       throw new Error('Erro ao salvar laudo no banco de dados');
     }
 
-    console.log('Laudo gerado com sucesso:', {
+    log(correlationId, 'complete', {
       laudo_id,
       model: modelUsed,
       tokens: usage?.total_tokens,
       latency_ms: latencyMs,
-      finish_reason: finishReason,
     });
 
     return new Response(JSON.stringify({
@@ -368,15 +425,19 @@ IMPORTANTE:
         usage,
         latency_ms: latencyMs,
         finish_reason: finishReason,
+        correlation_id: correlationId,
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Erro na função generate-laudo:', error);
+    log(correlationId, 'error', { 
+      message: error instanceof Error ? error.message : 'unknown',
+      laudo_id: currentLaudoId,
+    });
     
-    // Try to update laudo status to error
+    // Update laudo status to error
     try {
       const authHeader = req.headers.get('Authorization');
       if (authHeader && currentLaudoId) {
@@ -395,11 +456,12 @@ IMPORTANTE:
           .eq('id', currentLaudoId);
       }
     } catch (updateError) {
-      console.error('Failed to update laudo error status:', updateError);
+      log(correlationId, 'error_status_update_fail');
     }
     
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      correlation_id: correlationId,
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
