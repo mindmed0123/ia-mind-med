@@ -11,6 +11,7 @@ import { AudioRecorder } from "@/components/audio/AudioRecorder";
 import { LgpdConsent } from "@/components/consent/LgpdConsent";
 import { QuotaDisplay } from "@/components/quota/QuotaDisplay";
 import { ProductivityMetrics } from "@/components/dashboard/ProductivityMetrics";
+import { LaudoHistory } from "@/components/dashboard/LaudoHistory";
 import { UpgradeBanner } from "@/components/upgrade/UpgradeBanner";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { useOnboarding } from "@/hooks/useOnboarding";
