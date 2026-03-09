@@ -27,6 +27,7 @@ export default function Perfil() {
   const { toast } = useToast();
   const { subscription, loading: subLoading } = useSubscription();
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
 
   const [formData, setFormData] = useState({
