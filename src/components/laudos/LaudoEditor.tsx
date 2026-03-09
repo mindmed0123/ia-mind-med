@@ -462,6 +462,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
                   Campos obrigatórios faltando
                 </p>
                 <ul className="text-sm text-yellow-700 dark:text-yellow-200 mt-1 list-disc list-inside">
+                  {patientMissing.map(f => <li key={f}>{f}</li>)}
                   {!sections.hipoteses.principal && <li>Hipótese Principal</li>}
                   {!sections.conduta && <li>Conduta/Plano</li>}
                 </ul>
