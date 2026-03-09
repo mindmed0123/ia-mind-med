@@ -1,13 +1,15 @@
+import { useState } from "react";
 import { useQuota } from "@/hooks/useQuota";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Sparkles, AlertTriangle, Rocket } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
-/**
- * Shows an inline upgrade banner when Starter plan quota is low or exhausted.
- * Renders nothing for Pro users or when quota is healthy.
- */
 export const UpgradeBanner = () => {
   const { quotaStatus, loading } = useQuota();
+  const { user } = useAuth();
+  const [upgrading, setUpgrading] = useState(false);
 
   if (loading || !quotaStatus?.hasSubscription || quotaStatus.unlimited) return null;
 
@@ -16,6 +18,22 @@ export const UpgradeBanner = () => {
   const isLow = remaining <= 2;
 
   if (!isLow && !isExhausted) return null;
+
+  const handleUpgrade = async () => {
+    if (!user) return;
+    setUpgrading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: { userId: user.id, email: user.email, plan: 'mindmed_pro' },
+      });
+      if (error) throw error;
+      if (data?.url) window.location.href = data.url;
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao iniciar upgrade');
+    } finally {
+      setUpgrading(false);
+    }
+  };
 
   return (
     <div
@@ -49,16 +67,11 @@ export const UpgradeBanner = () => {
       <Button
         size="sm"
         className={isExhausted ? "" : "bg-amber-600 hover:bg-amber-700 text-white"}
-        asChild
+        onClick={handleUpgrade}
+        disabled={upgrading}
       >
-        <a
-          href="https://pay.cakto.com.br/u95r4cv_607505"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Sparkles className="w-4 h-4 mr-1" />
-          Upgrade Pro
-        </a>
+        <Sparkles className="w-4 h-4 mr-1" />
+        {upgrading ? "Processando..." : "Upgrade Pro"}
       </Button>
     </div>
   );

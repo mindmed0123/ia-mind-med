@@ -15,7 +15,7 @@ verify_jwt = true
 [functions.verify-pdf]
 verify_jwt = false
 
-[functions.cakto-webhook]
+[functions.customer-portal]
 verify_jwt = false
 
 [functions.generate-prescription-pdf]

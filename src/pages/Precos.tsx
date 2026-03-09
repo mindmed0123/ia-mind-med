@@ -1,11 +1,38 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PremiumButton, OutlinePremiumButton } from "@/components/ui/button-variants";
 import { Check, MessageCircle, Sparkles } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Precos = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState<string | null>(null);
+
+  const handleCheckout = async (plan: string) => {
+    if (!user) {
+      navigate('/medicos/teste-gratis');
+      return;
+    }
+    setLoading(plan);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: { userId: user.id, email: user.email, plan },
+      });
+      if (error) throw error;
+      if (data?.url) window.location.href = data.url;
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao processar');
+    } finally {
+      setLoading(null);
+    }
+  };
+
   const plans = [
     {
       name: "Starter",
@@ -22,9 +49,8 @@ const Precos = () => {
         "LGPD by design",
       ],
       cta: "Começar agora",
-      ctaLink: "https://pay.cakto.com.br/3bsu2vi_607441",
+      plan: "mindmed_starter",
       highlighted: false,
-      isStripe: true,
     },
     {
       name: "Pro",
@@ -42,9 +68,8 @@ const Precos = () => {
         "🎓 Treinamento personalizado",
       ],
       cta: "Começar agora",
-      ctaLink: "https://pay.cakto.com.br/u95r4cv_607505",
+      plan: "mindmed_pro",
       highlighted: true,
-      isStripe: true,
       badge: "Mais popular",
     },
     {
@@ -63,8 +88,6 @@ const Precos = () => {
         "Personalização total",
       ],
       cta: "Falar com consultor",
-      ctaLink: "https://wa.me/5511958890212",
-      highlighted: false,
       isWhatsApp: true,
     },
   ];
@@ -76,19 +99,19 @@ const Precos = () => {
     },
     {
       q: "Como funciona o período de teste?",
-      a: "O plano Starter inclui 10 consultas para você testar todas as funcionalidades. Após o uso, faça upgrade para continuar.",
+      a: "Todos os planos incluem 7 dias grátis para você testar todas as funcionalidades. Após o período, a cobrança inicia automaticamente.",
     },
     {
       q: "Posso cancelar a qualquer momento?",
-      a: "Sim, sem multas ou burocracia. Seus dados ficam disponíveis por 30 dias após o cancelamento.",
+      a: "Sim, sem multas ou burocracia. Acesse a área 'Minha Assinatura' no seu perfil para gerenciar ou cancelar.",
     },
     {
       q: "Os dados são seguros?",
       a: "Sim. Seguimos as diretrizes da LGPD com criptografia em trânsito e em repouso para todos os dados clínicos.",
     },
     {
-      q: "Vocês integram com prontuários eletrônicos?",
-      a: "Atualmente os laudos podem ser exportados em PDF e Markdown para uso em qualquer PEP. Integrações diretas estão no roadmap.",
+      q: "Quais formas de pagamento são aceitas?",
+      a: "Aceitamos cartão de crédito via Stripe, o processador de pagamentos mais seguro do mundo.",
     },
   ];
 
@@ -96,21 +119,19 @@ const Precos = () => {
     <div className="min-h-screen">
       <Navbar />
 
-      {/* Hero */}
       <section className="pt-32 pb-20 px-4 gradient-subtle">
         <div className="container mx-auto text-center max-w-4xl">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
             <Sparkles className="w-4 h-4" />
-            Faça 10 consultas testes • Sem cartão de crédito
+            7 dias grátis • Cancele quando quiser
           </div>
           <h1 className="mb-6">Planos que cabem no seu bolso</h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Escolha o plano ideal para sua realidade. Sem compromisso.
+            Escolha o plano ideal para sua realidade. Pagamento seguro via Stripe.
           </p>
         </div>
       </section>
 
-      {/* Planos */}
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-7xl">
           <div className="grid md:grid-cols-3 gap-8">
@@ -148,7 +169,7 @@ const Precos = () => {
 
                   {plan.isWhatsApp ? (
                     <a
-                      href={plan.ctaLink}
+                      href="https://wa.me/5511958890212"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="block"
@@ -158,31 +179,26 @@ const Precos = () => {
                         {plan.cta}
                       </OutlinePremiumButton>
                     </a>
-                  ) : plan.isStripe ? (
-                    <a
-                      href={plan.ctaLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block"
-                    >
-                      {plan.highlighted ? (
-                        <PremiumButton className="w-full">{plan.cta}</PremiumButton>
-                      ) : (
-                        <OutlinePremiumButton className="w-full">
-                          {plan.cta}
-                        </OutlinePremiumButton>
-                      )}
-                    </a>
                   ) : (
-                    <Link to={plan.ctaLink}>
+                    <div>
                       {plan.highlighted ? (
-                        <PremiumButton className="w-full">{plan.cta}</PremiumButton>
+                        <PremiumButton
+                          className="w-full"
+                          onClick={() => handleCheckout(plan.plan!)}
+                          disabled={loading === plan.plan}
+                        >
+                          {loading === plan.plan ? 'Processando...' : plan.cta}
+                        </PremiumButton>
                       ) : (
-                        <OutlinePremiumButton className="w-full">
-                          {plan.cta}
+                        <OutlinePremiumButton
+                          className="w-full"
+                          onClick={() => handleCheckout(plan.plan!)}
+                          disabled={loading === plan.plan}
+                        >
+                          {loading === plan.plan ? 'Processando...' : plan.cta}
                         </OutlinePremiumButton>
                       )}
-                    </Link>
+                    </div>
                   )}
 
                   {plan.name === "Pro" && (
@@ -197,7 +213,6 @@ const Precos = () => {
         </div>
       </section>
 
-      {/* FAQ */}
       <section className="py-20 px-4 bg-muted/30">
         <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-16">
@@ -220,7 +235,6 @@ const Precos = () => {
         </div>
       </section>
 
-      {/* CTA */}
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-4xl text-center">
           <h2 className="mb-6">Ainda com dúvidas?</h2>
