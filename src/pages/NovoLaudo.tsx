@@ -421,9 +421,20 @@ const NovoLaudo = () => {
     }
   };
 
-  const handlePatientDataChange = (data: any) => {
+  const handlePatientDataChange = async (data: any) => {
     setPatientData(data);
-    // Don't auto-regenerate on patient data change - user must explicitly click "Gerar Laudo"
+    
+    // Persist patient data to the laudo record so PDF export picks it up
+    if (laudoId) {
+      try {
+        await supabase
+          .from('laudos')
+          .update({ patient_data: data })
+          .eq('id', laudoId);
+      } catch (err) {
+        console.error('Error saving patient data:', err);
+      }
+    }
   };
 
   // Pipeline status indicator component
