@@ -338,11 +338,11 @@ const Home = () => {
                 </div>
               </div>
 
-              <a href="https://pay.cakto.com.br/3bsu2vi_607441" target="_blank" rel="noopener noreferrer" className="block">
+              <Link to="/medicos/teste-gratis" className="block">
                 <PremiumButton className="w-full text-lg py-6 shadow-xl">
                   🔵 Garantir minha vaga de early adopter!
                 </PremiumButton>
-              </a>
+              </Link>
 
               <p className="text-center text-sm text-muted-foreground mt-4">
                 <Timer className="w-4 h-4 inline mr-1" />
