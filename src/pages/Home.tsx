@@ -85,11 +85,11 @@ const Home = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up" style={{
           animationDelay: "0.2s"
         }}>
-            <a href="https://pay.cakto.com.br/3bsu2vi_607441" target="_blank" rel="noopener noreferrer">
+            <Link to="/medicos/teste-gratis">
               <PremiumButton className="!bg-white !text-primary hover:!bg-white/90 shadow-xl text-lg px-8 py-6">
                 🔵 Quero recuperar meu tempo agora
               </PremiumButton>
-            </a>
+            </Link>
           </div>
         </div>
       </section>
