@@ -240,33 +240,49 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Audio Section */}
-        <Card className="shadow-large">
-          <CardContent className="pt-6">
-            <h2 className="text-xl font-semibold mb-6">Nova transcrição</h2>
-            
-            <Tabs defaultValue="upload" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="upload">
-                  <FileAudio className="w-4 h-4 mr-2" />
-                  Enviar arquivo
-                </TabsTrigger>
-                <TabsTrigger value="record">
-                  <FileAudio className="w-4 h-4 mr-2" />
-                  Gravar áudio
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="upload">
-                <AudioUploader onUploadComplete={handleAudioUploadComplete} />
-              </TabsContent>
-              
-              <TabsContent value="record">
-                <AudioRecorder onRecordingComplete={handleAudioUploadComplete} />
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+        {/* Main Tabs: Transcrição + Histórico */}
+        <Tabs defaultValue="transcricao" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="transcricao">
+              <FileAudio className="w-4 h-4 mr-2" />
+              Nova transcrição
+            </TabsTrigger>
+            <TabsTrigger value="historico">
+              <History className="w-4 h-4 mr-2" />
+              Histórico de Laudos
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="transcricao">
+            <Card className="shadow-large">
+              <CardContent className="pt-6">
+                <h2 className="text-xl font-semibold mb-6">Nova transcrição</h2>
+                <Tabs defaultValue="upload" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-6">
+                    <TabsTrigger value="upload">
+                      <FileAudio className="w-4 h-4 mr-2" />
+                      Enviar arquivo
+                    </TabsTrigger>
+                    <TabsTrigger value="record">
+                      <FileAudio className="w-4 h-4 mr-2" />
+                      Gravar áudio
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="upload">
+                    <AudioUploader onUploadComplete={handleAudioUploadComplete} />
+                  </TabsContent>
+                  <TabsContent value="record">
+                    <AudioRecorder onRecordingComplete={handleAudioUploadComplete} />
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="historico">
+            <LaudoHistory />
+          </TabsContent>
+        </Tabs>
 
         <div className="mt-8 text-center text-sm text-muted-foreground">
           <p>Precisa de mais consultas?</p>
