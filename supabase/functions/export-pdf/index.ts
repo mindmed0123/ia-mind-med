@@ -199,15 +199,16 @@ function generatePdfHtml(
   laudo: any, sections: PdfSection, profile: any,
   hash: string, verifyToken: string
 ): string {
-  const baseUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '');
-  const verifyUrl = `${baseUrl}/functions/v1/verify-pdf/${laudo.id}?token=${verifyToken}`;
-  
   const logoHtml = profile?.logo_url 
-    ? `<img src="${profile.logo_url}" alt="Logo" style="max-height: 60px; max-width: 180px; object-fit: contain;" />`
+    ? `<img src="${profile.logo_url}" alt="Logo" style="max-height: 54px; max-width: 160px; object-fit: contain;" />`
     : '';
     
   const signatureHtml = profile?.signature_image_url
-    ? `<img src="${profile.signature_image_url}" alt="Assinatura" style="max-height: 50px; max-width: 180px; object-fit: contain;" />`
+    ? `<img src="${profile.signature_image_url}" alt="Assinatura" style="max-height: 48px; max-width: 160px; object-fit: contain;" />`
+    : '';
+
+  const stampHtml = profile?.stamp_image_url
+    ? `<img src="${profile.stamp_image_url}" alt="Carimbo" style="max-height: 54px; max-width: 160px; object-fit: contain; margin-top: 4px;" />`
     : '';
 
   const doctorName = profile?.full_name || 'Médico Responsável';
@@ -222,9 +223,23 @@ function generatePdfHtml(
   const now = new Date();
   const dateFormatted = now.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
   const timeFormatted = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const dateShort = now.toLocaleDateString('pt-BR');
 
   const redFlags = laudo.red_flags as string[] | null;
   const complementaryExams = laudo.complementary_exams as string[] | null;
+
+  // Helper to render a clinical section
+  const renderSection = (icon: string, title: string, content: string) => {
+    if (!content) return '';
+    return `
+    <div class="clinical-section">
+      <div class="section-header">
+        <span class="section-icon">${icon}</span>
+        <h2>${title}</h2>
+      </div>
+      <div class="section-content">${content.replace(/\n/g, '<br>')}</div>
+    </div>`;
+  };
 
   return `
 <!DOCTYPE html>
@@ -233,15 +248,15 @@ function generatePdfHtml(
   <meta charset="UTF-8">
   <style>
     @page { size: A4; margin: 0; }
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
     
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
     body { 
-      font-family: 'Inter', 'Segoe UI', Arial, sans-serif; 
-      font-size: 9.5pt; 
-      line-height: 1.55; 
-      color: #1e293b; 
+      font-family: 'Source Sans 3', 'Segoe UI', Arial, sans-serif; 
+      font-size: 10pt; 
+      line-height: 1.6; 
+      color: #1a1a2e; 
       background: #fff;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
@@ -251,472 +266,486 @@ function generatePdfHtml(
       position: relative;
       width: 210mm;
       min-height: 297mm;
-      padding: 20mm 22mm 30mm 22mm;
+      padding: 18mm 24mm 28mm 24mm;
     }
 
-    /* ── Header ── */
+    /* ═══════════ HEADER ═══════════ */
     .header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding-bottom: 14px;
-      margin-bottom: 18px;
-      border-bottom: 2.5px solid #1e40af;
-    }
-    .header-left { display: flex; align-items: center; gap: 14px; }
-    .brand-mark {
-      width: 38px; height: 38px;
-      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      color: #fff; font-size: 18px; font-weight: 800;
-    }
-    .brand-text h1 {
-      font-size: 18pt; font-weight: 800; color: #1e40af;
-      letter-spacing: -0.5px; line-height: 1.1;
-    }
-    .brand-text p {
-      font-size: 7pt; color: #64748b; font-weight: 500;
-      letter-spacing: 1.5px; text-transform: uppercase; margin-top: 1px;
-    }
-
-    /* ── Doctor Bar ── */
-    .doctor-bar {
-      display: flex;
-      justify-content: space-between;
       align-items: flex-start;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 12px 16px;
-      margin-bottom: 18px;
+      padding-bottom: 16px;
+      margin-bottom: 0;
     }
-    .doctor-bar .name {
-      font-size: 11pt; font-weight: 700; color: #0f172a; margin-bottom: 2px;
-    }
-    .doctor-bar .meta {
-      font-size: 8pt; color: #475569; line-height: 1.6;
-    }
-    .doctor-bar .meta span { margin-right: 14px; }
-    .doctor-bar .contact {
-      text-align: right; font-size: 7.5pt; color: #64748b; line-height: 1.7;
-    }
-
-    /* ── Document Title ── */
-    .doc-title {
-      text-align: center;
-      font-size: 13pt;
-      font-weight: 700;
-      color: #1e40af;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      margin-bottom: 18px;
-      padding: 8px 0;
-      border-top: 1px solid #cbd5e1;
-      border-bottom: 1px solid #cbd5e1;
-    }
-
-    /* ── Patient + Meta Grid ── */
-    .meta-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+    .header-left {
+      display: flex;
+      align-items: center;
       gap: 14px;
+    }
+    .header-logo-fallback {
+      width: 44px; height: 44px;
+      background: linear-gradient(145deg, #0d2137 0%, #1a4a7a 100%);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 20px; font-weight: 700;
+      font-family: 'Playfair Display', serif;
+      letter-spacing: -0.5px;
+    }
+    .header-brand h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 20pt; font-weight: 700; color: #0d2137;
+      letter-spacing: -0.3px; line-height: 1.1;
+    }
+    .header-brand .tagline {
+      font-size: 7pt; color: #6b7b8d; font-weight: 500;
+      letter-spacing: 2px; text-transform: uppercase; margin-top: 2px;
+    }
+    .header-right {
+      text-align: right;
+      font-size: 8.5pt;
+      color: #3a4a5c;
+      line-height: 1.7;
+    }
+    .header-right .doctor-name {
+      font-size: 11pt; font-weight: 700; color: #0d2137;
+      margin-bottom: 2px;
+    }
+    .header-right .crm-line {
+      font-weight: 600; color: #1a4a7a;
+    }
+
+    /* Divider line */
+    .header-divider {
+      height: 3px;
+      background: linear-gradient(90deg, #0d2137 0%, #2a6cb6 40%, #d4dfe8 100%);
+      border-radius: 2px;
       margin-bottom: 20px;
     }
-    .meta-card {
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    .meta-card-header {
-      background: #f1f5f9;
-      padding: 6px 12px;
-      font-size: 7.5pt;
-      font-weight: 700;
-      color: #334155;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      border-bottom: 1px solid #e2e8f0;
-    }
-    .meta-card-body {
-      padding: 10px 12px;
-    }
-    .meta-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 3px 0;
-      font-size: 8.5pt;
-      border-bottom: 1px dotted #f1f5f9;
-    }
-    .meta-row:last-child { border-bottom: none; }
-    .meta-row .label { color: #64748b; font-weight: 500; }
-    .meta-row .value { color: #0f172a; font-weight: 600; text-align: right; }
 
-    /* ── Sections ── */
-    .section {
-      margin-bottom: 16px;
+    /* ═══════════ PATIENT BLOCK ═══════════ */
+    .patient-block {
+      background: #f4f7fa;
+      border: 1px solid #d8e2ec;
+      border-radius: 8px;
+      padding: 14px 20px;
+      margin-bottom: 22px;
+    }
+    .patient-block-title {
+      font-size: 7pt; font-weight: 700; color: #6b7b8d;
+      text-transform: uppercase; letter-spacing: 1.5px;
+      margin-bottom: 10px;
+    }
+    .patient-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 40px;
+    }
+    .patient-field {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      font-size: 9.5pt;
+    }
+    .patient-field .label {
+      color: #6b7b8d;
+      font-weight: 600;
+      min-width: 90px;
+      flex-shrink: 0;
+    }
+    .patient-field .value {
+      color: #0d2137;
+      font-weight: 500;
+    }
+
+    /* ═══════════ DOCUMENT TITLE ═══════════ */
+    .doc-title-bar {
+      text-align: center;
+      margin-bottom: 24px;
+      padding: 10px 0;
+      border-top: 1.5px solid #d8e2ec;
+      border-bottom: 1.5px solid #d8e2ec;
+    }
+    .doc-title-bar h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 14pt;
+      font-weight: 700;
+      color: #0d2137;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    /* ═══════════ CLINICAL SECTIONS ═══════════ */
+    .clinical-section {
+      margin-bottom: 18px;
       page-break-inside: avoid;
     }
-    .section-title {
+    .section-header {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       margin-bottom: 8px;
+      padding-bottom: 5px;
+      border-bottom: 1.5px solid #e4ebf2;
     }
-    .section-title .icon {
-      width: 22px; height: 22px;
-      background: #1e40af;
+    .section-icon {
+      width: 24px; height: 24px;
+      background: #0d2137;
       border-radius: 5px;
       display: flex; align-items: center; justify-content: center;
-      color: #fff; font-size: 11px; flex-shrink: 0;
+      color: #fff; font-size: 11px; font-weight: 700;
+      flex-shrink: 0;
+      line-height: 24px;
+      text-align: center;
     }
-    .section-title h2 {
-      font-size: 10pt; font-weight: 700; color: #1e3a8a;
-      text-transform: uppercase; letter-spacing: 0.5px;
+    .section-header h2 {
+      font-size: 10pt; font-weight: 700; color: #0d2137;
+      text-transform: uppercase; letter-spacing: 1px;
     }
-    .section-body {
-      padding: 10px 14px;
-      background: #fafbfd;
-      border: 1px solid #e8ecf2;
-      border-radius: 6px;
-      font-size: 9.5pt;
-      line-height: 1.65;
+    .section-content {
+      padding: 10px 16px 10px 34px;
+      font-size: 10pt;
+      line-height: 1.7;
+      color: #2c3e50;
       text-align: justify;
     }
 
-    /* ── Hypothesis highlight ── */
-    .hypothesis-card {
-      border: 1px solid #e2e8f0;
+    /* ═══════════ DIAGNOSIS CARDS ═══════════ */
+    .diagnosis-group {
+      margin-bottom: 18px;
+      page-break-inside: avoid;
+    }
+    .diagnosis-card {
       border-radius: 8px;
       overflow: hidden;
       margin-bottom: 10px;
     }
-    .hypothesis-card.primary {
-      border-color: #3b82f6;
+    .diagnosis-card.primary {
+      border: 2px solid #1a4a7a;
     }
-    .hypothesis-label {
-      padding: 5px 12px;
+    .diagnosis-card.secondary {
+      border: 1px solid #d8e2ec;
+    }
+    .diagnosis-label {
+      padding: 6px 14px;
       font-size: 7pt;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 1.2px;
     }
-    .hypothesis-card.primary .hypothesis-label {
-      background: #1e40af; color: #fff;
+    .diagnosis-card.primary .diagnosis-label {
+      background: linear-gradient(135deg, #0d2137 0%, #1a4a7a 100%);
+      color: #fff;
     }
-    .hypothesis-card.secondary .hypothesis-label {
-      background: #f1f5f9; color: #475569;
+    .diagnosis-card.secondary .diagnosis-label {
+      background: #f4f7fa;
+      color: #6b7b8d;
+      border-bottom: 1px solid #e4ebf2;
     }
-    .hypothesis-value {
-      padding: 10px 14px;
-      font-size: 10pt;
+    .diagnosis-value {
+      padding: 12px 16px;
+      font-size: 10.5pt;
       font-weight: 600;
-      color: #0f172a;
+      color: #0d2137;
+      background: #fff;
     }
 
-    /* ── CID Tags ── */
-    .cid-row {
+    /* ═══════════ CID-10 TAGS ═══════════ */
+    .cid-container {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
-      margin-top: 8px;
+      padding: 8px 0 0 34px;
     }
     .cid-tag {
       display: inline-block;
-      padding: 3px 10px;
-      background: #1e40af;
+      padding: 3px 12px;
+      background: #0d2137;
       color: #fff;
       border-radius: 4px;
-      font-size: 7.5pt;
+      font-size: 8pt;
       font-weight: 600;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.5px;
     }
 
-    /* ── Red Flags ── */
-    .red-flags {
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      border-left: 4px solid #dc2626;
+    /* ═══════════ RED FLAGS ═══════════ */
+    .red-flags-block {
+      background: #fef8f8;
+      border: 1px solid #f5d0d0;
+      border-left: 4px solid #c0392b;
       border-radius: 6px;
-      padding: 10px 14px;
-      margin-bottom: 16px;
+      padding: 12px 16px;
+      margin-bottom: 18px;
+      page-break-inside: avoid;
     }
-    .red-flags h3 {
-      font-size: 8.5pt; font-weight: 700; color: #991b1b;
-      text-transform: uppercase; margin-bottom: 6px;
+    .red-flags-block h3 {
+      font-size: 8.5pt; font-weight: 700; color: #922b21;
+      text-transform: uppercase; letter-spacing: 1px;
+      margin-bottom: 8px;
     }
-    .red-flags li {
-      font-size: 9pt; color: #7f1d1d; margin: 3px 0; list-style: none;
+    .red-flags-block li {
+      font-size: 9.5pt; color: #641e16; margin: 4px 0;
+      list-style: none; padding-left: 18px; position: relative;
     }
-    .red-flags li::before { content: "⚠ "; }
+    .red-flags-block li::before {
+      content: "▲";
+      position: absolute; left: 0; top: 0;
+      color: #c0392b; font-size: 7pt;
+    }
 
-    /* ── Complementary Exams ── */
-    .exams-list {
-      padding: 10px 14px;
-      background: #f0fdf4;
-      border: 1px solid #bbf7d0;
-      border-radius: 6px;
+    /* ═══════════ EXAMS LIST ═══════════ */
+    .exams-block {
+      padding: 10px 16px 10px 34px;
     }
-    .exams-list li {
-      font-size: 9pt; color: #166534; margin: 3px 0; list-style: none;
+    .exams-block li {
+      font-size: 9.5pt; color: #2c3e50; margin: 4px 0;
+      list-style: none; padding-left: 16px; position: relative;
     }
-    .exams-list li::before { content: "→ "; color: #16a34a; font-weight: 700; }
+    .exams-block li::before {
+      content: "●";
+      position: absolute; left: 0; top: 0;
+      color: #1a4a7a; font-size: 6pt; line-height: 18px;
+    }
 
-    /* ── Embasamento ── */
-    .embasamento {
-      background: #f0f9ff;
-      border: 1px solid #bae6fd;
+    /* ═══════════ EMBASAMENTO ═══════════ */
+    .embasamento-block {
+      background: #f0f6fc;
+      border: 1px solid #c8ddf0;
       border-radius: 6px;
-      padding: 10px 14px;
+      padding: 12px 16px;
       font-size: 9pt;
-      color: #0c4a6e;
-      line-height: 1.6;
+      color: #1a3a5c;
+      line-height: 1.65;
+      margin-top: 4px;
     }
 
-    /* ── Signature ── */
+    /* ═══════════ SIGNATURE ═══════════ */
     .signature-area {
-      margin-top: 36px;
+      margin-top: 40px;
       text-align: center;
       page-break-inside: avoid;
     }
     .signature-inner {
       display: inline-block;
-      min-width: 260px;
+      min-width: 280px;
       text-align: center;
     }
     .signature-line {
       width: 100%;
-      border-top: 1.5px solid #1e3a8a;
-      margin: 8px 0;
+      border-top: 1.5px solid #0d2137;
+      margin: 10px 0 6px 0;
     }
     .signature-name {
-      font-size: 10pt; font-weight: 700; color: #1e3a8a;
+      font-size: 11pt; font-weight: 700; color: #0d2137;
     }
-    .signature-detail {
-      font-size: 8pt; color: #475569;
+    .signature-crm {
+      font-size: 9pt; color: #3a4a5c; font-weight: 600;
+    }
+    .signature-specialty {
+      font-size: 8.5pt; color: #6b7b8d; font-weight: 500;
     }
 
-    /* ── Footer ── */
+    /* ═══════════ FOOTER ═══════════ */
     .footer {
-      margin-top: 24px;
-      padding-top: 12px;
-      border-top: 1px solid #e2e8f0;
+      margin-top: 30px;
+      padding-top: 14px;
+      border-top: 1.5px solid #d8e2ec;
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
+    }
+    .footer-left {
       font-size: 7pt;
-      color: #94a3b8;
+      color: #8e9aab;
+      line-height: 1.8;
     }
-    .footer-left p { margin: 2px 0; }
+    .footer-left strong { color: #6b7b8d; }
     .footer-right {
-      text-align: center;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      padding: 8px 12px;
+      text-align: right;
+      font-size: 6.5pt;
+      color: #8e9aab;
     }
-    .footer-right p { margin: 1px 0; font-size: 6.5pt; }
     .hash-code {
       font-family: 'Courier New', monospace;
       font-size: 5.5pt;
-      color: #64748b;
-      background: #f1f5f9;
-      padding: 2px 6px;
+      color: #8e9aab;
+      background: #f4f7fa;
+      padding: 2px 8px;
       border-radius: 3px;
       margin-top: 4px;
       display: inline-block;
       word-break: break-all;
+      border: 1px solid #e4ebf2;
     }
+
     .watermark {
       position: fixed;
       bottom: 8px;
-      right: 12px;
+      left: 50%;
+      transform: translateX(-50%);
       font-size: 6pt;
-      color: #cbd5e1;
+      color: #d0d8e0;
+      letter-spacing: 1px;
     }
   </style>
 </head>
 <body>
   <div class="page">
 
-    <!-- Header -->
+    <!-- ═══ HEADER ═══ -->
     <div class="header">
       <div class="header-left">
-        <div class="brand-mark">M</div>
-        <div class="brand-text">
-          <h1>MindMed</h1>
-          <p>Laudos Médicos Inteligentes</p>
+        ${logoHtml || `<div class="header-logo-fallback">M</div>`}
+        <div class="header-brand">
+          <h1>${clinicName || 'MindMed'}</h1>
+          <div class="tagline">${clinicName ? 'Powered by MindMed AI' : 'Laudos Médicos Inteligentes'}</div>
         </div>
       </div>
-      <div>${logoHtml}</div>
-    </div>
-
-    <!-- Doctor Bar -->
-    <div class="doctor-bar">
-      <div>
-        <div class="name">Dr(a). ${doctorName}</div>
-        <div class="meta">
-          ${doctorCrm ? `<span>CRM ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</span>` : ''}
-          ${doctorSpecialty ? `<span>${doctorSpecialty}</span>` : ''}
-          ${clinicName ? `<span>${clinicName}</span>` : ''}
-        </div>
-      </div>
-      <div class="contact">
+      <div class="header-right">
+        <div class="doctor-name">Dr(a). ${doctorName}</div>
+        ${doctorCrm ? `<div class="crm-line">CRM ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</div>` : ''}
+        ${doctorSpecialty ? `<div>${doctorSpecialty}</div>` : ''}
         ${doctorPhone ? `<div>${doctorPhone}</div>` : ''}
-        ${doctorEmail ? `<div>${doctorEmail}</div>` : ''}
-        ${doctorAddress ? `<div>${doctorAddress}</div>` : ''}
+        ${doctorAddress ? `<div style="max-width: 200px; font-size: 7.5pt;">${doctorAddress}</div>` : ''}
       </div>
     </div>
+    <div class="header-divider"></div>
 
-    <!-- Document Title -->
-    <div class="doc-title">Laudo Médico</div>
-
-    <!-- Patient + Document Info -->
-    <div class="meta-grid">
-      <div class="meta-card">
-        <div class="meta-card-header">Dados do Paciente</div>
-        <div class="meta-card-body">
-          <div class="meta-row"><span class="label">Nome / Iniciais</span><span class="value">${sections.identificacao?.nome || 'Não informado'}</span></div>
-          <div class="meta-row"><span class="label">Idade</span><span class="value">${sections.identificacao?.idade || 'N/I'}${sections.identificacao?.idade && sections.identificacao.idade !== 'N/I' ? ' anos' : ''}</span></div>
-          <div class="meta-row"><span class="label">Sexo</span><span class="value">${sections.identificacao?.sexo || 'N/I'}</span></div>
+    <!-- ═══ PATIENT ID ═══ -->
+    <div class="patient-block">
+      <div class="patient-block-title">Identificação do Paciente</div>
+      <div class="patient-grid">
+        <div class="patient-field">
+          <span class="label">Paciente:</span>
+          <span class="value">${sections.identificacao?.nome || 'Não informado'}</span>
+        </div>
+        <div class="patient-field">
+          <span class="label">Idade:</span>
+          <span class="value">${sections.identificacao?.idade || 'N/I'}${sections.identificacao?.idade && sections.identificacao.idade !== 'N/I' ? ' anos' : ''}</span>
+        </div>
+        <div class="patient-field">
+          <span class="label">Sexo:</span>
+          <span class="value">${sections.identificacao?.sexo || 'N/I'}</span>
+        </div>
+        <div class="patient-field">
+          <span class="label">Data da Consulta:</span>
+          <span class="value">${dateShort}</span>
         </div>
       </div>
-      <div class="meta-card">
-        <div class="meta-card-header">Informações do Documento</div>
-        <div class="meta-card-body">
-          <div class="meta-row"><span class="label">Data</span><span class="value">${dateFormatted}</span></div>
-          <div class="meta-row"><span class="label">Hora</span><span class="value">${timeFormatted}</span></div>
-          <div class="meta-row"><span class="label">Especialidade</span><span class="value">${laudo.specialty || doctorSpecialty || 'N/I'}</span></div>
-        </div>
-      </div>
     </div>
 
-    <!-- Queixa Principal -->
-    ${sections.queixa ? `
-    <div class="section">
-      <div class="section-title">
-        <div class="icon">Q</div>
-        <h2>Queixa Principal</h2>
-      </div>
-      <div class="section-body">${sections.queixa}</div>
-    </div>` : ''}
-
-    <!-- HDA -->
-    ${sections.hda ? `
-    <div class="section">
-      <div class="section-title">
-        <div class="icon">H</div>
-        <h2>História da Doença Atual</h2>
-      </div>
-      <div class="section-body">${sections.hda}</div>
-    </div>` : ''}
-
-    <!-- Exame Físico -->
-    ${sections.exame_fisico ? `
-    <div class="section">
-      <div class="section-title">
-        <div class="icon">E</div>
-        <h2>Exame Físico / Achados</h2>
-      </div>
-      <div class="section-body">${sections.exame_fisico}</div>
-    </div>` : ''}
-
-    <!-- Hipóteses -->
-    <div class="section">
-      <div class="section-title">
-        <div class="icon">D</div>
-        <h2>Hipóteses Diagnósticas</h2>
-      </div>
-      ${sections.hipoteses?.principal ? `
-      <div class="hypothesis-card primary">
-        <div class="hypothesis-label">Hipótese Principal</div>
-        <div class="hypothesis-value">${sections.hipoteses.principal}</div>
-      </div>` : ''}
-      ${sections.hipoteses?.diferencial ? `
-      <div class="hypothesis-card secondary">
-        <div class="hypothesis-label">Diagnóstico Diferencial</div>
-        <div class="hypothesis-value">${sections.hipoteses.diferencial}</div>
-      </div>` : ''}
+    <!-- ═══ DOCUMENT TITLE ═══ -->
+    <div class="doc-title-bar">
+      <h2>Laudo Médico</h2>
     </div>
 
-    <!-- CID-10 -->
+    <!-- ═══ ANAMNESE (Queixa + HDA) ═══ -->
+    ${sections.queixa || sections.hda ? `
+    <div class="clinical-section">
+      <div class="section-header">
+        <span class="section-icon">A</span>
+        <h2>Anamnese</h2>
+      </div>
+      <div class="section-content">
+        ${sections.queixa ? `<strong>Queixa Principal:</strong> ${sections.queixa}<br><br>` : ''}
+        ${sections.hda ? `<strong>História da Doença Atual:</strong><br>${sections.hda.replace(/\n/g, '<br>')}` : ''}
+      </div>
+    </div>` : ''}
+
+    <!-- ═══ EXAME FÍSICO ═══ -->
+    ${renderSection('E', 'Exame Físico', sections.exame_fisico || '')}
+
+    <!-- ═══ HIPÓTESE DIAGNÓSTICA ═══ -->
+    ${sections.hipoteses?.principal || sections.hipoteses?.diferencial ? `
+    <div class="clinical-section">
+      <div class="section-header">
+        <span class="section-icon">D</span>
+        <h2>Hipótese Diagnóstica</h2>
+      </div>
+      <div class="diagnosis-group">
+        ${sections.hipoteses?.principal ? `
+        <div class="diagnosis-card primary">
+          <div class="diagnosis-label">Hipótese Principal</div>
+          <div class="diagnosis-value">${sections.hipoteses.principal}</div>
+        </div>` : ''}
+        ${sections.hipoteses?.diferencial ? `
+        <div class="diagnosis-card secondary">
+          <div class="diagnosis-label">Diagnóstico Diferencial</div>
+          <div class="diagnosis-value">${sections.hipoteses.diferencial}</div>
+        </div>` : ''}
+      </div>
+    </div>` : ''}
+
+    <!-- ═══ CID-10 ═══ -->
     ${sections.cid10 && sections.cid10.length > 0 ? `
-    <div class="section">
-      <div class="section-title">
-        <div class="icon">C</div>
+    <div class="clinical-section">
+      <div class="section-header">
+        <span class="section-icon">C</span>
         <h2>Classificação CID-10</h2>
       </div>
-      <div class="cid-row">
+      <div class="cid-container">
         ${sections.cid10.map(c => `<span class="cid-tag">${c}</span>`).join('')}
       </div>
     </div>` : ''}
 
-    <!-- Red Flags -->
+    <!-- ═══ RED FLAGS ═══ -->
     ${redFlags && redFlags.length > 0 ? `
-    <div class="red-flags">
-      <h3>Sinais de Alerta (Red Flags)</h3>
+    <div class="red-flags-block">
+      <h3>⚠ Sinais de Alerta</h3>
       <ul>${redFlags.map(f => `<li>${f}</li>`).join('')}</ul>
     </div>` : ''}
 
-    <!-- Conduta -->
-    ${sections.conduta ? `
-    <div class="section">
-      <div class="section-title">
-        <div class="icon">P</div>
-        <h2>Conduta / Plano Terapêutico</h2>
-      </div>
-      <div class="section-body">${sections.conduta.replace(/\n/g, '<br>')}</div>
-    </div>` : ''}
-
-    <!-- Exames Complementares -->
+    <!-- ═══ EXAMES COMPLEMENTARES ═══ -->
     ${complementaryExams && complementaryExams.length > 0 ? `
-    <div class="section">
-      <div class="section-title">
-        <div class="icon">X</div>
-        <h2>Exames Complementares Solicitados</h2>
+    <div class="clinical-section">
+      <div class="section-header">
+        <span class="section-icon">X</span>
+        <h2>Exames Complementares</h2>
       </div>
-      <div class="exams-list">
+      <div class="exams-block">
         <ul>${complementaryExams.map(e => `<li>${e}</li>`).join('')}</ul>
       </div>
     </div>` : ''}
 
-    <!-- Embasamento Teórico -->
+    <!-- ═══ CONDUTA ═══ -->
+    ${renderSection('P', 'Conduta', sections.conduta || '')}
+
+    <!-- ═══ EMBASAMENTO TEÓRICO ═══ -->
     ${sections.embasamento_teorico ? `
-    <div class="section">
-      <div class="section-title">
-        <div class="icon">R</div>
+    <div class="clinical-section">
+      <div class="section-header">
+        <span class="section-icon">R</span>
         <h2>Embasamento Teórico</h2>
       </div>
-      <div class="embasamento">${sections.embasamento_teorico}</div>
+      <div class="embasamento-block">${sections.embasamento_teorico}</div>
     </div>` : ''}
 
-    <!-- Assinatura -->
+    <!-- ═══ SIGNATURE ═══ -->
     <div class="signature-area">
       <div class="signature-inner">
         ${signatureHtml}
+        ${stampHtml}
         <div class="signature-line"></div>
         <div class="signature-name">Dr(a). ${doctorName}</div>
-        ${doctorCrm ? `<div class="signature-detail">CRM ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</div>` : ''}
-        ${doctorSpecialty ? `<div class="signature-detail">${doctorSpecialty}</div>` : ''}
+        ${doctorCrm ? `<div class="signature-crm">CRM ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</div>` : ''}
+        ${doctorSpecialty ? `<div class="signature-specialty">${doctorSpecialty}</div>` : ''}
       </div>
     </div>
 
-    <!-- Footer -->
+    <!-- ═══ FOOTER ═══ -->
     <div class="footer">
       <div class="footer-left">
-        <p><strong>Documento gerado por MindMed</strong> — Laudos Médicos com IA</p>
-        <p>Informações protegidas pela LGPD (Lei nº 13.709/2018)</p>
-        <p>ID: ${laudo.id}</p>
+        <p><strong>Emitido via MindMed AI</strong> — Laudos Médicos Inteligentes</p>
+        <p>Documento protegido pela LGPD (Lei nº 13.709/2018)</p>
+        <p>Gerado em ${dateFormatted} às ${timeFormatted}</p>
       </div>
       <div class="footer-right">
-        <p><strong>Verificação Digital</strong></p>
-        <p>📱 [QR Code seria gerado aqui]</p>
-        <div class="hash-code">${hash.substring(0, 32)}...</div>
+        <p>Verificação Digital</p>
+        <div class="hash-code">${hash.substring(0, 32)}…</div>
       </div>
     </div>
 
   </div>
-  <div class="watermark">MindMed © ${new Date().getFullYear()}</div>
+  <div class="watermark">MindMed © ${new Date().getFullYear()} — Documento gerado eletronicamente</div>
 </body>
 </html>
   `.trim();
