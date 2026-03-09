@@ -285,11 +285,11 @@ const Home = () => {
                 </li>
               </ul>
 
-              <a href="https://pay.cakto.com.br/3bsu2vi_607441" target="_blank" rel="noopener noreferrer" className="block">
+              <Link to="/medicos/teste-gratis" className="block">
                 <PremiumButton className="w-full text-lg py-6 whitespace-normal">
                   🔵 Recuperar meu tempo e aumentar meu faturamento
                 </PremiumButton>
-              </a>
+              </Link>
             </CardContent>
           </Card>
 
