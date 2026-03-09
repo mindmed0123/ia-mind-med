@@ -368,7 +368,8 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
     }));
   };
 
-  const isComplete = sections.hipoteses.principal && sections.conduta;
+  const patientMissing = validatePatientData();
+  const isComplete = sections.hipoteses.principal && sections.conduta && patientMissing.length === 0;
   const readingTime = Math.ceil(wordCount / 200);
 
   return (
