@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, LogOut, FileAudio, FileText, Settings, Shield, Users, Pill, Bot } from "lucide-react";
+import { Activity, LogOut, FileAudio, FileText, Settings, Shield, Users, Pill, Bot, History } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
