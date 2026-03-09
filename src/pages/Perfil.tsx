@@ -20,14 +20,6 @@ import {
   validateFile,
   sanitizeText
 } from '@/lib/validation';
-import {
-  validateCRM,
-  validateCRMUF,
-  validateEmail,
-  validatePhone,
-  validateFile,
-  sanitizeText
-} from '@/lib/validation';
 
 export default function Perfil() {
   const { user } = useAuth();
