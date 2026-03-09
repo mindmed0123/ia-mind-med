@@ -107,16 +107,42 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
     setWordCount(count);
   }, [sections]);
 
+  const validatePatientData = (): string[] => {
+    const missing: string[] = [];
+    if (!sections.identificacao.nome?.trim()) missing.push('Nome do paciente');
+    if (!sections.identificacao.idade?.trim()) missing.push('Idade');
+    if (!sections.identificacao.sexo?.trim()) missing.push('Sexo');
+    return missing;
+  };
+
   const handleSave = async () => {
+    const missingPatient = validatePatientData();
+    if (missingPatient.length > 0) {
+      toast({
+        title: "Dados obrigatórios",
+        description: `Preencha ${missingPatient.join(', ')} do paciente para salvar o laudo.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setIsSaving(true);
       
+      const { data: current } = await supabase
+        .from('laudos')
+        .select('pdf_version')
+        .eq('id', laudoId)
+        .single();
+
       const { error } = await supabase
         .from('laudos')
         .update({
           sections: sections as any,
           diagnosis_main: sections.hipoteses.principal,
-          diagnosis_diff: sections.hipoteses.diferencial
+          diagnosis_diff: sections.hipoteses.diferencial,
+          pdf_version: ((current?.pdf_version as number) || 1) + 1,
+          last_update_type: 'manual_edit',
         })
         .eq('id', laudoId);
 
