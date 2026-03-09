@@ -1,13 +1,35 @@
+import { useState } from 'react';
 import { useQuota } from '@/hooks/useQuota';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Sparkles, Zap, TrendingUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export const QuotaDisplay = () => {
   const { quotaStatus, loading } = useQuota();
+  const { user } = useAuth();
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const handleCheckout = async (plan: string) => {
+    if (!user) return;
+    setActionLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: { userId: user.id, email: user.email, plan },
+      });
+      if (error) throw error;
+      if (data?.url) window.location.href = data.url;
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao processar');
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -27,14 +49,8 @@ export const QuotaDisplay = () => {
             <p className="text-sm text-muted-foreground">
               Você não possui um plano ativo
             </p>
-            <Button asChild>
-              <a 
-                href="https://pay.cakto.com.br/3bsu2vi_607441" 
-                target="_blank" 
-                rel="noopener noreferrer"
-              >
-                Assinar Agora
-              </a>
+            <Button onClick={() => handleCheckout('mindmed_starter')} disabled={actionLoading}>
+              {actionLoading ? 'Processando...' : 'Assinar Agora'}
             </Button>
           </div>
         </CardContent>
@@ -91,10 +107,7 @@ export const QuotaDisplay = () => {
         </div>
 
         <div className="space-y-2">
-          <Progress 
-            value={percentage} 
-            className="h-2"
-          />
+          <Progress value={percentage} className="h-2" />
           <p className="text-xs text-muted-foreground text-right">
             {used} de {total} utilizadas ({Math.round(percentage)}%)
           </p>
@@ -109,16 +122,11 @@ export const QuotaDisplay = () => {
               variant={isExhausted ? "default" : "outline"} 
               size="sm" 
               className="w-full"
-              asChild
+              onClick={() => handleCheckout('mindmed_pro')}
+              disabled={actionLoading}
             >
-              <a 
-                href="https://pay.cakto.com.br/u95r4cv_607505" 
-                target="_blank" 
-                rel="noopener noreferrer"
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                Upgrade para Pro (Ilimitado)
-              </a>
+              <Sparkles className="h-4 w-4 mr-2" />
+              {actionLoading ? 'Processando...' : 'Upgrade para Pro (Ilimitado)'}
             </Button>
           </div>
         )}

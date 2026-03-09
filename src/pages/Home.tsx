@@ -85,11 +85,11 @@ const Home = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up" style={{
           animationDelay: "0.2s"
         }}>
-            <a href="https://pay.cakto.com.br/3bsu2vi_607441" target="_blank" rel="noopener noreferrer">
+            <Link to="/medicos/teste-gratis">
               <PremiumButton className="!bg-white !text-primary hover:!bg-white/90 shadow-xl text-lg px-8 py-6">
                 🔵 Quero recuperar meu tempo agora
               </PremiumButton>
-            </a>
+            </Link>
           </div>
         </div>
       </section>
@@ -285,11 +285,11 @@ const Home = () => {
                 </li>
               </ul>
 
-              <a href="https://pay.cakto.com.br/3bsu2vi_607441" target="_blank" rel="noopener noreferrer" className="block">
+              <Link to="/medicos/teste-gratis" className="block">
                 <PremiumButton className="w-full text-lg py-6 whitespace-normal">
                   🔵 Recuperar meu tempo e aumentar meu faturamento
                 </PremiumButton>
-              </a>
+              </Link>
             </CardContent>
           </Card>
 
@@ -338,11 +338,11 @@ const Home = () => {
                 </div>
               </div>
 
-              <a href="https://pay.cakto.com.br/3bsu2vi_607441" target="_blank" rel="noopener noreferrer" className="block">
+              <Link to="/medicos/teste-gratis" className="block">
                 <PremiumButton className="w-full text-lg py-6 shadow-xl">
                   🔵 Garantir minha vaga de early adopter!
                 </PremiumButton>
-              </a>
+              </Link>
 
               <p className="text-center text-sm text-muted-foreground mt-4">
                 <Timer className="w-4 h-4 inline mr-1" />
@@ -366,11 +366,11 @@ const Home = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="https://pay.cakto.com.br/3bsu2vi_607441" target="_blank" rel="noopener noreferrer">
+            <Link to="/medicos/teste-gratis">
               <PremiumButton className="bg-white text-primary hover:bg-white/90 shadow-xl text-lg px-8 py-6">
                 🔵 Quero recuperar meu tempo agora
               </PremiumButton>
-            </a>
+            </Link>
             <a href="https://wa.me/5511958890212" target="_blank" rel="noopener noreferrer">
               <OutlinePremiumButton className="border-2 border-white text-white hover:bg-white hover:text-primary text-lg px-8 py-6">
                 <MessageCircle className="w-5 h-5 mr-2" />
