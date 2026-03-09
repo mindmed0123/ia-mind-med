@@ -39,6 +39,7 @@ const NovoLaudo = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [laudoId, setLaudoId] = useState<string | null>(searchParams.get('id'));
+  const initialTab = searchParams.get('tab');
   const [laudo, setLaudo] = useState<any>(null);
   const [patientData, setPatientData] = useState<any>(null);
   const [transcript, setTranscript] = useState("");
