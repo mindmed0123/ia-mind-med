@@ -99,7 +99,7 @@ const Header = () => {
               className="bg-secondary hover:bg-secondary/90 text-secondary-foreground shadow-glow hover:shadow-glow-intense transition-all"
               onClick={() => trackEvent("cta_header_demo")}
             >
-              <Link to="https://pay.cakto.com.br/3bsu2vi_607441" target="_blank">Começar Agora</Link>
+              <Link to="/medicos/teste-gratis">Começar Agora</Link>
             </Button>
           </div>
 
