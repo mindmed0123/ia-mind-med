@@ -491,6 +491,78 @@ export default function Perfil() {
             </CardContent>
           </Card>
 
+          {/* Minha Assinatura */}
+          <Card className="border-primary/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5" />
+                Minha Assinatura
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {subLoading ? (
+                <p className="text-sm text-muted-foreground">Carregando...</p>
+              ) : subscription ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Plano {subscription.plan}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Status: {' '}
+                        <Badge variant={subscription.isActive ? "default" : "destructive"}>
+                          {subscription.status === 'ACTIVE' ? 'Ativo' : 
+                           subscription.status === 'TRIALING' ? 'Período de teste' : 
+                           subscription.status === 'CANCELED' ? 'Cancelado' : subscription.status}
+                        </Badge>
+                      </p>
+                    </div>
+                  </div>
+                  {subscription.currentPeriodEnd && (
+                    <p className="text-sm text-muted-foreground">
+                      Próxima cobrança: {new Date(subscription.currentPeriodEnd).toLocaleDateString('pt-BR')}
+                    </p>
+                  )}
+                  {subscription.isTrial && subscription.trialEnd && (
+                    <p className="text-sm text-muted-foreground">
+                      Teste grátis até: {new Date(subscription.trialEnd).toLocaleDateString('pt-BR')}
+                    </p>
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      setPortalLoading(true);
+                      try {
+                        const { data, error } = await supabase.functions.invoke('customer-portal');
+                        if (error) throw error;
+                        if (data?.url) window.open(data.url, '_blank');
+                      } catch (err: any) {
+                        sonnerToast.error(err.message || 'Erro ao abrir portal');
+                      } finally {
+                        setPortalLoading(false);
+                      }
+                    }}
+                    disabled={portalLoading}
+                    className="w-full"
+                  >
+                    <Settings className="w-4 h-4 mr-2" />
+                    {portalLoading ? 'Abrindo...' : 'Gerenciar Assinatura'}
+                    <ExternalLink className="w-4 h-4 ml-2" />
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Atualizar cartão, trocar plano ou cancelar assinatura
+                  </p>
+                </>
+              ) : (
+                <div className="text-center space-y-3">
+                  <p className="text-sm text-muted-foreground">Nenhuma assinatura ativa</p>
+                  <Button onClick={() => navigate('/medicos/teste-gratis')}>
+                    Assinar Agora
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Botões */}
           <div className="flex gap-4">
             <Button variant="outline" onClick={() => navigate('/dashboard')}>
