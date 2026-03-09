@@ -7,6 +7,7 @@ import { LaudoViewer } from "@/components/laudos/LaudoViewer";
 import { LaudoEditor } from "@/components/laudos/LaudoEditor";
 import { TextInputMode } from "@/components/laudos/TextInputMode";
 import { PrescriptionTab } from "@/components/laudos/PrescriptionTab";
+import { ExamUploadSection } from "@/components/laudos/ExamUploadSection";
 import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
