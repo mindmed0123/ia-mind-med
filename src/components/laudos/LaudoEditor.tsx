@@ -16,7 +16,9 @@ import {
   AlertTriangle,
   Clock,
   FileText,
-  Pencil
+  Pencil,
+  Loader2,
+  Sparkles
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -107,16 +109,42 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
     setWordCount(count);
   }, [sections]);
 
+  const validatePatientData = (): string[] => {
+    const missing: string[] = [];
+    if (!sections.identificacao.nome?.trim()) missing.push('Nome do paciente');
+    if (!sections.identificacao.idade?.trim()) missing.push('Idade');
+    if (!sections.identificacao.sexo?.trim()) missing.push('Sexo');
+    return missing;
+  };
+
   const handleSave = async () => {
+    const missingPatient = validatePatientData();
+    if (missingPatient.length > 0) {
+      toast({
+        title: "Dados obrigatórios",
+        description: `Preencha ${missingPatient.join(', ')} do paciente para salvar o laudo.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setIsSaving(true);
       
+      const { data: current } = await supabase
+        .from('laudos')
+        .select('pdf_version')
+        .eq('id', laudoId)
+        .single();
+
       const { error } = await supabase
         .from('laudos')
         .update({
           sections: sections as any,
           diagnosis_main: sections.hipoteses.principal,
-          diagnosis_diff: sections.hipoteses.diferencial
+          diagnosis_diff: sections.hipoteses.diferencial,
+          pdf_version: ((current?.pdf_version as number) || 1) + 1,
+          last_update_type: 'manual_edit',
         })
         .eq('id', laudoId);
 
@@ -150,7 +178,61 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
     }
   };
 
+  const [isReviewingAI, setIsReviewingAI] = useState(false);
+
+  const handleReviewWithAI = async () => {
+    setIsReviewingAI(true);
+    try {
+      const allText = `Identificação: ${sections.identificacao.nome}, ${sections.identificacao.idade}, ${sections.identificacao.sexo}\nQueixa Principal: ${sections.queixa}\nHDA: ${sections.hda}\nExame Físico: ${sections.exame_fisico}\nHipótese Principal: ${sections.hipoteses.principal}\nHipótese Diferencial: ${sections.hipoteses.diferencial}\nConduta: ${sections.conduta}`;
+
+      const { data, error } = await supabase.functions.invoke('dav-chat', {
+        body: {
+          messages: [
+            { role: 'system', content: 'Você é um assistente médico. Revise o laudo abaixo melhorando a estrutura e linguagem médica, mantendo o conteúdo clínico intacto. Retorne APENAS um JSON com as chaves: queixa, hda, exame_fisico, hipotese_principal, hipotese_diferencial, conduta. Cada valor deve ser o texto revisado.' },
+            { role: 'user', content: `Revise este laudo médico:\n${allText}` }
+          ]
+        }
+      });
+
+      if (error) throw error;
+
+      const responseText = data?.choices?.[0]?.message?.content || data?.content || '';
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const revised = JSON.parse(jsonMatch[0]);
+        setSections(prev => ({
+          ...prev,
+          queixa: revised.queixa || prev.queixa,
+          hda: revised.hda || prev.hda,
+          exame_fisico: revised.exame_fisico || prev.exame_fisico,
+          hipoteses: {
+            principal: revised.hipotese_principal || prev.hipoteses.principal,
+            diferencial: revised.hipotese_diferencial || prev.hipoteses.diferencial,
+          },
+          conduta: revised.conduta || prev.conduta,
+        }));
+        toast({ title: "Texto revisado!", description: "A IA melhorou a estrutura e linguagem médica do laudo." });
+      } else {
+        toast({ title: "Aviso", description: "Não foi possível interpretar a revisão da IA.", variant: "destructive" });
+      }
+    } catch (error: any) {
+      toast({ title: "Erro na revisão", description: error.message, variant: "destructive" });
+    } finally {
+      setIsReviewingAI(false);
+    }
+  };
+
   const handleFinalize = async () => {
+    const missingPatient = validatePatientData();
+    if (missingPatient.length > 0) {
+      toast({
+        title: "Dados obrigatórios do paciente",
+        description: `Preencha ${missingPatient.join(', ')} do paciente para salvar o laudo.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!sections.hipoteses.principal || !sections.conduta) {
       toast({
         title: "Laudo incompleto",
@@ -288,7 +370,8 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
     }));
   };
 
-  const isComplete = sections.hipoteses.principal && sections.conduta;
+  const patientMissing = validatePatientData();
+  const isComplete = sections.hipoteses.principal && sections.conduta && patientMissing.length === 0;
   const readingTime = Math.ceil(wordCount / 200);
 
   return (
@@ -381,6 +464,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
                   Campos obrigatórios faltando
                 </p>
                 <ul className="text-sm text-yellow-700 dark:text-yellow-200 mt-1 list-disc list-inside">
+                  {patientMissing.map(f => <li key={f}>{f}</li>)}
                   {!sections.hipoteses.principal && <li>Hipótese Principal</li>}
                   {!sections.conduta && <li>Conduta/Plano</li>}
                 </ul>
@@ -584,7 +668,17 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
       </Card>
 
       {/* Actions */}
-      <div className="flex gap-3 justify-end">
+      <div className="flex flex-wrap gap-3 justify-end">
+        <Button
+          variant="outline"
+          onClick={handleReviewWithAI}
+          disabled={isReviewingAI}
+          className="gap-1"
+        >
+          {isReviewingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+          Revisar texto com IA
+        </Button>
+
         {sections.identificacao?.nome && (
           <AnonymizeDialog
             laudoId={laudoId}

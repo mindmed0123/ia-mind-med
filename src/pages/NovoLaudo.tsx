@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Edit, Mic, FileText, CheckCircle, AlertCircle, Pill } from "lucide-react";
+import { ArrowLeft, Loader2, Edit, Mic, FileText, CheckCircle, AlertCircle, Pill, Upload } from "lucide-react";
 import { PatientDataForm } from "@/components/laudos/PatientDataForm";
 import { LaudoViewer } from "@/components/laudos/LaudoViewer";
 import { LaudoEditor } from "@/components/laudos/LaudoEditor";
 import { TextInputMode } from "@/components/laudos/TextInputMode";
 import { PrescriptionTab } from "@/components/laudos/PrescriptionTab";
+import { ExamUploadSection } from "@/components/laudos/ExamUploadSection";
 import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,12 +39,13 @@ const NovoLaudo = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [laudoId, setLaudoId] = useState<string | null>(searchParams.get('id'));
+  const initialTab = searchParams.get('tab');
   const [laudo, setLaudo] = useState<any>(null);
   const [patientData, setPatientData] = useState<any>(null);
   const [transcript, setTranscript] = useState("");
   const [hasShownSuccessToast, setHasShownSuccessToast] = useState(false);
   const hasTriggeredGeneration = useRef(false);
-  const [showEditor, setShowEditor] = useState(false);
+  const [showEditor, setShowEditor] = useState(initialTab === 'editor');
   const [inputMode, setInputMode] = useState<'audio' | 'text'>('audio');
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>('idle');
   const [isSubmitting, setIsSubmitting] = useState(false); // double-submit guard
@@ -609,13 +611,17 @@ const NovoLaudo = () => {
           <div className="lg:col-span-2">
             {laudo?.status === 'completed' ? (
               <Tabs defaultValue={showEditor ? "editor" : "viewer"} className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="viewer" onClick={() => setShowEditor(false)}>
                     Visualizar
                   </TabsTrigger>
                   <TabsTrigger value="editor" onClick={() => setShowEditor(true)}>
                     <Edit className="w-4 h-4 mr-2" />
                     Editar
+                  </TabsTrigger>
+                  <TabsTrigger value="exams">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Exames
                   </TabsTrigger>
                   <TabsTrigger value="prescription">
                     <Pill className="w-4 h-4 mr-2" />
@@ -633,6 +639,18 @@ const NovoLaudo = () => {
                     initialData={laudo}
                     onStatusChange={(newStatus) => {
                       setLaudo({ ...laudo, status: newStatus });
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="exams" className="mt-6">
+                  <ExamUploadSection
+                    laudoId={laudoId}
+                    patientId={laudo?.patient_id}
+                    patientName={patientData?.iniciais || ''}
+                    onExamsAnalyzed={(summary) => {
+                      toast({ title: "Exames integrados", description: "Seção de exames complementares atualizada" });
+                      loadLaudo();
                     }}
                   />
                 </TabsContent>
