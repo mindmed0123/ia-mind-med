@@ -66,7 +66,7 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
           .getPublicUrl(filePath);
 
         // Save to patient_documents if patient exists
-        let docId = crypto.randomUUID() as `${string}-${string}-${string}-${string}-${string}`;
+        let docId: string = crypto.randomUUID();
         if (patientId) {
           const { data: doc, error: docError } = await supabase
             .from('patient_documents')
