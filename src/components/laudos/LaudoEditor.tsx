@@ -16,7 +16,9 @@ import {
   AlertTriangle,
   Clock,
   FileText,
-  Pencil
+  Pencil,
+  Loader2,
+  Sparkles
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
