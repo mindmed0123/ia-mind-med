@@ -610,13 +610,17 @@ const NovoLaudo = () => {
           <div className="lg:col-span-2">
             {laudo?.status === 'completed' ? (
               <Tabs defaultValue={showEditor ? "editor" : "viewer"} className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="viewer" onClick={() => setShowEditor(false)}>
                     Visualizar
                   </TabsTrigger>
                   <TabsTrigger value="editor" onClick={() => setShowEditor(true)}>
                     <Edit className="w-4 h-4 mr-2" />
                     Editar
+                  </TabsTrigger>
+                  <TabsTrigger value="exams">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Exames
                   </TabsTrigger>
                   <TabsTrigger value="prescription">
                     <Pill className="w-4 h-4 mr-2" />
@@ -634,6 +638,18 @@ const NovoLaudo = () => {
                     initialData={laudo}
                     onStatusChange={(newStatus) => {
                       setLaudo({ ...laudo, status: newStatus });
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="exams" className="mt-6">
+                  <ExamUploadSection
+                    laudoId={laudoId}
+                    patientId={laudo?.patient_id}
+                    patientName={patientData?.iniciais || ''}
+                    onExamsAnalyzed={(summary) => {
+                      toast({ title: "Exames integrados", description: "Seção de exames complementares atualizada" });
+                      loadLaudo();
                     }}
                   />
                 </TabsContent>

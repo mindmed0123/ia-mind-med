@@ -296,15 +296,33 @@ export default function HistoricoPaciente() {
                             onClick={() => navigate(`/novo-laudo?id=${laudo.id}`)}
                           >
                             <ExternalLink className="w-4 h-4 mr-1" />
-                            Ver
+                            Visualizar
                           </Button>
-                          {laudo.pdf_url && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/novo-laudo?id=${laudo.id}&tab=editor`)}
+                          >
+                            <FileText className="w-4 h-4 mr-1" />
+                            Editar
+                          </Button>
+                          {laudo.pdf_url ? (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => window.open(laudo.pdf_url!, '_blank')}
                             >
-                              <Download className="w-4 h-4" />
+                              <Download className="w-4 h-4 mr-1" />
+                              PDF
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/novo-laudo?id=${laudo.id}`)}
+                            >
+                              <Download className="w-4 h-4 mr-1" />
+                              PDF
                             </Button>
                           )}
                         </div>
