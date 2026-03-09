@@ -45,7 +45,7 @@ const NovoLaudo = () => {
   const [transcript, setTranscript] = useState("");
   const [hasShownSuccessToast, setHasShownSuccessToast] = useState(false);
   const hasTriggeredGeneration = useRef(false);
-  const [showEditor, setShowEditor] = useState(false);
+  const [showEditor, setShowEditor] = useState(initialTab === 'editor');
   const [inputMode, setInputMode] = useState<'audio' | 'text'>('audio');
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>('idle');
   const [isSubmitting, setIsSubmitting] = useState(false); // double-submit guard
