@@ -666,7 +666,17 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
       </Card>
 
       {/* Actions */}
-      <div className="flex gap-3 justify-end">
+      <div className="flex flex-wrap gap-3 justify-end">
+        <Button
+          variant="outline"
+          onClick={handleReviewWithAI}
+          disabled={isReviewingAI}
+          className="gap-1"
+        >
+          {isReviewingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+          Revisar texto com IA
+        </Button>
+
         {sections.identificacao?.nome && (
           <AnonymizeDialog
             laudoId={laudoId}
