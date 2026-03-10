@@ -95,10 +95,10 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
     }
   }, [initialData]);
 
-  // Autosave
+  // Autosave (silently skip if patient data is incomplete)
   useEffect(() => {
     if (hasLoadedInitialData.current) {
-      handleSave();
+      handleSave(true);
     }
   }, [debouncedSections]);
 
