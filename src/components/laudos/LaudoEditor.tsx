@@ -95,10 +95,10 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
     }
   }, [initialData]);
 
-  // Autosave
+  // Autosave (silently skip if patient data is incomplete)
   useEffect(() => {
     if (hasLoadedInitialData.current) {
-      handleSave();
+      handleSave(true);
     }
   }, [debouncedSections]);
 
@@ -117,14 +117,16 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
     return missing;
   };
 
-  const handleSave = async () => {
+  const handleSave = async (silent = false) => {
     const missingPatient = validatePatientData();
     if (missingPatient.length > 0) {
-      toast({
-        title: "Dados obrigatórios",
-        description: `Preencha ${missingPatient.join(', ')} do paciente para salvar o laudo.`,
-        variant: "destructive"
-      });
+      if (!silent) {
+        toast({
+          title: "Dados obrigatórios",
+          description: `Preencha ${missingPatient.join(', ')} do paciente para salvar o laudo.`,
+          variant: "destructive"
+        });
+      }
       return;
     }
 
@@ -441,7 +443,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleSave}
+                onClick={() => handleSave()}
                 disabled={isSaving}
                 className="hover:bg-primary/10 hover:text-primary transition-colors"
               >
@@ -643,7 +645,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
               value={cid10Input}
               onChange={(e) => setCid10Input(e.target.value)}
               placeholder="Ex: K29.1"
-              onKeyPress={(e) => e.key === 'Enter' && addCid10()}
+              onKeyDown={(e) => e.key === 'Enter' && addCid10()}
             />
             <Button onClick={addCid10}>
               Adicionar
