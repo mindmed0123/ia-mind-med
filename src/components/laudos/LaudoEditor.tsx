@@ -117,14 +117,16 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
     return missing;
   };
 
-  const handleSave = async () => {
+  const handleSave = async (silent = false) => {
     const missingPatient = validatePatientData();
     if (missingPatient.length > 0) {
-      toast({
-        title: "Dados obrigatórios",
-        description: `Preencha ${missingPatient.join(', ')} do paciente para salvar o laudo.`,
-        variant: "destructive"
-      });
+      if (!silent) {
+        toast({
+          title: "Dados obrigatórios",
+          description: `Preencha ${missingPatient.join(', ')} do paciente para salvar o laudo.`,
+          variant: "destructive"
+        });
+      }
       return;
     }
 
