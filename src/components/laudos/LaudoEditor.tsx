@@ -443,7 +443,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleSave}
+                onClick={() => handleSave()}
                 disabled={isSaving}
                 className="hover:bg-primary/10 hover:text-primary transition-colors"
               >
