@@ -39,8 +39,8 @@ const Auth = () => {
       return;
     }
 
-    if (!loginData.password || loginData.password.length < 6) {
-      toast.error("Senha deve ter no mínimo 6 caracteres");
+    if (!loginData.password || loginData.password.length < 8) {
+      toast.error("Senha deve ter no mínimo 8 caracteres");
       setIsLoading(false);
       return;
     }

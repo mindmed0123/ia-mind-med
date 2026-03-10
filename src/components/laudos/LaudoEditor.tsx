@@ -645,7 +645,7 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
               value={cid10Input}
               onChange={(e) => setCid10Input(e.target.value)}
               placeholder="Ex: K29.1"
-              onKeyPress={(e) => e.key === 'Enter' && addCid10()}
+              onKeyDown={(e) => e.key === 'Enter' && addCid10()}
             />
             <Button onClick={addCid10}>
               Adicionar
