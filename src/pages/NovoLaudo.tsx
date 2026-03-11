@@ -252,6 +252,9 @@ const NovoLaudo = () => {
       toast({ title: 'Erro', description: error.message || 'Erro ao gerar laudo', variant: 'destructive' });
     }
   }, [laudoId, isSubmitting, transcript, patientData, toast]);
+  
+  // Keep ref in sync for Realtime callback
+  useEffect(() => { handleGenerateLaudoRef.current = handleGenerateLaudo; }, [handleGenerateLaudo]);
 
   const handleTextGenerate = async (text: string) => {
     if (!user || isSubmitting) return;
