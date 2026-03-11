@@ -43,17 +43,28 @@ const NovoLaudo = () => {
   const [laudo, setLaudo] = useState<any>(null);
   const [patientData, setPatientData] = useState<any>(null);
   const [transcript, setTranscript] = useState("");
-  const [hasShownSuccessToast, setHasShownSuccessToast] = useState(false);
+  const hasShownSuccessToast = useRef(false);
   const hasTriggeredGeneration = useRef(false);
   const [showEditor, setShowEditor] = useState(initialTab === 'editor');
   const [inputMode, setInputMode] = useState<'audio' | 'text'>('audio');
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>('idle');
-  const [isSubmitting, setIsSubmitting] = useState(false); // double-submit guard
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const channelRef = useRef<any>(null);
+  const transcriptRef = useRef(transcript);
+  const patientDataRef = useRef(patientData);
+
+  // Keep refs in sync to avoid stale closures in Realtime
+  const handleGenerateLaudoRef = useRef<(t?: string) => Promise<void>>();
+  useEffect(() => { transcriptRef.current = transcript; }, [transcript]);
+  useEffect(() => { patientDataRef.current = patientData; }, [patientData]);
 
   // ===== SUPABASE REALTIME (replaces polling) =====
   useEffect(() => {
     if (!laudoId) return;
+    
+    // Reset flags for new laudo
+    hasShownSuccessToast.current = false;
+    hasTriggeredGeneration.current = false;
     
     // Initial load
     loadLaudo();
@@ -74,7 +85,7 @@ const NovoLaudo = () => {
           setLaudo(updated);
           
           // Update transcript
-          if (updated.transcript?.text && updated.transcript.text !== transcript) {
+          if (updated.transcript?.text && updated.transcript.text !== transcriptRef.current) {
             setTranscript(updated.transcript.text);
           }
 
@@ -99,9 +110,9 @@ const NovoLaudo = () => {
             setPipelineStage('error');
           } else if (updated.status === 'completed') {
             setPipelineStage('completed');
-            if (!hasShownSuccessToast) {
+            if (!hasShownSuccessToast.current) {
+              hasShownSuccessToast.current = true;
               toast({ title: 'Laudo gerado!', description: 'O laudo foi gerado com sucesso' });
-              setHasShownSuccessToast(true);
             }
             setIsSubmitting(false);
           } else if (updated.status === 'generating') {
@@ -119,7 +130,7 @@ const NovoLaudo = () => {
             updated.transcript?.text
           ) {
             hasTriggeredGeneration.current = true;
-            handleGenerateLaudo(updated.transcript.text);
+            handleGenerateLaudoRef.current?.(updated.transcript.text);
           }
         }
       )
@@ -156,6 +167,7 @@ const NovoLaudo = () => {
       // Set initial pipeline stage
       if (data.status === 'completed') {
         setPipelineStage('completed');
+        hasShownSuccessToast.current = true; // Don't show toast for already-completed laudos
       } else if (data.status === 'generating') {
         setPipelineStage('calling_ai');
       } else if (data.status === 'error' || data.transcript_status === 'error') {
@@ -224,9 +236,9 @@ const NovoLaudo = () => {
           setLaudo(updated);
           setPipelineStage('completed');
           setIsSubmitting(false);
-          if (!hasShownSuccessToast) {
+          if (!hasShownSuccessToast.current) {
+            hasShownSuccessToast.current = true;
             toast({ title: 'Laudo gerado!', description: 'O laudo foi gerado com sucesso' });
-            setHasShownSuccessToast(true);
           }
         } else if (updated?.status === 'error') {
           setLaudo(updated);
@@ -245,6 +257,9 @@ const NovoLaudo = () => {
       toast({ title: 'Erro', description: error.message || 'Erro ao gerar laudo', variant: 'destructive' });
     }
   }, [laudoId, isSubmitting, transcript, patientData, toast]);
+  
+  // Keep ref in sync for Realtime callback
+  useEffect(() => { handleGenerateLaudoRef.current = handleGenerateLaudo; }, [handleGenerateLaudo]);
 
   const handleTextGenerate = async (text: string) => {
     if (!user || isSubmitting) return;
@@ -310,9 +325,9 @@ const NovoLaudo = () => {
           setLaudo(updated);
           setPipelineStage('completed');
           setIsSubmitting(false);
-          if (!hasShownSuccessToast) {
+          if (!hasShownSuccessToast.current) {
+            hasShownSuccessToast.current = true;
             toast({ title: 'Laudo gerado!', description: 'O laudo foi gerado com sucesso' });
-            setHasShownSuccessToast(true);
           }
         } else if (updated?.status === 'error') {
           setLaudo(updated);
