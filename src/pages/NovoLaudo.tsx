@@ -80,7 +80,7 @@ const NovoLaudo = () => {
           setLaudo(updated);
           
           // Update transcript
-          if (updated.transcript?.text && updated.transcript.text !== transcript) {
+          if (updated.transcript?.text && updated.transcript.text !== transcriptRef.current) {
             setTranscript(updated.transcript.text);
           }
 
