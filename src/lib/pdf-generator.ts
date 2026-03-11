@@ -25,17 +25,16 @@ export const generatePdf = async ({ html, fileName, verifyUrl }: PdfOptions): Pr
       `<img src="${qrCodeDataUrl}" alt="QR Code de Verificação" style="max-width: 150px; margin: 10px auto; display: block;" />`
     );
 
-    // Configurações do PDF com tipo correto
-    const margin: [number, number, number, number] = [20, 20, 20, 20];
-    
+    // Zero margins - the HTML template handles all spacing internally
     const options = {
-      margin,
+      margin: [0, 0, 0, 0] as [number, number, number, number],
       filename: fileName,
       image: { type: 'jpeg' as const, quality: 0.98 },
       html2canvas: { 
-        scale: 2,
+        scale: 2.5,
         useCORS: true,
-        logging: false
+        logging: false,
+        letterRendering: true,
       },
       jsPDF: { 
         unit: 'mm', 
