@@ -43,13 +43,17 @@ const NovoLaudo = () => {
   const [laudo, setLaudo] = useState<any>(null);
   const [patientData, setPatientData] = useState<any>(null);
   const [transcript, setTranscript] = useState("");
-  const [hasShownSuccessToast, setHasShownSuccessToast] = useState(false);
+  const hasShownSuccessToast = useRef(false);
   const hasTriggeredGeneration = useRef(false);
   const [showEditor, setShowEditor] = useState(initialTab === 'editor');
   const [inputMode, setInputMode] = useState<'audio' | 'text'>('audio');
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>('idle');
-  const [isSubmitting, setIsSubmitting] = useState(false); // double-submit guard
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const channelRef = useRef<any>(null);
+  // Refs to avoid stale closures in Realtime callback
+  const transcriptRef = useRef(transcript);
+  const patientDataRef = useRef(patientData);
+  const handleGenerateLaudoRef = useRef(handleGenerateLaudo);
 
   // ===== SUPABASE REALTIME (replaces polling) =====
   useEffect(() => {
