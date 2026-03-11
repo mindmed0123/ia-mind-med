@@ -50,6 +50,9 @@ const NovoLaudo = () => {
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>('idle');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const channelRef = useRef<any>(null);
+  const transcriptRef = useRef(transcript);
+  const patientDataRef = useRef(patientData);
+
   // Keep refs in sync
   useEffect(() => { transcriptRef.current = transcript; }, [transcript]);
   useEffect(() => { patientDataRef.current = patientData; }, [patientData]);
