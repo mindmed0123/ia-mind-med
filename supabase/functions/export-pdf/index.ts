@@ -200,15 +200,15 @@ function generatePdfHtml(
   hash: string, verifyToken: string
 ): string {
   const logoHtml = profile?.logo_url 
-    ? `<img src="${profile.logo_url}" alt="Logo" style="max-height: 54px; max-width: 160px; object-fit: contain;" />`
+    ? `<img src="${profile.logo_url}" alt="Logo" class="header-logo-img" />`
     : '';
     
   const signatureHtml = profile?.signature_image_url
-    ? `<img src="${profile.signature_image_url}" alt="Assinatura" style="max-height: 48px; max-width: 160px; object-fit: contain;" />`
+    ? `<img src="${profile.signature_image_url}" alt="Assinatura" class="sig-img" />`
     : '';
 
   const stampHtml = profile?.stamp_image_url
-    ? `<img src="${profile.stamp_image_url}" alt="Carimbo" style="max-height: 54px; max-width: 160px; object-fit: contain; margin-top: 4px;" />`
+    ? `<img src="${profile.stamp_image_url}" alt="Carimbo" class="stamp-img" />`
     : '';
 
   const doctorName = profile?.full_name || 'Médico Responsável';
@@ -228,525 +228,532 @@ function generatePdfHtml(
   const redFlags = laudo.red_flags as string[] | null;
   const complementaryExams = laudo.complementary_exams as string[] | null;
 
-  // Helper to render a clinical section
-  const renderSection = (icon: string, title: string, content: string) => {
+  const formatContent = (text: string) => text.replace(/\n/g, '<br>');
+
+  // Build clinical sections
+  const buildSection = (num: string, title: string, content: string, accent = '#0B3D6B') => {
     if (!content) return '';
     return `
-    <div class="clinical-section">
-      <div class="section-header">
-        <span class="section-icon">${icon}</span>
-        <h2>${title}</h2>
+    <div class="section">
+      <div class="section-title-row">
+        <div class="section-num" style="background:${accent};">${num}</div>
+        <h2 class="section-title">${title}</h2>
+        <div class="section-line"></div>
       </div>
-      <div class="section-content">${content.replace(/\n/g, '<br>')}</div>
+      <div class="section-body">${formatContent(content)}</div>
     </div>`;
   };
 
-  return `
-<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <style>
-    @page { size: A4; margin: 0; }
-    @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
-    
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    
-    body { 
-      font-family: 'Source Sans 3', 'Segoe UI', Arial, sans-serif; 
-      font-size: 10pt; 
-      line-height: 1.6; 
-      color: #1a1a2e; 
-      background: #fff;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Merriweather:wght@700;900&display=swap');
 
-    .page {
-      position: relative;
-      width: 210mm;
-      min-height: 297mm;
-      padding: 18mm 24mm 28mm 24mm;
-    }
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-    /* ═══════════ HEADER ═══════════ */
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      padding-bottom: 16px;
-      margin-bottom: 0;
-    }
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    .header-logo-fallback {
-      width: 44px; height: 44px;
-      background: linear-gradient(145deg, #0d2137 0%, #1a4a7a 100%);
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      color: #fff; font-size: 20px; font-weight: 700;
-      font-family: 'Playfair Display', serif;
-      letter-spacing: -0.5px;
-    }
-    .header-brand h1 {
-      font-family: 'Playfair Display', serif;
-      font-size: 20pt; font-weight: 700; color: #0d2137;
-      letter-spacing: -0.3px; line-height: 1.1;
-    }
-    .header-brand .tagline {
-      font-size: 7pt; color: #6b7b8d; font-weight: 500;
-      letter-spacing: 2px; text-transform: uppercase; margin-top: 2px;
-    }
-    .header-right {
-      text-align: right;
-      font-size: 8.5pt;
-      color: #3a4a5c;
-      line-height: 1.7;
-    }
-    .header-right .doctor-name {
-      font-size: 11pt; font-weight: 700; color: #0d2137;
-      margin-bottom: 2px;
-    }
-    .header-right .crm-line {
-      font-weight: 600; color: #1a4a7a;
-    }
+  body {
+    font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif;
+    font-size: 10pt;
+    line-height: 1.65;
+    color: #1E293B;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 
-    /* Divider line */
-    .header-divider {
-      height: 3px;
-      background: linear-gradient(90deg, #0d2137 0%, #2a6cb6 40%, #d4dfe8 100%);
-      border-radius: 2px;
-      margin-bottom: 20px;
-    }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 0;
+    position: relative;
+  }
 
-    /* ═══════════ PATIENT BLOCK ═══════════ */
-    .patient-block {
-      background: #f4f7fa;
-      border: 1px solid #d8e2ec;
-      border-radius: 8px;
-      padding: 14px 20px;
-      margin-bottom: 22px;
-    }
-    .patient-block-title {
-      font-size: 7pt; font-weight: 700; color: #6b7b8d;
-      text-transform: uppercase; letter-spacing: 1.5px;
-      margin-bottom: 10px;
-    }
-    .patient-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px 40px;
-    }
-    .patient-field {
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-      font-size: 9.5pt;
-    }
-    .patient-field .label {
-      color: #6b7b8d;
-      font-weight: 600;
-      min-width: 90px;
-      flex-shrink: 0;
-    }
-    .patient-field .value {
-      color: #0d2137;
-      font-weight: 500;
-    }
+  /* ════════════════ GOLD ACCENT BAR ════════════════ */
+  .top-accent {
+    height: 5px;
+    background: linear-gradient(90deg, #0B3D6B 0%, #1565A8 35%, #C7944A 65%, #D4A84B 100%);
+  }
 
-    /* ═══════════ DOCUMENT TITLE ═══════════ */
-    .doc-title-bar {
-      text-align: center;
-      margin-bottom: 24px;
-      padding: 10px 0;
-      border-top: 1.5px solid #d8e2ec;
-      border-bottom: 1.5px solid #d8e2ec;
-    }
-    .doc-title-bar h2 {
-      font-family: 'Playfair Display', serif;
-      font-size: 14pt;
-      font-weight: 700;
-      color: #0d2137;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-    }
+  /* ════════════════ HEADER ════════════════ */
+  .header {
+    padding: 20px 32px 16px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .header-logo-img {
+    max-height: 50px;
+    max-width: 150px;
+    object-fit: contain;
+  }
+  .logo-mark {
+    width: 46px; height: 46px;
+    background: linear-gradient(145deg, #0B3D6B 0%, #1565A8 100%);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(11,61,107,0.25);
+  }
+  .logo-mark span {
+    color: #fff; font-weight: 800; font-size: 22px;
+    font-family: 'Merriweather', serif;
+  }
+  .logo-mark::after {
+    content: '';
+    position: absolute; bottom: -2px; right: -2px;
+    width: 14px; height: 14px;
+    background: #D4A84B;
+    border-radius: 50%;
+    border: 2px solid #fff;
+  }
+  .brand-name {
+    font-family: 'Merriweather', serif;
+    font-size: 18pt; font-weight: 900; color: #0B3D6B;
+    letter-spacing: -0.5px; line-height: 1.1;
+  }
+  .brand-sub {
+    font-size: 7pt; color: #94A3B8; font-weight: 600;
+    letter-spacing: 2.5px; text-transform: uppercase; margin-top: 2px;
+  }
+  .header-right {
+    text-align: right;
+    font-size: 8.5pt; color: #475569;
+    line-height: 1.65;
+  }
+  .doc-name {
+    font-size: 12pt; font-weight: 700; color: #0B3D6B;
+  }
+  .doc-crm {
+    font-weight: 600; color: #1565A8; font-size: 9pt;
+  }
+  .doc-detail {
+    font-size: 8pt; color: #64748B;
+  }
 
-    /* ═══════════ CLINICAL SECTIONS ═══════════ */
-    .clinical-section {
-      margin-bottom: 18px;
-      page-break-inside: avoid;
-    }
-    .section-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 8px;
-      padding-bottom: 5px;
-      border-bottom: 1.5px solid #e4ebf2;
-    }
-    .section-icon {
-      width: 24px; height: 24px;
-      background: #0d2137;
-      border-radius: 5px;
-      display: flex; align-items: center; justify-content: center;
-      color: #fff; font-size: 11px; font-weight: 700;
-      flex-shrink: 0;
-      line-height: 24px;
-      text-align: center;
-    }
-    .section-header h2 {
-      font-size: 10pt; font-weight: 700; color: #0d2137;
-      text-transform: uppercase; letter-spacing: 1px;
-    }
-    .section-content {
-      padding: 10px 16px 10px 34px;
-      font-size: 10pt;
-      line-height: 1.7;
-      color: #2c3e50;
-      text-align: justify;
-    }
+  .header-line {
+    height: 1.5px;
+    background: linear-gradient(90deg, #0B3D6B, #CBD5E1 70%, transparent);
+    margin: 0 32px;
+  }
 
-    /* ═══════════ DIAGNOSIS CARDS ═══════════ */
-    .diagnosis-group {
-      margin-bottom: 18px;
-      page-break-inside: avoid;
-    }
-    .diagnosis-card {
-      border-radius: 8px;
-      overflow: hidden;
-      margin-bottom: 10px;
-    }
-    .diagnosis-card.primary {
-      border: 2px solid #1a4a7a;
-    }
-    .diagnosis-card.secondary {
-      border: 1px solid #d8e2ec;
-    }
-    .diagnosis-label {
-      padding: 6px 14px;
-      font-size: 7pt;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1.2px;
-    }
-    .diagnosis-card.primary .diagnosis-label {
-      background: linear-gradient(135deg, #0d2137 0%, #1a4a7a 100%);
-      color: #fff;
-    }
-    .diagnosis-card.secondary .diagnosis-label {
-      background: #f4f7fa;
-      color: #6b7b8d;
-      border-bottom: 1px solid #e4ebf2;
-    }
-    .diagnosis-value {
-      padding: 12px 16px;
-      font-size: 10.5pt;
-      font-weight: 600;
-      color: #0d2137;
-      background: #fff;
-    }
+  /* ════════════════ PATIENT CARD ════════════════ */
+  .patient-card {
+    margin: 18px 32px 0 32px;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .patient-card-header {
+    background: linear-gradient(135deg, #0B3D6B 0%, #1565A8 100%);
+    padding: 8px 20px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .patient-card-header span {
+    color: #fff; font-size: 7.5pt; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 2px;
+  }
+  .patient-card-header .icon-user {
+    width: 16px; height: 16px;
+    background: rgba(255,255,255,0.2); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 9px; font-weight: 700;
+  }
+  .patient-card-body {
+    padding: 14px 20px;
+    background: #F8FAFC;
+  }
+  .patient-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 48px;
+  }
+  .pf { display: flex; align-items: baseline; gap: 8px; font-size: 9.5pt; }
+  .pf .lbl { color: #64748B; font-weight: 600; min-width: 110px; }
+  .pf .val { color: #0F172A; font-weight: 500; }
 
-    /* ═══════════ CID-10 TAGS ═══════════ */
-    .cid-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      padding: 8px 0 0 34px;
-    }
-    .cid-tag {
-      display: inline-block;
-      padding: 3px 12px;
-      background: #0d2137;
-      color: #fff;
-      border-radius: 4px;
-      font-size: 8pt;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-    }
+  /* ════════════════ DOCUMENT TITLE ════════════════ */
+  .doc-title {
+    margin: 22px 32px 20px 32px;
+    text-align: center;
+    position: relative;
+    padding: 12px 0;
+  }
+  .doc-title::before, .doc-title::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #CBD5E1 20%, #CBD5E1 80%, transparent);
+  }
+  .doc-title::before { top: 0; }
+  .doc-title::after { bottom: 0; }
+  .doc-title h2 {
+    font-family: 'Merriweather', serif;
+    font-size: 13pt; font-weight: 700; color: #0B3D6B;
+    letter-spacing: 4px; text-transform: uppercase;
+  }
+  .doc-title .title-accent {
+    width: 40px; height: 3px;
+    background: linear-gradient(90deg, #C7944A, #D4A84B);
+    margin: 8px auto 0; border-radius: 2px;
+  }
 
-    /* ═══════════ RED FLAGS ═══════════ */
-    .red-flags-block {
-      background: #fef8f8;
-      border: 1px solid #f5d0d0;
-      border-left: 4px solid #c0392b;
-      border-radius: 6px;
-      padding: 12px 16px;
-      margin-bottom: 18px;
-      page-break-inside: avoid;
-    }
-    .red-flags-block h3 {
-      font-size: 8.5pt; font-weight: 700; color: #922b21;
-      text-transform: uppercase; letter-spacing: 1px;
-      margin-bottom: 8px;
-    }
-    .red-flags-block li {
-      font-size: 9.5pt; color: #641e16; margin: 4px 0;
-      list-style: none; padding-left: 18px; position: relative;
-    }
-    .red-flags-block li::before {
-      content: "▲";
-      position: absolute; left: 0; top: 0;
-      color: #c0392b; font-size: 7pt;
-    }
+  /* ════════════════ SECTIONS ════════════════ */
+  .sections-wrapper {
+    padding: 0 32px;
+  }
+  .section {
+    margin-bottom: 16px;
+    page-break-inside: avoid;
+  }
+  .section-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .section-num {
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 11px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .section-title {
+    font-size: 10pt; font-weight: 700; color: #0B3D6B;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    white-space: nowrap;
+  }
+  .section-line {
+    flex: 1; height: 1px;
+    background: linear-gradient(90deg, #CBD5E1, transparent);
+    margin-left: 8px;
+  }
+  .section-body {
+    padding: 8px 0 8px 36px;
+    font-size: 10pt; line-height: 1.75;
+    color: #334155;
+    text-align: justify;
+  }
 
-    /* ═══════════ EXAMS LIST ═══════════ */
-    .exams-block {
-      padding: 10px 16px 10px 34px;
-    }
-    .exams-block li {
-      font-size: 9.5pt; color: #2c3e50; margin: 4px 0;
-      list-style: none; padding-left: 16px; position: relative;
-    }
-    .exams-block li::before {
-      content: "●";
-      position: absolute; left: 0; top: 0;
-      color: #1a4a7a; font-size: 6pt; line-height: 18px;
-    }
+  /* ════════════════ DIAGNOSIS ════════════════ */
+  .dx-group { margin-bottom: 16px; page-break-inside: avoid; }
+  .dx-card {
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .dx-card.main {
+    border: 2px solid #0B3D6B;
+    box-shadow: 0 2px 8px rgba(11,61,107,0.08);
+  }
+  .dx-card.diff { border: 1px solid #E2E8F0; }
+  .dx-label {
+    padding: 6px 16px;
+    font-size: 7pt; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.5px;
+  }
+  .dx-card.main .dx-label {
+    background: linear-gradient(135deg, #0B3D6B, #1565A8);
+    color: #fff;
+  }
+  .dx-card.diff .dx-label {
+    background: #F1F5F9; color: #64748B;
+    border-bottom: 1px solid #E2E8F0;
+  }
+  .dx-body {
+    padding: 12px 16px;
+    font-size: 10.5pt; font-weight: 600; color: #0F172A;
+    background: #fff;
+  }
 
-    /* ═══════════ EMBASAMENTO ═══════════ */
-    .embasamento-block {
-      background: #f0f6fc;
-      border: 1px solid #c8ddf0;
-      border-radius: 6px;
-      padding: 12px 16px;
-      font-size: 9pt;
-      color: #1a3a5c;
-      line-height: 1.65;
-      margin-top: 4px;
-    }
+  /* ════════════════ CID TAGS ════════════════ */
+  .cid-row {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 4px 0 0 36px;
+  }
+  .cid-chip {
+    display: inline-block;
+    padding: 3px 14px;
+    background: #0B3D6B; color: #fff;
+    border-radius: 20px;
+    font-size: 8pt; font-weight: 600;
+    letter-spacing: 0.5px;
+  }
 
-    /* ═══════════ SIGNATURE ═══════════ */
-    .signature-area {
-      margin-top: 40px;
-      text-align: center;
-      page-break-inside: avoid;
-    }
-    .signature-inner {
-      display: inline-block;
-      min-width: 280px;
-      text-align: center;
-    }
-    .signature-line {
-      width: 100%;
-      border-top: 1.5px solid #0d2137;
-      margin: 10px 0 6px 0;
-    }
-    .signature-name {
-      font-size: 11pt; font-weight: 700; color: #0d2137;
-    }
-    .signature-crm {
-      font-size: 9pt; color: #3a4a5c; font-weight: 600;
-    }
-    .signature-specialty {
-      font-size: 8.5pt; color: #6b7b8d; font-weight: 500;
-    }
+  /* ════════════════ RED FLAGS ════════════════ */
+  .alert-box {
+    margin: 8px 0 16px 0;
+    background: linear-gradient(135deg, #FFF5F5, #FFF1F1);
+    border: 1px solid #FECACA;
+    border-left: 4px solid #DC2626;
+    border-radius: 8px;
+    padding: 12px 18px;
+    page-break-inside: avoid;
+  }
+  .alert-box h3 {
+    font-size: 8.5pt; font-weight: 700; color: #991B1B;
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .alert-box li {
+    font-size: 9pt; color: #7F1D1D; margin: 3px 0;
+    list-style: none; padding-left: 16px; position: relative;
+  }
+  .alert-box li::before {
+    content: "▲"; position: absolute; left: 0; top: 1px;
+    color: #DC2626; font-size: 6pt;
+  }
 
-    /* ═══════════ FOOTER ═══════════ */
-    .footer {
-      margin-top: 30px;
-      padding-top: 14px;
-      border-top: 1.5px solid #d8e2ec;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-    }
-    .footer-left {
-      font-size: 7pt;
-      color: #8e9aab;
-      line-height: 1.8;
-    }
-    .footer-left strong { color: #6b7b8d; }
-    .footer-right {
-      text-align: right;
-      font-size: 6.5pt;
-      color: #8e9aab;
-    }
-    .hash-code {
-      font-family: 'Courier New', monospace;
-      font-size: 5.5pt;
-      color: #8e9aab;
-      background: #f4f7fa;
-      padding: 2px 8px;
-      border-radius: 3px;
-      margin-top: 4px;
-      display: inline-block;
-      word-break: break-all;
-      border: 1px solid #e4ebf2;
-    }
+  /* ════════════════ EXAMS ════════════════ */
+  .exams-list {
+    padding: 4px 0 0 36px;
+  }
+  .exams-list li {
+    font-size: 9.5pt; color: #334155; margin: 3px 0;
+    list-style: none; padding-left: 14px; position: relative;
+  }
+  .exams-list li::before {
+    content: "→"; position: absolute; left: 0; top: 0;
+    color: #1565A8; font-weight: 700;
+  }
 
-    .watermark {
-      position: fixed;
-      bottom: 8px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 6pt;
-      color: #d0d8e0;
-      letter-spacing: 1px;
-    }
-  </style>
+  /* ════════════════ THEORY BOX ════════════════ */
+  .theory-box {
+    background: #F0F7FF;
+    border: 1px solid #BFDBFE;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 9pt; color: #1E40AF;
+    line-height: 1.7;
+    margin-top: 4px;
+  }
+
+  /* ════════════════ SIGNATURE ════════════════ */
+  .sig-area {
+    margin: 36px 32px 0 32px;
+    text-align: center;
+    page-break-inside: avoid;
+  }
+  .sig-inner {
+    display: inline-block;
+    min-width: 260px; text-align: center;
+  }
+  .sig-img {
+    max-height: 52px; max-width: 180px; object-fit: contain;
+  }
+  .stamp-img {
+    max-height: 52px; max-width: 160px; object-fit: contain;
+    margin-top: 4px;
+  }
+  .sig-divider {
+    width: 100%; height: 1.5px;
+    background: #0B3D6B;
+    margin: 8px 0 6px;
+  }
+  .sig-name { font-size: 11pt; font-weight: 700; color: #0B3D6B; }
+  .sig-crm { font-size: 9pt; color: #1565A8; font-weight: 600; }
+  .sig-spec { font-size: 8.5pt; color: #64748B; }
+
+  /* ════════════════ FOOTER ════════════════ */
+  .footer-bar {
+    margin: 28px 32px 0 32px;
+    padding-top: 12px;
+    border-top: 1px solid #E2E8F0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .footer-l {
+    font-size: 7pt; color: #94A3B8; line-height: 1.8;
+  }
+  .footer-l strong { color: #64748B; }
+  .footer-r {
+    text-align: right;
+    font-size: 6.5pt; color: #94A3B8;
+  }
+  .hash-mono {
+    font-family: 'Courier New', monospace;
+    font-size: 5.5pt; color: #94A3B8;
+    background: #F8FAFC;
+    padding: 2px 8px; border-radius: 4px;
+    margin-top: 3px; display: inline-block;
+    border: 1px solid #E2E8F0;
+    word-break: break-all;
+  }
+
+  .bottom-accent {
+    height: 3px;
+    background: linear-gradient(90deg, #0B3D6B 0%, #1565A8 35%, #C7944A 65%, #D4A84B 100%);
+    margin-top: 16px;
+  }
+</style>
 </head>
 <body>
-  <div class="page">
+<div class="page">
 
-    <!-- ═══ HEADER ═══ -->
-    <div class="header">
-      <div class="header-left">
-        ${logoHtml || `<div class="header-logo-fallback">M</div>`}
-        <div class="header-brand">
-          <h1>${clinicName || 'MindMed'}</h1>
-          <div class="tagline">${clinicName ? 'Powered by MindMed AI' : 'Laudos Médicos Inteligentes'}</div>
-        </div>
-      </div>
-      <div class="header-right">
-        <div class="doctor-name">Dr(a). ${doctorName}</div>
-        ${doctorCrm ? `<div class="crm-line">CRM ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</div>` : ''}
-        ${doctorSpecialty ? `<div>${doctorSpecialty}</div>` : ''}
-        ${doctorPhone ? `<div>${doctorPhone}</div>` : ''}
-        ${doctorAddress ? `<div style="max-width: 200px; font-size: 7.5pt;">${doctorAddress}</div>` : ''}
+  <!-- Gold accent bar -->
+  <div class="top-accent"></div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      ${logoHtml || `<div class="logo-mark"><span>M</span></div>`}
+      <div>
+        <div class="brand-name">${clinicName || 'MindMed'}</div>
+        <div class="brand-sub">${clinicName ? 'Powered by MindMed AI' : 'Laudos Médicos Inteligentes'}</div>
       </div>
     </div>
-    <div class="header-divider"></div>
+    <div class="header-right">
+      <div class="doc-name">Dr(a). ${doctorName}</div>
+      ${doctorCrm ? `<div class="doc-crm">CRM ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</div>` : ''}
+      ${doctorSpecialty ? `<div class="doc-detail">${doctorSpecialty}</div>` : ''}
+      ${doctorPhone ? `<div class="doc-detail">${doctorPhone}</div>` : ''}
+      ${doctorAddress ? `<div class="doc-detail" style="max-width:200px;">${doctorAddress}</div>` : ''}
+    </div>
+  </div>
+  <div class="header-line"></div>
 
-    <!-- ═══ PATIENT ID ═══ -->
-    <div class="patient-block">
-      <div class="patient-block-title">Identificação do Paciente</div>
+  <!-- Patient card -->
+  <div class="patient-card">
+    <div class="patient-card-header">
+      <div class="icon-user">P</div>
+      <span>Identificação do Paciente</span>
+    </div>
+    <div class="patient-card-body">
       <div class="patient-grid">
-        <div class="patient-field">
-          <span class="label">Paciente:</span>
-          <span class="value">${sections.identificacao?.nome || 'Não informado'}</span>
-        </div>
-        <div class="patient-field">
-          <span class="label">Idade:</span>
-          <span class="value">${sections.identificacao?.idade || 'N/I'}${sections.identificacao?.idade && sections.identificacao.idade !== 'N/I' ? ' anos' : ''}</span>
-        </div>
-        <div class="patient-field">
-          <span class="label">Sexo:</span>
-          <span class="value">${sections.identificacao?.sexo || 'N/I'}</span>
-        </div>
-        <div class="patient-field">
-          <span class="label">Data da Consulta:</span>
-          <span class="value">${dateShort}</span>
-        </div>
+        <div class="pf"><span class="lbl">Paciente:</span><span class="val">${sections.identificacao?.nome || 'Não informado'}</span></div>
+        <div class="pf"><span class="lbl">Idade:</span><span class="val">${sections.identificacao?.idade || 'N/I'}${sections.identificacao?.idade && sections.identificacao.idade !== 'N/I' ? ' anos' : ''}</span></div>
+        <div class="pf"><span class="lbl">Sexo:</span><span class="val">${sections.identificacao?.sexo || 'N/I'}</span></div>
+        <div class="pf"><span class="lbl">Data da Consulta:</span><span class="val">${dateShort}</span></div>
       </div>
     </div>
+  </div>
 
-    <!-- ═══ DOCUMENT TITLE ═══ -->
-    <div class="doc-title-bar">
-      <h2>Laudo Médico</h2>
-    </div>
+  <!-- Document title -->
+  <div class="doc-title">
+    <h2>Laudo Médico</h2>
+    <div class="title-accent"></div>
+  </div>
 
-    <!-- ═══ ANAMNESE (Queixa + HDA) ═══ -->
+  <!-- Clinical sections -->
+  <div class="sections-wrapper">
+
     ${sections.queixa || sections.hda ? `
-    <div class="clinical-section">
-      <div class="section-header">
-        <span class="section-icon">A</span>
-        <h2>Anamnese</h2>
+    <div class="section">
+      <div class="section-title-row">
+        <div class="section-num" style="background:#0B3D6B;">01</div>
+        <h2 class="section-title">Anamnese</h2>
+        <div class="section-line"></div>
       </div>
-      <div class="section-content">
-        ${sections.queixa ? `<strong>Queixa Principal:</strong> ${sections.queixa}<br><br>` : ''}
-        ${sections.hda ? `<strong>História da Doença Atual:</strong><br>${sections.hda.replace(/\n/g, '<br>')}` : ''}
+      <div class="section-body">
+        ${sections.queixa ? `<strong style="color:#0B3D6B;">Queixa Principal:</strong> ${formatContent(sections.queixa)}<br><br>` : ''}
+        ${sections.hda ? `<strong style="color:#0B3D6B;">História da Doença Atual:</strong><br>${formatContent(sections.hda)}` : ''}
       </div>
     </div>` : ''}
 
-    <!-- ═══ EXAME FÍSICO ═══ -->
-    ${renderSection('E', 'Exame Físico', sections.exame_fisico || '')}
+    ${buildSection('02', 'Exame Físico', sections.exame_fisico || '', '#1565A8')}
 
-    <!-- ═══ HIPÓTESE DIAGNÓSTICA ═══ -->
     ${sections.hipoteses?.principal || sections.hipoteses?.diferencial ? `
-    <div class="clinical-section">
-      <div class="section-header">
-        <span class="section-icon">D</span>
-        <h2>Hipótese Diagnóstica</h2>
+    <div class="section">
+      <div class="section-title-row">
+        <div class="section-num" style="background:#0B3D6B;">03</div>
+        <h2 class="section-title">Hipótese Diagnóstica</h2>
+        <div class="section-line"></div>
       </div>
-      <div class="diagnosis-group">
+      <div class="dx-group" style="padding-left:36px;">
         ${sections.hipoteses?.principal ? `
-        <div class="diagnosis-card primary">
-          <div class="diagnosis-label">Hipótese Principal</div>
-          <div class="diagnosis-value">${sections.hipoteses.principal}</div>
+        <div class="dx-card main">
+          <div class="dx-label">Hipótese Principal</div>
+          <div class="dx-body">${sections.hipoteses.principal}</div>
         </div>` : ''}
         ${sections.hipoteses?.diferencial ? `
-        <div class="diagnosis-card secondary">
-          <div class="diagnosis-label">Diagnóstico Diferencial</div>
-          <div class="diagnosis-value">${sections.hipoteses.diferencial}</div>
+        <div class="dx-card diff">
+          <div class="dx-label">Diagnóstico Diferencial</div>
+          <div class="dx-body" style="font-weight:500;color:#334155;">${sections.hipoteses.diferencial}</div>
         </div>` : ''}
       </div>
     </div>` : ''}
 
-    <!-- ═══ CID-10 ═══ -->
     ${sections.cid10 && sections.cid10.length > 0 ? `
-    <div class="clinical-section">
-      <div class="section-header">
-        <span class="section-icon">C</span>
-        <h2>Classificação CID-10</h2>
+    <div class="section">
+      <div class="section-title-row">
+        <div class="section-num" style="background:#C7944A;">C</div>
+        <h2 class="section-title">Classificação CID-10</h2>
+        <div class="section-line"></div>
       </div>
-      <div class="cid-container">
-        ${sections.cid10.map(c => `<span class="cid-tag">${c}</span>`).join('')}
+      <div class="cid-row">
+        ${sections.cid10.map(c => `<span class="cid-chip">${c}</span>`).join('')}
       </div>
     </div>` : ''}
 
-    <!-- ═══ RED FLAGS ═══ -->
     ${redFlags && redFlags.length > 0 ? `
-    <div class="red-flags-block">
+    <div class="alert-box">
       <h3>⚠ Sinais de Alerta</h3>
       <ul>${redFlags.map(f => `<li>${f}</li>`).join('')}</ul>
     </div>` : ''}
 
-    <!-- ═══ EXAMES COMPLEMENTARES ═══ -->
     ${complementaryExams && complementaryExams.length > 0 ? `
-    <div class="clinical-section">
-      <div class="section-header">
-        <span class="section-icon">X</span>
-        <h2>Exames Complementares</h2>
+    <div class="section">
+      <div class="section-title-row">
+        <div class="section-num" style="background:#1565A8;">04</div>
+        <h2 class="section-title">Exames Complementares</h2>
+        <div class="section-line"></div>
       </div>
-      <div class="exams-block">
+      <div class="exams-list">
         <ul>${complementaryExams.map(e => `<li>${e}</li>`).join('')}</ul>
       </div>
     </div>` : ''}
 
-    <!-- ═══ CONDUTA ═══ -->
-    ${renderSection('P', 'Conduta', sections.conduta || '')}
+    ${buildSection('05', 'Conduta', sections.conduta || '', '#0B3D6B')}
 
-    <!-- ═══ EMBASAMENTO TEÓRICO ═══ -->
     ${sections.embasamento_teorico ? `
-    <div class="clinical-section">
-      <div class="section-header">
-        <span class="section-icon">R</span>
-        <h2>Embasamento Teórico</h2>
+    <div class="section">
+      <div class="section-title-row">
+        <div class="section-num" style="background:#64748B;">R</div>
+        <h2 class="section-title">Embasamento Teórico</h2>
+        <div class="section-line"></div>
       </div>
-      <div class="embasamento-block">${sections.embasamento_teorico}</div>
+      <div class="theory-box">${formatContent(sections.embasamento_teorico)}</div>
     </div>` : ''}
 
-    <!-- ═══ SIGNATURE ═══ -->
-    <div class="signature-area">
-      <div class="signature-inner">
-        ${signatureHtml}
-        ${stampHtml}
-        <div class="signature-line"></div>
-        <div class="signature-name">Dr(a). ${doctorName}</div>
-        ${doctorCrm ? `<div class="signature-crm">CRM ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</div>` : ''}
-        ${doctorSpecialty ? `<div class="signature-specialty">${doctorSpecialty}</div>` : ''}
-      </div>
-    </div>
-
-    <!-- ═══ FOOTER ═══ -->
-    <div class="footer">
-      <div class="footer-left">
-        <p><strong>Emitido via MindMed AI</strong> — Laudos Médicos Inteligentes</p>
-        <p>Documento protegido pela LGPD (Lei nº 13.709/2018)</p>
-        <p>Gerado em ${dateFormatted} às ${timeFormatted}</p>
-      </div>
-      <div class="footer-right">
-        <p>Verificação Digital</p>
-        <div class="hash-code">${hash.substring(0, 32)}…</div>
-      </div>
-    </div>
-
   </div>
-  <div class="watermark">MindMed © ${new Date().getFullYear()} — Documento gerado eletronicamente</div>
+
+  <!-- Signature -->
+  <div class="sig-area">
+    <div class="sig-inner">
+      ${signatureHtml}
+      ${stampHtml}
+      <div class="sig-divider"></div>
+      <div class="sig-name">Dr(a). ${doctorName}</div>
+      ${doctorCrm ? `<div class="sig-crm">CRM ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</div>` : ''}
+      ${doctorSpecialty ? `<div class="sig-spec">${doctorSpecialty}</div>` : ''}
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-bar">
+    <div class="footer-l">
+      <p><strong>Emitido via MindMed AI</strong> — Laudos Médicos Inteligentes</p>
+      <p>Documento protegido pela LGPD (Lei nº 13.709/2018)</p>
+      <p>Gerado em ${dateFormatted} às ${timeFormatted}</p>
+    </div>
+    <div class="footer-r">
+      <p>Verificação Digital</p>
+      <div class="hash-mono">${hash.substring(0, 32)}…</div>
+    </div>
+  </div>
+
+  <div class="bottom-accent"></div>
+
+</div>
 </body>
-</html>
-  `.trim();
+</html>`.trim();
 }
