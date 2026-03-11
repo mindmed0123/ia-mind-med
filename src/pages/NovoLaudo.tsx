@@ -50,10 +50,9 @@ const NovoLaudo = () => {
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>('idle');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const channelRef = useRef<any>(null);
-  // Refs to avoid stale closures in Realtime callback
-  const transcriptRef = useRef(transcript);
-  const patientDataRef = useRef(patientData);
-  const handleGenerateLaudoRef = useRef(handleGenerateLaudo);
+  // Keep refs in sync
+  useEffect(() => { transcriptRef.current = transcript; }, [transcript]);
+  useEffect(() => { patientDataRef.current = patientData; }, [patientData]);
 
   // ===== SUPABASE REALTIME (replaces polling) =====
   useEffect(() => {
