@@ -53,7 +53,8 @@ const NovoLaudo = () => {
   const transcriptRef = useRef(transcript);
   const patientDataRef = useRef(patientData);
 
-  // Keep refs in sync
+  // Keep refs in sync to avoid stale closures in Realtime
+  const handleGenerateLaudoRef = useRef<(t?: string) => Promise<void>>();
   useEffect(() => { transcriptRef.current = transcript; }, [transcript]);
   useEffect(() => { patientDataRef.current = patientData; }, [patientData]);
 
