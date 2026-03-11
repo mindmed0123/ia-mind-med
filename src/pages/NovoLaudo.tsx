@@ -62,6 +62,10 @@ const NovoLaudo = () => {
   useEffect(() => {
     if (!laudoId) return;
     
+    // Reset flags for new laudo
+    hasShownSuccessToast.current = false;
+    hasTriggeredGeneration.current = false;
+    
     // Initial load
     loadLaudo();
 
