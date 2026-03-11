@@ -316,9 +316,9 @@ const NovoLaudo = () => {
           setLaudo(updated);
           setPipelineStage('completed');
           setIsSubmitting(false);
-          if (!hasShownSuccessToast) {
+          if (!hasShownSuccessToast.current) {
+            hasShownSuccessToast.current = true;
             toast({ title: 'Laudo gerado!', description: 'O laudo foi gerado com sucesso' });
-            setHasShownSuccessToast(true);
           }
         } else if (updated?.status === 'error') {
           setLaudo(updated);
