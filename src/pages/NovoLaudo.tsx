@@ -126,7 +126,7 @@ const NovoLaudo = () => {
             updated.transcript?.text
           ) {
             hasTriggeredGeneration.current = true;
-            handleGenerateLaudo(updated.transcript.text);
+            handleGenerateLaudoRef.current?.(updated.transcript.text);
           }
         }
       )
