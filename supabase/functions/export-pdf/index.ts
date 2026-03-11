@@ -199,25 +199,12 @@ function generatePdfHtml(
   laudo: any, sections: PdfSection, profile: any,
   hash: string, verifyToken: string
 ): string {
-  const logoHtml = profile?.logo_url 
-    ? `<img src="${profile.logo_url}" alt="Logo" class="header-logo-img" />`
-    : '';
-    
-  const signatureHtml = profile?.signature_image_url
-    ? `<img src="${profile.signature_image_url}" alt="Assinatura" class="sig-img" />`
-    : '';
-
-  const stampHtml = profile?.stamp_image_url
-    ? `<img src="${profile.stamp_image_url}" alt="Carimbo" class="stamp-img" />`
-    : '';
-
   const doctorName = profile?.full_name || 'Médico Responsável';
   const doctorCrm = profile?.crm || '';
   const doctorCrmUf = profile?.crm_uf || '';
   const doctorSpecialty = profile?.specialty || '';
   const clinicName = profile?.clinic_name || '';
   const doctorPhone = profile?.phone || '';
-  const doctorEmail = profile?.email_public || '';
   const doctorAddress = profile?.address || '';
 
   const now = new Date();
@@ -228,21 +215,34 @@ function generatePdfHtml(
   const redFlags = laudo.red_flags as string[] | null;
   const complementaryExams = laudo.complementary_exams as string[] | null;
 
-  const formatContent = (text: string) => text.replace(/\n/g, '<br>');
+  const fmt = (text: string) => text ? text.replace(/\n/g, '<br>') : '';
 
-  // Build clinical sections
-  const buildSection = (num: string, title: string, content: string, accent = '#0B3D6B') => {
+  const sectionHtml = (num: string, title: string, content: string, color = '#0B3D6B') => {
     if (!content) return '';
     return `
-    <div class="section">
-      <div class="section-title-row">
-        <div class="section-num" style="background:${accent};">${num}</div>
-        <h2 class="section-title">${title}</h2>
-        <div class="section-line"></div>
-      </div>
-      <div class="section-body">${formatContent(content)}</div>
-    </div>`;
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
+      <tr>
+        <td width="30" valign="top">
+          <div style="width:26px;height:26px;background:${color};border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">${num}</div>
+        </td>
+        <td style="padding-left:10px;" valign="top">
+          <div style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;margin-bottom:8px;">${title}</div>
+          <div style="font-size:10pt;line-height:1.75;color:#334155;text-align:justify;">${fmt(content)}</div>
+        </td>
+      </tr>
+    </table>`;
   };
+
+  // Build section numbering dynamically
+  let sectionNum = 1;
+  const nextNum = () => String(sectionNum++).padStart(2, '0');
+
+  const anamnese = sections.queixa || sections.hda;
+  const anamneseNum = anamnese ? nextNum() : '';
+  const examNum = sections.exame_fisico ? nextNum() : '';
+  const hipNum = (sections.hipoteses?.principal || sections.hipoteses?.diferencial) ? nextNum() : '';
+  const examsCompNum = (complementaryExams && complementaryExams.length > 0) ? nextNum() : '';
+  const condutaNum = sections.conduta ? nextNum() : '';
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -269,489 +269,206 @@ function generatePdfHtml(
     padding: 0;
     position: relative;
   }
-
-  /* ════════════════ GOLD ACCENT BAR ════════════════ */
-  .top-accent {
-    height: 5px;
-    background: linear-gradient(90deg, #0B3D6B 0%, #1565A8 35%, #C7944A 65%, #D4A84B 100%);
-  }
-
-  /* ════════════════ HEADER ════════════════ */
-  .header {
-    padding: 20px 32px 16px 32px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-  .header-logo-img {
-    max-height: 50px;
-    max-width: 150px;
-    object-fit: contain;
-  }
-  .logo-mark {
-    width: 46px; height: 46px;
-    background: linear-gradient(145deg, #0B3D6B 0%, #1565A8 100%);
-    border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    position: relative;
-    box-shadow: 0 2px 8px rgba(11,61,107,0.25);
-  }
-  .logo-mark span {
-    color: #fff; font-weight: 800; font-size: 22px;
-    font-family: 'Merriweather', serif;
-  }
-  .logo-mark::after {
-    content: '';
-    position: absolute; bottom: -2px; right: -2px;
-    width: 14px; height: 14px;
-    background: #D4A84B;
-    border-radius: 50%;
-    border: 2px solid #fff;
-  }
-  .brand-name {
-    font-family: 'Merriweather', serif;
-    font-size: 18pt; font-weight: 900; color: #0B3D6B;
-    letter-spacing: -0.5px; line-height: 1.1;
-  }
-  .brand-sub {
-    font-size: 7pt; color: #94A3B8; font-weight: 600;
-    letter-spacing: 2.5px; text-transform: uppercase; margin-top: 2px;
-  }
-  .header-right {
-    text-align: right;
-    font-size: 8.5pt; color: #475569;
-    line-height: 1.65;
-  }
-  .doc-name {
-    font-size: 12pt; font-weight: 700; color: #0B3D6B;
-  }
-  .doc-crm {
-    font-weight: 600; color: #1565A8; font-size: 9pt;
-  }
-  .doc-detail {
-    font-size: 8pt; color: #64748B;
-  }
-
-  .header-line {
-    height: 1.5px;
-    background: linear-gradient(90deg, #0B3D6B, #CBD5E1 70%, transparent);
-    margin: 0 32px;
-  }
-
-  /* ════════════════ PATIENT CARD ════════════════ */
-  .patient-card {
-    margin: 18px 32px 0 32px;
-    border: 1px solid #E2E8F0;
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  .patient-card-header {
-    background: linear-gradient(135deg, #0B3D6B 0%, #1565A8 100%);
-    padding: 8px 20px;
-    display: flex; align-items: center; gap: 8px;
-  }
-  .patient-card-header span {
-    color: #fff; font-size: 7.5pt; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 2px;
-  }
-  .patient-card-header .icon-user {
-    width: 16px; height: 16px;
-    background: rgba(255,255,255,0.2); border-radius: 4px;
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 9px; font-weight: 700;
-  }
-  .patient-card-body {
-    padding: 14px 20px;
-    background: #F8FAFC;
-  }
-  .patient-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px 48px;
-  }
-  .pf { display: flex; align-items: baseline; gap: 8px; font-size: 9.5pt; }
-  .pf .lbl { color: #64748B; font-weight: 600; min-width: 110px; }
-  .pf .val { color: #0F172A; font-weight: 500; }
-
-  /* ════════════════ DOCUMENT TITLE ════════════════ */
-  .doc-title {
-    margin: 22px 32px 20px 32px;
-    text-align: center;
-    position: relative;
-    padding: 12px 0;
-  }
-  .doc-title::before, .doc-title::after {
-    content: '';
-    position: absolute;
-    left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #CBD5E1 20%, #CBD5E1 80%, transparent);
-  }
-  .doc-title::before { top: 0; }
-  .doc-title::after { bottom: 0; }
-  .doc-title h2 {
-    font-family: 'Merriweather', serif;
-    font-size: 13pt; font-weight: 700; color: #0B3D6B;
-    letter-spacing: 4px; text-transform: uppercase;
-  }
-  .doc-title .title-accent {
-    width: 40px; height: 3px;
-    background: linear-gradient(90deg, #C7944A, #D4A84B);
-    margin: 8px auto 0; border-radius: 2px;
-  }
-
-  /* ════════════════ SECTIONS ════════════════ */
-  .sections-wrapper {
-    padding: 0 32px;
-  }
-  .section {
-    margin-bottom: 16px;
-    page-break-inside: avoid;
-  }
-  .section-title-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
-  }
-  .section-num {
-    width: 26px; height: 26px;
-    border-radius: 7px;
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 11px; font-weight: 700;
-    flex-shrink: 0;
-  }
-  .section-title {
-    font-size: 10pt; font-weight: 700; color: #0B3D6B;
-    text-transform: uppercase; letter-spacing: 0.8px;
-    white-space: nowrap;
-  }
-  .section-line {
-    flex: 1; height: 1px;
-    background: linear-gradient(90deg, #CBD5E1, transparent);
-    margin-left: 8px;
-  }
-  .section-body {
-    padding: 8px 0 8px 36px;
-    font-size: 10pt; line-height: 1.75;
-    color: #334155;
-    text-align: justify;
-  }
-
-  /* ════════════════ DIAGNOSIS ════════════════ */
-  .dx-group { margin-bottom: 16px; page-break-inside: avoid; }
-  .dx-card {
-    border-radius: 8px;
-    overflow: hidden;
-    margin-bottom: 8px;
-  }
-  .dx-card.main {
-    border: 2px solid #0B3D6B;
-    box-shadow: 0 2px 8px rgba(11,61,107,0.08);
-  }
-  .dx-card.diff { border: 1px solid #E2E8F0; }
-  .dx-label {
-    padding: 6px 16px;
-    font-size: 7pt; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 1.5px;
-  }
-  .dx-card.main .dx-label {
-    background: linear-gradient(135deg, #0B3D6B, #1565A8);
-    color: #fff;
-  }
-  .dx-card.diff .dx-label {
-    background: #F1F5F9; color: #64748B;
-    border-bottom: 1px solid #E2E8F0;
-  }
-  .dx-body {
-    padding: 12px 16px;
-    font-size: 10.5pt; font-weight: 600; color: #0F172A;
-    background: #fff;
-  }
-
-  /* ════════════════ CID TAGS ════════════════ */
-  .cid-row {
-    display: flex; flex-wrap: wrap; gap: 6px;
-    padding: 4px 0 0 36px;
-  }
-  .cid-chip {
-    display: inline-block;
-    padding: 3px 14px;
-    background: #0B3D6B; color: #fff;
-    border-radius: 20px;
-    font-size: 8pt; font-weight: 600;
-    letter-spacing: 0.5px;
-  }
-
-  /* ════════════════ RED FLAGS ════════════════ */
-  .alert-box {
-    margin: 8px 0 16px 0;
-    background: linear-gradient(135deg, #FFF5F5, #FFF1F1);
-    border: 1px solid #FECACA;
-    border-left: 4px solid #DC2626;
-    border-radius: 8px;
-    padding: 12px 18px;
-    page-break-inside: avoid;
-  }
-  .alert-box h3 {
-    font-size: 8.5pt; font-weight: 700; color: #991B1B;
-    text-transform: uppercase; letter-spacing: 1px;
-    margin-bottom: 6px;
-  }
-  .alert-box li {
-    font-size: 9pt; color: #7F1D1D; margin: 3px 0;
-    list-style: none; padding-left: 16px; position: relative;
-  }
-  .alert-box li::before {
-    content: "▲"; position: absolute; left: 0; top: 1px;
-    color: #DC2626; font-size: 6pt;
-  }
-
-  /* ════════════════ EXAMS ════════════════ */
-  .exams-list {
-    padding: 4px 0 0 36px;
-  }
-  .exams-list li {
-    font-size: 9.5pt; color: #334155; margin: 3px 0;
-    list-style: none; padding-left: 14px; position: relative;
-  }
-  .exams-list li::before {
-    content: "→"; position: absolute; left: 0; top: 0;
-    color: #1565A8; font-weight: 700;
-  }
-
-  /* ════════════════ THEORY BOX ════════════════ */
-  .theory-box {
-    background: #F0F7FF;
-    border: 1px solid #BFDBFE;
-    border-radius: 8px;
-    padding: 14px 18px;
-    font-size: 9pt; color: #1E40AF;
-    line-height: 1.7;
-    margin-top: 4px;
-  }
-
-  /* ════════════════ SIGNATURE ════════════════ */
-  .sig-area {
-    margin: 36px 32px 0 32px;
-    text-align: center;
-    page-break-inside: avoid;
-  }
-  .sig-inner {
-    display: inline-block;
-    min-width: 260px; text-align: center;
-  }
-  .sig-img {
-    max-height: 52px; max-width: 180px; object-fit: contain;
-  }
-  .stamp-img {
-    max-height: 52px; max-width: 160px; object-fit: contain;
-    margin-top: 4px;
-  }
-  .sig-divider {
-    width: 100%; height: 1.5px;
-    background: #0B3D6B;
-    margin: 8px 0 6px;
-  }
-  .sig-name { font-size: 11pt; font-weight: 700; color: #0B3D6B; }
-  .sig-crm { font-size: 9pt; color: #1565A8; font-weight: 600; }
-  .sig-spec { font-size: 8.5pt; color: #64748B; }
-
-  /* ════════════════ FOOTER ════════════════ */
-  .footer-bar {
-    margin: 28px 32px 0 32px;
-    padding-top: 12px;
-    border-top: 1px solid #E2E8F0;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-  }
-  .footer-l {
-    font-size: 7pt; color: #94A3B8; line-height: 1.8;
-  }
-  .footer-l strong { color: #64748B; }
-  .footer-r {
-    text-align: right;
-    font-size: 6.5pt; color: #94A3B8;
-  }
-  .hash-mono {
-    font-family: 'Courier New', monospace;
-    font-size: 5.5pt; color: #94A3B8;
-    background: #F8FAFC;
-    padding: 2px 8px; border-radius: 4px;
-    margin-top: 3px; display: inline-block;
-    border: 1px solid #E2E8F0;
-    word-break: break-all;
-  }
-
-  .bottom-accent {
-    height: 3px;
-    background: linear-gradient(90deg, #0B3D6B 0%, #1565A8 35%, #C7944A 65%, #D4A84B 100%);
-    margin-top: 16px;
-  }
 </style>
 </head>
 <body>
 <div class="page">
 
   <!-- Gold accent bar -->
-  <div class="top-accent"></div>
+  <div style="height:5px;background:linear-gradient(90deg,#0B3D6B 0%,#1565A8 35%,#C7944A 65%,#D4A84B 100%);"></div>
 
   <!-- Header -->
-  <div class="header">
-    <div class="header-left">
-      ${logoHtml || `<div class="logo-mark"><span>M</span></div>`}
-      <div>
-        <div class="brand-name">${clinicName || 'MindMed'}</div>
-        <div class="brand-sub">${clinicName ? 'Powered by MindMed AI' : 'Laudos Médicos Inteligentes'}</div>
-      </div>
-    </div>
-    <div class="header-right">
-      <div class="doc-name">Dr(a). ${doctorName}</div>
-      ${doctorCrm ? `<div class="doc-crm">CRM ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</div>` : ''}
-      ${doctorSpecialty ? `<div class="doc-detail">${doctorSpecialty}</div>` : ''}
-      ${doctorPhone ? `<div class="doc-detail">${doctorPhone}</div>` : ''}
-      ${doctorAddress ? `<div class="doc-detail" style="max-width:200px;">${doctorAddress}</div>` : ''}
-    </div>
-  </div>
-  <div class="header-line"></div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:20px 32px 16px 32px;">
+    <tr>
+      <td valign="middle">
+        <table cellpadding="0" cellspacing="0"><tr>
+          <td valign="middle" style="padding-right:14px;">
+            <div style="width:46px;height:46px;background:linear-gradient(145deg,#0B3D6B,#1565A8);border-radius:12px;text-align:center;line-height:46px;">
+              <span style="color:#fff;font-weight:800;font-size:22px;font-family:'Merriweather',serif;">M</span>
+            </div>
+          </td>
+          <td valign="middle">
+            <div style="font-family:'Merriweather',serif;font-size:18pt;font-weight:900;color:#0B3D6B;line-height:1.1;">${clinicName || 'MindMed'}</div>
+            <div style="font-size:7pt;color:#94A3B8;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;margin-top:2px;">${clinicName ? 'Powered by MindMed AI' : 'Laudos Médicos Inteligentes'}</div>
+          </td>
+        </tr></table>
+      </td>
+      <td align="right" valign="middle" style="text-align:right;font-size:8.5pt;color:#475569;line-height:1.65;">
+        <div style="font-size:12pt;font-weight:700;color:#0B3D6B;">Dr(a). ${doctorName}</div>
+        ${doctorCrm ? `<div style="font-weight:600;color:#1565A8;font-size:9pt;">CRM ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</div>` : ''}
+        ${doctorSpecialty ? `<div style="font-size:8pt;color:#64748B;">${doctorSpecialty}</div>` : ''}
+        ${doctorPhone ? `<div style="font-size:8pt;color:#64748B;">${doctorPhone}</div>` : ''}
+        ${doctorAddress ? `<div style="font-size:8pt;color:#64748B;max-width:200px;">${doctorAddress}</div>` : ''}
+      </td>
+    </tr>
+  </table>
+
+  <!-- Header line -->
+  <div style="height:1.5px;background:linear-gradient(90deg,#0B3D6B,#CBD5E1 70%,transparent);margin:0 32px;"></div>
 
   <!-- Patient card -->
-  <div class="patient-card">
-    <div class="patient-card-header">
-      <div class="icon-user">P</div>
-      <span>Identificação do Paciente</span>
+  <div style="margin:18px 32px 0 32px;border:1px solid #E2E8F0;border-radius:10px;overflow:hidden;">
+    <div style="background:linear-gradient(135deg,#0B3D6B,#1565A8);padding:8px 20px;">
+      <span style="color:#fff;font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:2px;">&#9679; Identificação do Paciente</span>
     </div>
-    <div class="patient-card-body">
-      <div class="patient-grid">
-        <div class="pf"><span class="lbl">Paciente:</span><span class="val">${sections.identificacao?.nome || 'Não informado'}</span></div>
-        <div class="pf"><span class="lbl">Idade:</span><span class="val">${sections.identificacao?.idade || 'N/I'}${sections.identificacao?.idade && sections.identificacao.idade !== 'N/I' ? ' anos' : ''}</span></div>
-        <div class="pf"><span class="lbl">Sexo:</span><span class="val">${sections.identificacao?.sexo || 'N/I'}</span></div>
-        <div class="pf"><span class="lbl">Data da Consulta:</span><span class="val">${dateShort}</span></div>
-      </div>
+    <div style="padding:14px 20px;background:#F8FAFC;">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td width="50%" style="padding:4px 0;font-size:9.5pt;">
+            <span style="color:#64748B;font-weight:600;">Paciente: </span>
+            <span style="color:#0F172A;font-weight:500;">${sections.identificacao?.nome || 'Não informado'}</span>
+          </td>
+          <td width="50%" style="padding:4px 0;font-size:9.5pt;">
+            <span style="color:#64748B;font-weight:600;">Idade: </span>
+            <span style="color:#0F172A;font-weight:500;">${sections.identificacao?.idade || 'N/I'}${sections.identificacao?.idade && sections.identificacao.idade !== 'N/I' ? ' anos' : ''}</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;font-size:9.5pt;">
+            <span style="color:#64748B;font-weight:600;">Sexo: </span>
+            <span style="color:#0F172A;font-weight:500;">${sections.identificacao?.sexo || 'N/I'}</span>
+          </td>
+          <td style="padding:4px 0;font-size:9.5pt;">
+            <span style="color:#64748B;font-weight:600;">Data da Consulta: </span>
+            <span style="color:#0F172A;font-weight:500;">${dateShort}</span>
+          </td>
+        </tr>
+      </table>
     </div>
   </div>
 
   <!-- Document title -->
-  <div class="doc-title">
-    <h2>Laudo Médico</h2>
-    <div class="title-accent"></div>
+  <div style="margin:22px 32px 20px 32px;text-align:center;padding:12px 0;border-top:1px solid #E2E8F0;border-bottom:1px solid #E2E8F0;">
+    <div style="font-family:'Merriweather',serif;font-size:13pt;font-weight:700;color:#0B3D6B;letter-spacing:4px;text-transform:uppercase;">Laudo Médico</div>
+    <div style="width:40px;height:3px;background:linear-gradient(90deg,#C7944A,#D4A84B);margin:8px auto 0;border-radius:2px;"></div>
   </div>
 
   <!-- Clinical sections -->
-  <div class="sections-wrapper">
+  <div style="padding:0 32px;">
 
-    ${sections.queixa || sections.hda ? `
-    <div class="section">
-      <div class="section-title-row">
-        <div class="section-num" style="background:#0B3D6B;">01</div>
-        <h2 class="section-title">Anamnese</h2>
-        <div class="section-line"></div>
-      </div>
-      <div class="section-body">
-        ${sections.queixa ? `<strong style="color:#0B3D6B;">Queixa Principal:</strong> ${formatContent(sections.queixa)}<br><br>` : ''}
-        ${sections.hda ? `<strong style="color:#0B3D6B;">História da Doença Atual:</strong><br>${formatContent(sections.hda)}` : ''}
-      </div>
-    </div>` : ''}
+    ${anamnese ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
+      <tr>
+        <td width="30" valign="top">
+          <div style="width:26px;height:26px;background:#0B3D6B;border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">${anamneseNum}</div>
+        </td>
+        <td style="padding-left:10px;" valign="top">
+          <div style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;margin-bottom:8px;">Anamnese</div>
+          <div style="font-size:10pt;line-height:1.75;color:#334155;text-align:justify;">
+            ${sections.queixa ? `<strong style="color:#0B3D6B;">Queixa Principal:</strong> ${fmt(sections.queixa)}<br><br>` : ''}
+            ${sections.hda ? `<strong style="color:#0B3D6B;">História da Doença Atual:</strong><br>${fmt(sections.hda)}` : ''}
+          </div>
+        </td>
+      </tr>
+    </table>` : ''}
 
-    ${buildSection('02', 'Exame Físico', sections.exame_fisico || '', '#1565A8')}
+    ${sectionHtml(examNum, 'Exame Físico', sections.exame_fisico || '', '#1565A8')}
 
-    ${sections.hipoteses?.principal || sections.hipoteses?.diferencial ? `
-    <div class="section">
-      <div class="section-title-row">
-        <div class="section-num" style="background:#0B3D6B;">03</div>
-        <h2 class="section-title">Hipótese Diagnóstica</h2>
-        <div class="section-line"></div>
-      </div>
-      <div class="dx-group" style="padding-left:36px;">
-        ${sections.hipoteses?.principal ? `
-        <div class="dx-card main">
-          <div class="dx-label">Hipótese Principal</div>
-          <div class="dx-body">${sections.hipoteses.principal}</div>
-        </div>` : ''}
-        ${sections.hipoteses?.diferencial ? `
-        <div class="dx-card diff">
-          <div class="dx-label">Diagnóstico Diferencial</div>
-          <div class="dx-body" style="font-weight:500;color:#334155;">${sections.hipoteses.diferencial}</div>
-        </div>` : ''}
-      </div>
-    </div>` : ''}
+    ${(sections.hipoteses?.principal || sections.hipoteses?.diferencial) ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
+      <tr>
+        <td width="30" valign="top">
+          <div style="width:26px;height:26px;background:#0B3D6B;border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">${hipNum}</div>
+        </td>
+        <td style="padding-left:10px;" valign="top">
+          <div style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;margin-bottom:8px;">Hipótese Diagnóstica</div>
+          
+          ${sections.hipoteses?.principal ? `
+          <div style="border:2px solid #0B3D6B;border-radius:8px;overflow:hidden;margin-bottom:8px;">
+            <div style="background:linear-gradient(135deg,#0B3D6B,#1565A8);padding:6px 16px;font-size:7pt;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:1.5px;">Hipótese Principal</div>
+            <div style="padding:12px 16px;font-size:10.5pt;font-weight:600;color:#0F172A;background:#fff;">${sections.hipoteses.principal}</div>
+          </div>` : ''}
+
+          ${sections.hipoteses?.diferencial ? `
+          <div style="border:1px solid #E2E8F0;border-radius:8px;overflow:hidden;margin-bottom:8px;">
+            <div style="background:#F1F5F9;padding:6px 16px;font-size:7pt;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:1.5px;border-bottom:1px solid #E2E8F0;">Diagnóstico Diferencial</div>
+            <div style="padding:12px 16px;font-size:10.5pt;font-weight:500;color:#334155;background:#fff;">${sections.hipoteses.diferencial}</div>
+          </div>` : ''}
+        </td>
+      </tr>
+    </table>` : ''}
 
     ${sections.cid10 && sections.cid10.length > 0 ? `
-    <div class="section">
-      <div class="section-title-row">
-        <div class="section-num" style="background:#C7944A;">C</div>
-        <h2 class="section-title">Classificação CID-10</h2>
-        <div class="section-line"></div>
-      </div>
-      <div class="cid-row">
-        ${sections.cid10.map(c => `<span class="cid-chip">${c}</span>`).join('')}
-      </div>
-    </div>` : ''}
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
+      <tr>
+        <td width="30" valign="top">
+          <div style="width:26px;height:26px;background:#C7944A;border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">C</div>
+        </td>
+        <td style="padding-left:10px;" valign="top">
+          <div style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;margin-bottom:8px;">Classificação CID-10</div>
+          <div style="padding-top:4px;">
+            ${sections.cid10.map(c => `<span style="display:inline-block;padding:3px 14px;background:#0B3D6B;color:#fff;border-radius:20px;font-size:8pt;font-weight:600;letter-spacing:0.5px;margin:2px 4px 2px 0;">${c}</span>`).join('')}
+          </div>
+        </td>
+      </tr>
+    </table>` : ''}
 
     ${redFlags && redFlags.length > 0 ? `
-    <div class="alert-box">
-      <h3>⚠ Sinais de Alerta</h3>
-      <ul>${redFlags.map(f => `<li>${f}</li>`).join('')}</ul>
+    <div style="margin:8px 0 16px 0;background:#FFF5F5;border:1px solid #FECACA;border-left:4px solid #DC2626;border-radius:8px;padding:12px 18px;">
+      <div style="font-size:8.5pt;font-weight:700;color:#991B1B;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">⚠ Sinais de Alerta</div>
+      ${redFlags.map(f => `<div style="font-size:9pt;color:#7F1D1D;margin:3px 0;padding-left:16px;">▲ ${f}</div>`).join('')}
     </div>` : ''}
 
-    ${complementaryExams && complementaryExams.length > 0 ? `
-    <div class="section">
-      <div class="section-title-row">
-        <div class="section-num" style="background:#1565A8;">04</div>
-        <h2 class="section-title">Exames Complementares</h2>
-        <div class="section-line"></div>
-      </div>
-      <div class="exams-list">
-        <ul>${complementaryExams.map(e => `<li>${e}</li>`).join('')}</ul>
-      </div>
-    </div>` : ''}
+    ${(complementaryExams && complementaryExams.length > 0) ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
+      <tr>
+        <td width="30" valign="top">
+          <div style="width:26px;height:26px;background:#1565A8;border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">${examsCompNum}</div>
+        </td>
+        <td style="padding-left:10px;" valign="top">
+          <div style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;margin-bottom:8px;">Exames Complementares</div>
+          ${complementaryExams.map(e => `<div style="font-size:9.5pt;color:#334155;margin:3px 0;padding-left:14px;">→ ${e}</div>`).join('')}
+        </td>
+      </tr>
+    </table>` : ''}
 
-    ${buildSection('05', 'Conduta', sections.conduta || '', '#0B3D6B')}
+    ${sectionHtml(condutaNum, 'Conduta', sections.conduta || '', '#0B3D6B')}
 
     ${sections.embasamento_teorico ? `
-    <div class="section">
-      <div class="section-title-row">
-        <div class="section-num" style="background:#64748B;">R</div>
-        <h2 class="section-title">Embasamento Teórico</h2>
-        <div class="section-line"></div>
-      </div>
-      <div class="theory-box">${formatContent(sections.embasamento_teorico)}</div>
-    </div>` : ''}
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
+      <tr>
+        <td width="30" valign="top">
+          <div style="width:26px;height:26px;background:#64748B;border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">R</div>
+        </td>
+        <td style="padding-left:10px;" valign="top">
+          <div style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;margin-bottom:8px;">Embasamento Teórico</div>
+          <div style="background:#F0F7FF;border:1px solid #BFDBFE;border-radius:8px;padding:14px 18px;font-size:9pt;color:#1E40AF;line-height:1.7;margin-top:4px;">${fmt(sections.embasamento_teorico)}</div>
+        </td>
+      </tr>
+    </table>` : ''}
 
   </div>
 
   <!-- Signature -->
-  <div class="sig-area">
-    <div class="sig-inner">
-      ${signatureHtml}
-      ${stampHtml}
-      <div class="sig-divider"></div>
-      <div class="sig-name">Dr(a). ${doctorName}</div>
-      ${doctorCrm ? `<div class="sig-crm">CRM ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</div>` : ''}
-      ${doctorSpecialty ? `<div class="sig-spec">${doctorSpecialty}</div>` : ''}
+  <div style="margin:36px 32px 0 32px;text-align:center;">
+    <div style="display:inline-block;min-width:260px;text-align:center;">
+      <div style="width:100%;height:1.5px;background:#0B3D6B;margin:8px 0 6px;"></div>
+      <div style="font-size:11pt;font-weight:700;color:#0B3D6B;">Dr(a). ${doctorName}</div>
+      ${doctorCrm ? `<div style="font-size:9pt;color:#1565A8;font-weight:600;">CRM ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</div>` : ''}
+      ${doctorSpecialty ? `<div style="font-size:8.5pt;color:#64748B;">${doctorSpecialty}</div>` : ''}
     </div>
   </div>
 
   <!-- Footer -->
-  <div class="footer-bar">
-    <div class="footer-l">
-      <p><strong>Emitido via MindMed AI</strong> — Laudos Médicos Inteligentes</p>
-      <p>Documento protegido pela LGPD (Lei nº 13.709/2018)</p>
-      <p>Gerado em ${dateFormatted} às ${timeFormatted}</p>
-    </div>
-    <div class="footer-r">
-      <p>Verificação Digital</p>
-      <div class="hash-mono">${hash.substring(0, 32)}…</div>
-    </div>
-  </div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin:28px 32px 0 32px;width:calc(100% - 64px);padding-top:12px;border-top:1px solid #E2E8F0;">
+    <tr>
+      <td valign="bottom" style="font-size:7pt;color:#94A3B8;line-height:1.8;">
+        <div><strong style="color:#64748B;">Emitido via MindMed AI</strong> — Laudos Médicos Inteligentes</div>
+        <div>Documento protegido pela LGPD (Lei nº 13.709/2018)</div>
+        <div>Gerado em ${dateFormatted} às ${timeFormatted}</div>
+      </td>
+      <td align="right" valign="bottom" style="text-align:right;font-size:6.5pt;color:#94A3B8;">
+        <div>Verificação Digital</div>
+        <div style="font-family:'Courier New',monospace;font-size:5.5pt;color:#94A3B8;background:#F8FAFC;padding:2px 8px;border-radius:4px;margin-top:3px;display:inline-block;border:1px solid #E2E8F0;word-break:break-all;">${hash.substring(0, 32)}…</div>
+      </td>
+    </tr>
+  </table>
 
-  <div class="bottom-accent"></div>
+  <!-- Bottom accent -->
+  <div style="height:3px;background:linear-gradient(90deg,#0B3D6B 0%,#1565A8 35%,#C7944A 65%,#D4A84B 100%);margin-top:16px;"></div>
+
+  <!-- QR Code placeholder -->
+  <div style="text-align:center;margin-top:8px;font-size:6pt;color:#CBD5E1;">📱 [QR Code seria gerado aqui]</div>
 
 </div>
 </body>
