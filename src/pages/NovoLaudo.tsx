@@ -167,6 +167,7 @@ const NovoLaudo = () => {
       // Set initial pipeline stage
       if (data.status === 'completed') {
         setPipelineStage('completed');
+        hasShownSuccessToast.current = true; // Don't show toast for already-completed laudos
       } else if (data.status === 'generating') {
         setPipelineStage('calling_ai');
       } else if (data.status === 'error' || data.transcript_status === 'error') {
