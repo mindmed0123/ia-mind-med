@@ -732,10 +732,25 @@ const NovoLaudo = () => {
               etilismo: laudo.patient_data.etilismo ?? null,
               observacoes_clinicas: laudo.patient_data.observacoes_clinicas || null,
             } : undefined}
-            onPatientLinked={(patientId) => {
+            onPatientLinked={(patientId, patientName) => {
               setShowPatientModal(false);
               setPatientLinked(true);
-              setLaudo((prev: any) => prev ? { ...prev, patient_id: patientId } : prev);
+              const initials = patientName.split(' ').map((w: string) => w[0]).join('.').toUpperCase();
+              setLaudo((prev: any) => prev ? { 
+                ...prev, 
+                patient_id: patientId,
+                patient_data: {
+                  ...prev.patient_data,
+                  nome_completo: patientName,
+                  iniciais: initials,
+                },
+              } : prev);
+              setPatientData((prev: any) => ({
+                ...prev,
+                iniciais: initials,
+                nome_completo: patientName,
+              }));
+              loadLaudo();
             }}
           />
         )}
