@@ -55,7 +55,6 @@
     "html2pdf.js": "0.14.0",
     "input-otp": "^1.4.2",
     "jsdom": "^27.0.0",
-    "jspdf": "^4.2.0",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
     "qrcode": "^1.5.4",
