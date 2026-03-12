@@ -223,8 +223,8 @@ export const generatePdf = async ({ html, fileName, verifyUrl, pdfMeta }: PdfOpt
 
     // 4. Generate PDF: HTML content → canvas → pages
     const worker = html2pdf().set(options).from(htmlWithQr);
-    const pdfDoc: jsPDF = await new Promise((resolve, reject) => {
-      worker.toPdf().get('pdf').then((pdf: jsPDF) => {
+    const pdfDoc = await new Promise<any>((resolve, reject) => {
+      worker.toPdf().get('pdf').then((pdf: any) => {
         resolve(pdf);
       }).catch(reject);
     });
