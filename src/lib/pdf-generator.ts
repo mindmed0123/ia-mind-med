@@ -78,7 +78,7 @@ function drawGradientBar(doc: any, y: number, height: number): void {
 // =====================================================
 // Header renderer (called on every page)
 // =====================================================
-function renderHeader(doc: jsPDF, meta: PdfMeta): void {
+function renderHeader(doc: any, meta: PdfMeta): void {
   // 1. Gold accent bar at very top
   drawGradientBar(doc, 0, 2);
 
