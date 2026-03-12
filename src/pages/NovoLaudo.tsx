@@ -667,7 +667,38 @@ const NovoLaudo = () => {
         <PipelineStatus />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-4">
+            {/* Specialty Selector (in laudo view) */}
+            {!laudo?.status || laudo.status !== 'completed' ? (
+              <Card>
+                <CardContent className="pt-4">
+                  <Label className="flex items-center gap-2 mb-2">
+                    <Stethoscope className="w-4 h-4 text-primary" />
+                    Tipo de consulta
+                  </Label>
+                  <Select value={selectedSpecialty || 'clinica_geral'} onValueChange={setSelectedSpecialty}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {specialtyTemplates.map((t) => (
+                        <SelectItem key={t.specialty} value={t.specialty}>
+                          {t.display_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </CardContent>
+              </Card>
+            ) : laudo?.specialty && (
+              <div className="flex items-center gap-2">
+                <Stethoscope className="w-4 h-4 text-primary" />
+                <Badge variant="secondary">
+                  {specialtyTemplates.find(t => t.specialty === laudo.specialty)?.display_name || laudo.specialty}
+                </Badge>
+              </div>
+            )}
+
             <PatientDataForm
               initialData={patientData}
               onDataChange={handlePatientDataChange}
