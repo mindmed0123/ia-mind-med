@@ -547,7 +547,47 @@ const NovoLaudo = () => {
           </div>
 
           <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 space-y-4">
+              {/* Specialty Selector */}
+              <Card>
+                <CardContent className="pt-4">
+                  <Label className="flex items-center gap-2 mb-2">
+                    <Stethoscope className="w-4 h-4 text-primary" />
+                    Tipo de consulta
+                  </Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Select value={selectedSpecialty || 'clinica_geral'} onValueChange={setSelectedSpecialty}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {specialtyTemplates.map((t) => (
+                                <SelectItem key={t.specialty} value={t.specialty}>
+                                  {t.display_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs">
+                        <p className="font-medium mb-1">Seções geradas:</p>
+                        <ul className="text-xs space-y-0.5">
+                          {specialtyTemplates.find(t => t.specialty === (selectedSpecialty || 'clinica_geral'))?.sections
+                            .sort((a, b) => a.order - b.order)
+                            .map((s) => (
+                              <li key={s.key}>• {s.label}</li>
+                            ))}
+                        </ul>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </CardContent>
+              </Card>
+
               <PatientDataForm initialData={patientData} onDataChange={setPatientData} autoSave={false} />
             </div>
 
