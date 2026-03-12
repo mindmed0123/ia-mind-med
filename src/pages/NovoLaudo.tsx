@@ -42,6 +42,7 @@ const NovoLaudo = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { templates: specialtyTemplates } = useSpecialtyTemplates();
   const [laudoId, setLaudoId] = useState<string | null>(searchParams.get('id'));
   const initialTab = searchParams.get('tab');
   const [laudo, setLaudo] = useState<any>(null);
@@ -55,6 +56,7 @@ const NovoLaudo = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [patientLinked, setPatientLinked] = useState(false);
+  const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const channelRef = useRef<any>(null);
   const transcriptRef = useRef(transcript);
   const patientDataRef = useRef(patientData);
