@@ -188,6 +188,37 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
         </TabsList>
 
         <TabsContent value="resumo" className="space-y-4">
+          {/* Dynamic specialty sections */}
+          {laudo.sections?.template_sections && laudo.sections.template_sections.length > 0 && laudo.sections?.specialty_sections && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  Seções da Especialidade
+                  {laudo.specialty && (
+                    <Badge variant="outline" className="text-xs">{laudo.specialty}</Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {(laudo.sections.template_sections as any[])
+                  .sort((a: any, b: any) => a.order - b.order)
+                  .map((section: any) => {
+                    const value = laudo.sections.specialty_sections[section.key];
+                    if (!value) return null;
+                    return (
+                      <div key={section.key}>
+                        <h4 className="font-medium text-sm mb-1">{section.label}</h4>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                          {typeof value === 'object' ? JSON.stringify(value, null, 2) : value}
+                        </p>
+                        <Separator className="mt-3" />
+                      </div>
+                    );
+                  })}
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Resumo Clínico</CardTitle>
