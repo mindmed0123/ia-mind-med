@@ -117,6 +117,12 @@ const NovoLaudo = () => {
             if (!hasShownSuccessToast.current) {
               hasShownSuccessToast.current = true;
               toast({ title: 'Laudo gerado!', description: 'O laudo foi gerado com sucesso' });
+              // Show patient linking modal if no patient linked yet
+              if (!updated.patient_id) {
+                setShowPatientModal(true);
+              } else {
+                setPatientLinked(true);
+              }
             }
             setIsSubmitting(false);
           } else if (updated.status === 'generating') {
