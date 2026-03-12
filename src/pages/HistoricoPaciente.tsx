@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PatientDocuments } from '@/components/patient/PatientDocuments';
 import { PatientTimeline } from '@/components/patient/PatientTimeline';
 import { ImageComparison } from '@/components/patient/ImageComparison';
+import { PatientClinicalProfile } from '@/components/patient/PatientClinicalProfile';
 import { useSubscription } from '@/hooks/useSubscription';
 
 interface Patient {
@@ -225,8 +226,12 @@ export default function HistoricoPaciente() {
           )}
         </div>
 
-        <Tabs defaultValue="timeline" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs defaultValue="perfil" className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="perfil">
+              <User className="w-4 h-4 mr-2" />
+              Perfil Clínico
+            </TabsTrigger>
             <TabsTrigger value="timeline">
               <TrendingUp className="w-4 h-4 mr-2" />
               Timeline
@@ -244,6 +249,10 @@ export default function HistoricoPaciente() {
               Receitas ({prescriptions.length})
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="perfil" className="mt-6">
+            <PatientClinicalProfile patientId={patient.id} />
+          </TabsContent>
 
           <TabsContent value="timeline" className="mt-6">
             <PatientTimeline patientId={patient.id} />

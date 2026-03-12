@@ -472,41 +472,71 @@ export type Database = {
       }
       patients: {
         Row: {
+          ai_extracted_fields: string[] | null
+          alcohol: boolean | null
+          allergies: string[] | null
           birth_date: string | null
+          chief_complaint: string | null
+          clinical_history: string | null
+          clinical_notes: string | null
+          comorbidities: string[] | null
           created_at: string
           email: string | null
           external_id: string | null
+          family_history: string | null
           id: string
+          medications: string[] | null
           name: string
           notes: string | null
           phone: string | null
           sex: string | null
+          smoking: boolean | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          ai_extracted_fields?: string[] | null
+          alcohol?: boolean | null
+          allergies?: string[] | null
           birth_date?: string | null
+          chief_complaint?: string | null
+          clinical_history?: string | null
+          clinical_notes?: string | null
+          comorbidities?: string[] | null
           created_at?: string
           email?: string | null
           external_id?: string | null
+          family_history?: string | null
           id?: string
+          medications?: string[] | null
           name: string
           notes?: string | null
           phone?: string | null
           sex?: string | null
+          smoking?: boolean | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          ai_extracted_fields?: string[] | null
+          alcohol?: boolean | null
+          allergies?: string[] | null
           birth_date?: string | null
+          chief_complaint?: string | null
+          clinical_history?: string | null
+          clinical_notes?: string | null
+          comorbidities?: string[] | null
           created_at?: string
           email?: string | null
           external_id?: string | null
+          family_history?: string | null
           id?: string
+          medications?: string[] | null
           name?: string
           notes?: string | null
           phone?: string | null
           sex?: string | null
+          smoking?: boolean | null
           updated_at?: string
           user_id?: string
         }

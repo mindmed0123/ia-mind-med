@@ -30,9 +30,14 @@ const LAUDO_TOOL = {
             idade: { type: "string", description: "Idade do paciente mencionada" },
             sexo: { type: "string", description: "Sexo do paciente: M, F ou Não informado" },
             queixa_principal: { type: "string", description: "Queixa principal identificada" },
-            medicacoes: { type: "array", items: { type: "string" }, description: "Medicações em uso mencionadas" },
+            medicacoes: { type: "array", items: { type: "string" }, description: "Medicações em uso mencionadas (incluir dose se mencionada, ex: Losartana 50mg)" },
             alergias: { type: "array", items: { type: "string" }, description: "Alergias mencionadas" },
+            comorbidades: { type: "array", items: { type: "string" }, description: "Comorbidades/condições crônicas mencionadas" },
             historico: { type: "string", description: "Histórico médico relevante mencionado" },
+            historico_familiar: { type: "string", description: "Histórico familiar mencionado ou null" },
+            tabagismo: { type: "boolean", description: "Se o paciente é tabagista. null se não mencionado" },
+            etilismo: { type: "boolean", description: "Se o paciente faz uso de álcool. null se não mencionado" },
+            observacoes_clinicas: { type: "string", description: "Outras informações clínicas relevantes mencionadas" },
             sinais_vitais: {
               type: "object",
               properties: {
@@ -182,7 +187,7 @@ serve(async (req) => {
       : transcriptText;
 
     // ===== BUILD COMPACT PROMPT =====
-    const systemPrompt = `Assistente clínico PT-BR. Gere laudo estruturado. REGRAS: sem diagnóstico definitivo, 2 hipóteses (provável + diferencial), red flags, CID-10. Use apenas iniciais/idade/sexo (LGPD). Disclaimer: "Conteúdo IA para apoio; não substitui avaliação clínica." IMPORTANTE: extraia dados do paciente (iniciais, idade, sexo, queixa principal, medicações, alergias, histórico, sinais vitais) a partir da transcrição e preencha o campo dados_paciente_extraidos. Extraia TODOS os medicamentos prescritos ou sugeridos durante a consulta e preencha prescricoes_sugeridas com medicamento, dosagem, posologia, duração e observações.`;
+    const systemPrompt = `Assistente clínico PT-BR. Gere laudo estruturado. REGRAS: sem diagnóstico definitivo, 2 hipóteses (provável + diferencial), red flags, CID-10. Use apenas iniciais/idade/sexo (LGPD). Disclaimer: "Conteúdo IA para apoio; não substitui avaliação clínica." IMPORTANTE: extraia dados do paciente (iniciais, idade, sexo, queixa principal, medicações com dose, alergias, comorbidades, histórico clínico e familiar, tabagismo, etilismo, sinais vitais) a partir da transcrição e preencha o campo dados_paciente_extraidos completamente. Se uma informação não foi mencionada, use null. Extraia TODOS os medicamentos prescritos ou sugeridos durante a consulta e preencha prescricoes_sugeridas com medicamento, dosagem, posologia, duração e observações.`;
 
     const parts: string[] = [];
     parts.push(`PAC: ${patient?.iniciais || 'N/I'}, ${patient?.sexo || 'N/I'}, ${patient?.idade || 'N/I'}a`);

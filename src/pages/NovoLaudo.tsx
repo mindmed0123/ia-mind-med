@@ -8,6 +8,7 @@ import { LaudoEditor } from "@/components/laudos/LaudoEditor";
 import { TextInputMode } from "@/components/laudos/TextInputMode";
 import { PrescriptionTab } from "@/components/laudos/PrescriptionTab";
 import { ExamUploadSection } from "@/components/laudos/ExamUploadSection";
+import { PatientLinkingModal } from "@/components/laudos/PatientLinkingModal";
 import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,6 +50,8 @@ const NovoLaudo = () => {
   const [inputMode, setInputMode] = useState<'audio' | 'text'>('audio');
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>('idle');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPatientModal, setShowPatientModal] = useState(false);
+  const [patientLinked, setPatientLinked] = useState(false);
   const channelRef = useRef<any>(null);
   const transcriptRef = useRef(transcript);
   const patientDataRef = useRef(patientData);
@@ -113,6 +116,12 @@ const NovoLaudo = () => {
             if (!hasShownSuccessToast.current) {
               hasShownSuccessToast.current = true;
               toast({ title: 'Laudo gerado!', description: 'O laudo foi gerado com sucesso' });
+              // Show patient linking modal if no patient linked yet
+              if (!updated.patient_id) {
+                setShowPatientModal(true);
+              } else {
+                setPatientLinked(true);
+              }
             }
             setIsSubmitting(false);
           } else if (updated.status === 'generating') {
@@ -167,7 +176,11 @@ const NovoLaudo = () => {
       // Set initial pipeline stage
       if (data.status === 'completed') {
         setPipelineStage('completed');
-        hasShownSuccessToast.current = true; // Don't show toast for already-completed laudos
+        hasShownSuccessToast.current = true;
+        setPatientLinked(!!data.patient_id);
+        if (!data.patient_id) {
+          setShowPatientModal(true);
+        }
       } else if (data.status === 'generating') {
         setPipelineStage('calling_ai');
       } else if (data.status === 'error' || data.transcript_status === 'error') {
@@ -702,6 +715,30 @@ const NovoLaudo = () => {
             )}
           </div>
         </div>
+
+        {/* Patient Linking Modal */}
+        {laudoId && (
+          <PatientLinkingModal
+            open={showPatientModal}
+            laudoId={laudoId}
+            extractedData={laudo?.patient_data ? {
+              medicacoes: laudo.patient_data.medicacoes || [],
+              alergias: laudo.patient_data.alergias || [],
+              comorbidades: laudo.patient_data.comorbidades || [],
+              queixa_principal: laudo.patient_data.queixa_principal || laudo.clinical_context?.chief_complaint || '',
+              historico: laudo.patient_data.historico || '',
+              historico_familiar: laudo.patient_data.historico_familiar || null,
+              tabagismo: laudo.patient_data.tabagismo ?? null,
+              etilismo: laudo.patient_data.etilismo ?? null,
+              observacoes_clinicas: laudo.patient_data.observacoes_clinicas || null,
+            } : undefined}
+            onPatientLinked={(patientId) => {
+              setShowPatientModal(false);
+              setPatientLinked(true);
+              setLaudo((prev: any) => prev ? { ...prev, patient_id: patientId } : prev);
+            }}
+          />
+        )}
       </div>
     </div>
   );
