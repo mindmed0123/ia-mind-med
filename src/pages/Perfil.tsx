@@ -28,6 +28,7 @@ export default function Perfil() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { subscription, loading: subLoading } = useSubscription();
+  const { templates: specialtyTemplates, loading: templatesLoading } = useSpecialtyTemplates();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
