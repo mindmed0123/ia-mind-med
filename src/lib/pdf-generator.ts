@@ -1,6 +1,5 @@
 import html2pdf from 'html2pdf.js';
 import QRCode from 'qrcode';
-import jsPDF from 'jspdf';
 
 // =====================================================
 // MindMed PDF Engine v2 — Hybrid Architecture
