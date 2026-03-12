@@ -715,6 +715,30 @@ const NovoLaudo = () => {
             )}
           </div>
         </div>
+
+        {/* Patient Linking Modal */}
+        {laudoId && (
+          <PatientLinkingModal
+            open={showPatientModal}
+            laudoId={laudoId}
+            extractedData={laudo?.patient_data ? {
+              medicacoes: laudo.patient_data.medicacoes || [],
+              alergias: laudo.patient_data.alergias || [],
+              comorbidades: laudo.patient_data.comorbidades || [],
+              queixa_principal: laudo.patient_data.queixa_principal || laudo.clinical_context?.chief_complaint || '',
+              historico: laudo.patient_data.historico || '',
+              historico_familiar: laudo.patient_data.historico_familiar || null,
+              tabagismo: laudo.patient_data.tabagismo ?? null,
+              etilismo: laudo.patient_data.etilismo ?? null,
+              observacoes_clinicas: laudo.patient_data.observacoes_clinicas || null,
+            } : undefined}
+            onPatientLinked={(patientId) => {
+              setShowPatientModal(false);
+              setPatientLinked(true);
+              setLaudo((prev: any) => prev ? { ...prev, patient_id: patientId } : prev);
+            }}
+          />
+        )}
       </div>
     </div>
   );
