@@ -244,6 +244,7 @@ const NovoLaudo = () => {
           historico: patientData?.historico || '',
           laudo_id: laudoId,
           mode: 'fast',
+          template_specialty: selectedSpecialty || undefined,
         },
       });
 
