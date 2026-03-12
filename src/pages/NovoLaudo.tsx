@@ -61,6 +61,17 @@ const NovoLaudo = () => {
   const transcriptRef = useRef(transcript);
   const patientDataRef = useRef(patientData);
 
+  // Load doctor's specialty from profile
+  useEffect(() => {
+    if (user && !selectedSpecialty) {
+      supabase.from('profiles').select('specialty').eq('id', user.id).single()
+        .then(({ data }) => {
+          if (data?.specialty) setSelectedSpecialty(data.specialty);
+          else setSelectedSpecialty('clinica_geral');
+        });
+    }
+  }, [user]);
+
   // Keep refs in sync to avoid stale closures in Realtime
   const handleGenerateLaudoRef = useRef<(t?: string) => Promise<void>>();
   useEffect(() => { transcriptRef.current = transcript; }, [transcript]);
