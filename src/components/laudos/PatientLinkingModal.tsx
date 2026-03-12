@@ -34,7 +34,7 @@ interface PatientLinkingModalProps {
   open: boolean;
   laudoId: string;
   extractedData?: ExtractedClinicalData;
-  onPatientLinked: (patientId: string) => void;
+  onPatientLinked: (patientId: string, patientName: string) => void;
 }
 
 interface PatientResult {
