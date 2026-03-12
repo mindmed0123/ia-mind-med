@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PatientDocuments } from '@/components/patient/PatientDocuments';
 import { PatientTimeline } from '@/components/patient/PatientTimeline';
 import { ImageComparison } from '@/components/patient/ImageComparison';
+import { PatientClinicalProfile } from '@/components/patient/PatientClinicalProfile';
 import { useSubscription } from '@/hooks/useSubscription';
 
 interface Patient {
