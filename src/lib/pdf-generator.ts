@@ -48,7 +48,7 @@ interface PdfOptions {
 // =====================================================
 // Gradient bar renderer (simulates CSS gradient)
 // =====================================================
-function drawGradientBar(doc: jsPDF, y: number, height: number): void {
+function drawGradientBar(doc: any, y: number, height: number): void {
   const segments = 80;
   const segW = PAGE_W / segments;
   for (let i = 0; i < segments; i++) {
