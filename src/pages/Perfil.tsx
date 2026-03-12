@@ -8,8 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Activity, ArrowLeft, Upload, X, Save, CreditCard, Settings, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useSpecialtyTemplates } from '@/hooks/useSpecialtyTemplates';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
 import {
