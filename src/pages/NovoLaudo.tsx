@@ -8,6 +8,8 @@ import { LaudoEditor } from "@/components/laudos/LaudoEditor";
 import { TextInputMode } from "@/components/laudos/TextInputMode";
 import { PrescriptionTab } from "@/components/laudos/PrescriptionTab";
 import { ExamUploadSection } from "@/components/laudos/ExamUploadSection";
+import { PatientLinkingModal } from "@/components/laudos/PatientLinkingModal";
+import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
