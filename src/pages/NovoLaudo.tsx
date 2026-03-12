@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Edit, Mic, FileText, CheckCircle, AlertCircle, Pill, Upload } from "lucide-react";
+import { ArrowLeft, Loader2, Edit, Mic, FileText, CheckCircle, AlertCircle, Pill, Upload, Stethoscope } from "lucide-react";
 import { PatientDataForm } from "@/components/laudos/PatientDataForm";
 import { LaudoViewer } from "@/components/laudos/LaudoViewer";
 import { LaudoEditor } from "@/components/laudos/LaudoEditor";
@@ -14,11 +14,14 @@ import { AudioRecorder } from "@/components/audio/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSpecialtyTemplates } from "@/hooks/useSpecialtyTemplates";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type PipelineStage = 'idle' | 'uploading' | 'transcribing' | 'preparing' | 'calling_ai' | 'structuring' | 'saving' | 'completed' | 'error';
 
