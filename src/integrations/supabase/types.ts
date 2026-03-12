@@ -656,6 +656,39 @@ export type Database = {
         }
         Relationships: []
       }
+      specialty_templates: {
+        Row: {
+          created_at: string | null
+          display_name: string
+          extraction_fields: Json
+          id: string
+          is_default: boolean | null
+          sections: Json
+          specialty: string
+          system_prompt: string
+        }
+        Insert: {
+          created_at?: string | null
+          display_name: string
+          extraction_fields?: Json
+          id?: string
+          is_default?: boolean | null
+          sections?: Json
+          specialty: string
+          system_prompt: string
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string
+          extraction_fields?: Json
+          id?: string
+          is_default?: boolean | null
+          sections?: Json
+          specialty?: string
+          system_prompt?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           created_at: string
