@@ -188,10 +188,18 @@ export const PatientLinkingModal = ({
       
       if (updateError) throw updateError;
 
-      // Link laudo to patient
+      // Link laudo to patient and update patient_data with name/initials
+      const initials = patient.name.split(' ').map(w => w[0]).join('.').toUpperCase();
       const { error: linkError } = await supabase
         .from('laudos')
-        .update({ patient_id: patient.id })
+        .update({ 
+          patient_id: patient.id,
+          patient_data: {
+            ...(extractedData || {}),
+            nome_completo: patient.name,
+            iniciais: initials,
+          } as any,
+        })
         .eq('id', laudoId);
       
       if (linkError) throw linkError;
@@ -201,7 +209,7 @@ export const PatientLinkingModal = ({
         description: `Laudo vinculado a ${patient.name}. ${aiFields.length > 0 ? `${aiFields.length} campos atualizados pela IA.` : ''}`,
       });
       
-      onPatientLinked(patient.id);
+      onPatientLinked(patient.id, patient.name);
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } finally {
