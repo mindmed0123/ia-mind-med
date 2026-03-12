@@ -30,9 +30,14 @@ const LAUDO_TOOL = {
             idade: { type: "string", description: "Idade do paciente mencionada" },
             sexo: { type: "string", description: "Sexo do paciente: M, F ou Não informado" },
             queixa_principal: { type: "string", description: "Queixa principal identificada" },
-            medicacoes: { type: "array", items: { type: "string" }, description: "Medicações em uso mencionadas" },
+            medicacoes: { type: "array", items: { type: "string" }, description: "Medicações em uso mencionadas (incluir dose se mencionada, ex: Losartana 50mg)" },
             alergias: { type: "array", items: { type: "string" }, description: "Alergias mencionadas" },
+            comorbidades: { type: "array", items: { type: "string" }, description: "Comorbidades/condições crônicas mencionadas" },
             historico: { type: "string", description: "Histórico médico relevante mencionado" },
+            historico_familiar: { type: "string", description: "Histórico familiar mencionado ou null" },
+            tabagismo: { type: "boolean", description: "Se o paciente é tabagista. null se não mencionado" },
+            etilismo: { type: "boolean", description: "Se o paciente faz uso de álcool. null se não mencionado" },
+            observacoes_clinicas: { type: "string", description: "Outras informações clínicas relevantes mencionadas" },
             sinais_vitais: {
               type: "object",
               properties: {
