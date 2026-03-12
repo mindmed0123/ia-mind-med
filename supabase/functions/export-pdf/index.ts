@@ -250,140 +250,166 @@ function generatePdfHtml(
 <meta charset="UTF-8">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Merriweather:wght@700;900&display=swap');
-
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
   body {
     font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif;
-    font-size: 10pt;
-    line-height: 1.65;
-    color: #1E293B;
-    background: #fff;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    font-size: 10pt; line-height: 1.65; color: #1E293B; background: #fff;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
-
-  .page {
-    width: 210mm;
-    min-height: 297mm;
-    padding: 0;
-    position: relative;
-  }
+  .page { width: 210mm; min-height: 297mm; padding: 0; position: relative; }
+  td, th, div, span, p { word-wrap: break-word; overflow-wrap: break-word; }
 </style>
 </head>
 <body>
 <div class="page">
 
   <!-- Gold accent bar -->
-  <div style="height:5px;background:linear-gradient(90deg,#0B3D6B 0%,#1565A8 35%,#C7944A 65%,#D4A84B 100%);"></div>
+  <table width="100%" cellpadding="0" cellspacing="0"><tr><td style="height:5px;background:linear-gradient(90deg,#0B3D6B 0%,#1565A8 35%,#C7944A 65%,#D4A84B 100%);font-size:0;line-height:0;">&nbsp;</td></tr></table>
 
   <!-- Header -->
   <table width="100%" cellpadding="0" cellspacing="0" style="padding:20px 32px 16px 32px;">
     <tr>
-      <td valign="middle">
+      <td width="50%" valign="middle">
         <table cellpadding="0" cellspacing="0"><tr>
           <td valign="middle" style="padding-right:14px;">
-            <div style="width:46px;height:46px;background:linear-gradient(145deg,#0B3D6B,#1565A8);border-radius:12px;text-align:center;line-height:46px;">
+            <table cellpadding="0" cellspacing="0"><tr><td style="width:46px;height:46px;background:linear-gradient(145deg,#0B3D6B,#1565A8);border-radius:12px;text-align:center;line-height:46px;font-size:0;">
               <span style="color:#fff;font-weight:800;font-size:22px;font-family:'Merriweather',serif;">M</span>
-            </div>
+            </td></tr></table>
           </td>
           <td valign="middle">
-            <div style="font-family:'Merriweather',serif;font-size:18pt;font-weight:900;color:#0B3D6B;line-height:1.1;">${clinicName || 'MindMed'}</div>
-            <div style="font-size:7pt;color:#94A3B8;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;margin-top:2px;">${clinicName ? 'Powered by MindMed AI' : 'Laudos Médicos Inteligentes'}</div>
+            <table cellpadding="0" cellspacing="0"><tr><td style="font-family:'Merriweather',serif;font-size:18pt;font-weight:900;color:#0B3D6B;line-height:1.1;">${clinicName || 'MindMed'}</td></tr>
+            <tr><td style="font-size:7pt;color:#94A3B8;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;padding-top:2px;">${clinicName ? 'Powered by MindMed AI' : 'Laudos Médicos Inteligentes'}</td></tr></table>
           </td>
         </tr></table>
       </td>
-      <td align="right" valign="middle" style="text-align:right;font-size:8.5pt;color:#475569;line-height:1.65;">
-        <div style="font-size:12pt;font-weight:700;color:#0B3D6B;">Dr(a). ${doctorName}</div>
-        ${doctorCrm ? `<div style="font-weight:600;color:#1565A8;font-size:9pt;">CRM ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</div>` : ''}
-        ${doctorSpecialty ? `<div style="font-size:8pt;color:#64748B;">${doctorSpecialty}</div>` : ''}
-        ${doctorPhone ? `<div style="font-size:8pt;color:#64748B;">${doctorPhone}</div>` : ''}
-        ${doctorAddress ? `<div style="font-size:8pt;color:#64748B;max-width:200px;">${doctorAddress}</div>` : ''}
+      <td width="50%" align="right" valign="middle" style="text-align:right;font-size:8.5pt;color:#475569;line-height:1.65;">
+        <table cellpadding="0" cellspacing="0" align="right">
+          <tr><td style="text-align:right;font-size:12pt;font-weight:700;color:#0B3D6B;">Dr(a). ${doctorName}</td></tr>
+          ${doctorCrm ? `<tr><td style="text-align:right;font-weight:600;color:#1565A8;font-size:9pt;">CRM ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</td></tr>` : ''}
+          ${doctorSpecialty ? `<tr><td style="text-align:right;font-size:8pt;color:#64748B;">${doctorSpecialty}</td></tr>` : ''}
+          ${doctorPhone ? `<tr><td style="text-align:right;font-size:8pt;color:#64748B;">${doctorPhone}</td></tr>` : ''}
+          ${doctorAddress ? `<tr><td style="text-align:right;font-size:8pt;color:#64748B;max-width:200px;">${doctorAddress}</td></tr>` : ''}
+        </table>
       </td>
     </tr>
   </table>
 
   <!-- Header line -->
-  <div style="height:1.5px;background:linear-gradient(90deg,#0B3D6B,#CBD5E1 70%,transparent);margin:0 32px;"></div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:0 32px;"><tr><td style="height:2px;background:linear-gradient(90deg,#0B3D6B,#CBD5E1 70%,transparent);font-size:0;line-height:0;">&nbsp;</td></tr></table>
 
   <!-- Patient card -->
-  <div style="margin:18px 32px 0 32px;border:1px solid #E2E8F0;border-radius:10px;overflow:hidden;">
-    <div style="background:linear-gradient(135deg,#0B3D6B,#1565A8);padding:8px 20px;">
-      <span style="color:#fff;font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:2px;">&#9679; Identificação do Paciente</span>
-    </div>
-    <div style="padding:14px 20px;background:#F8FAFC;">
-      <table width="100%" cellpadding="0" cellspacing="0">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:18px 32px 0 32px;">
+    <tr><td>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E2E8F0;">
         <tr>
-          <td width="50%" style="padding:4px 0;font-size:9.5pt;">
-            <span style="color:#64748B;font-weight:600;">Paciente: </span>
+          <td colspan="4" style="background:linear-gradient(135deg,#0B3D6B,#1565A8);padding:8px 20px;">
+            <span style="color:#fff;font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:2px;">&#9679; Identificação do Paciente</span>
+          </td>
+        </tr>
+        <tr>
+          <td width="25%" style="padding:10px 20px;background:#F8FAFC;font-size:9.5pt;border-top:1px solid #E2E8F0;">
+            <span style="color:#64748B;font-weight:600;">Paciente:</span>
+          </td>
+          <td width="25%" style="padding:10px 4px;background:#F8FAFC;font-size:9.5pt;border-top:1px solid #E2E8F0;">
             <span style="color:#0F172A;font-weight:500;">${sections.identificacao?.nome || 'Não informado'}</span>
           </td>
-          <td width="50%" style="padding:4px 0;font-size:9.5pt;">
-            <span style="color:#64748B;font-weight:600;">Idade: </span>
+          <td width="25%" style="padding:10px 20px;background:#F8FAFC;font-size:9.5pt;border-top:1px solid #E2E8F0;">
+            <span style="color:#64748B;font-weight:600;">Idade:</span>
+          </td>
+          <td width="25%" style="padding:10px 4px;background:#F8FAFC;font-size:9.5pt;border-top:1px solid #E2E8F0;">
             <span style="color:#0F172A;font-weight:500;">${sections.identificacao?.idade || 'N/I'}${sections.identificacao?.idade && sections.identificacao.idade !== 'N/I' ? ' anos' : ''}</span>
           </td>
         </tr>
         <tr>
-          <td style="padding:4px 0;font-size:9.5pt;">
-            <span style="color:#64748B;font-weight:600;">Sexo: </span>
+          <td style="padding:6px 20px 10px;background:#F8FAFC;font-size:9.5pt;">
+            <span style="color:#64748B;font-weight:600;">Sexo:</span>
+          </td>
+          <td style="padding:6px 4px 10px;background:#F8FAFC;font-size:9.5pt;">
             <span style="color:#0F172A;font-weight:500;">${sections.identificacao?.sexo || 'N/I'}</span>
           </td>
-          <td style="padding:4px 0;font-size:9.5pt;">
-            <span style="color:#64748B;font-weight:600;">Data da Consulta: </span>
+          <td style="padding:6px 20px 10px;background:#F8FAFC;font-size:9.5pt;">
+            <span style="color:#64748B;font-weight:600;">Data da Consulta:</span>
+          </td>
+          <td style="padding:6px 4px 10px;background:#F8FAFC;font-size:9.5pt;">
             <span style="color:#0F172A;font-weight:500;">${dateShort}</span>
           </td>
         </tr>
       </table>
-    </div>
-  </div>
+    </td></tr>
+  </table>
 
   <!-- Document title -->
-  <div style="margin:22px 32px 20px 32px;text-align:center;padding:12px 0;border-top:1px solid #E2E8F0;border-bottom:1px solid #E2E8F0;">
-    <div style="font-family:'Merriweather',serif;font-size:13pt;font-weight:700;color:#0B3D6B;letter-spacing:4px;text-transform:uppercase;">Laudo Médico</div>
-    <div style="width:40px;height:3px;background:linear-gradient(90deg,#C7944A,#D4A84B);margin:8px auto 0;border-radius:2px;"></div>
-  </div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:22px 32px 20px 32px;">
+    <tr><td style="text-align:center;padding:12px 0;border-top:1px solid #E2E8F0;border-bottom:1px solid #E2E8F0;">
+      <table cellpadding="0" cellspacing="0" align="center">
+        <tr><td style="font-family:'Merriweather',serif;font-size:13pt;font-weight:700;color:#0B3D6B;letter-spacing:4px;text-transform:uppercase;text-align:center;">Laudo Médico</td></tr>
+        <tr><td style="text-align:center;padding-top:8px;"><table cellpadding="0" cellspacing="0" align="center"><tr><td style="width:40px;height:3px;background:linear-gradient(90deg,#C7944A,#D4A84B);font-size:0;line-height:0;">&nbsp;</td></tr></table></td></tr>
+      </table>
+    </td></tr>
+  </table>
 
-  <!-- Clinical sections -->
-  <div style="padding:0 32px;">
+  <!-- Clinical sections wrapper -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:0 32px;">
+    <tr><td>
 
     ${anamnese ? `
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
       <tr>
-        <td width="30" valign="top">
-          <div style="width:26px;height:26px;background:#0B3D6B;border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">${anamneseNum}</div>
+        <td width="36" valign="top" style="padding-top:2px;">
+          <table cellpadding="0" cellspacing="0"><tr><td style="width:26px;height:26px;background:#0B3D6B;border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">${anamneseNum}</td></tr></table>
         </td>
-        <td style="padding-left:10px;" valign="top">
-          <div style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;margin-bottom:8px;">Anamnese</div>
-          <div style="font-size:10pt;line-height:1.75;color:#334155;text-align:justify;">
-            ${sections.queixa ? `<strong style="color:#0B3D6B;">Queixa Principal:</strong> ${fmt(sections.queixa)}<br><br>` : ''}
-            ${sections.hda ? `<strong style="color:#0B3D6B;">História da Doença Atual:</strong><br>${fmt(sections.hda)}` : ''}
-          </div>
+        <td valign="top" style="padding-left:10px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Anamnese</td></tr>
+            <tr><td style="font-size:10pt;line-height:1.75;color:#334155;text-align:justify;padding-top:8px;">
+              ${sections.queixa ? `<strong style="color:#0B3D6B;">Queixa Principal:</strong> ${fmt(sections.queixa)}<br><br>` : ''}
+              ${sections.hda ? `<strong style="color:#0B3D6B;">História da Doença Atual:</strong><br>${fmt(sections.hda)}` : ''}
+            </td></tr>
+          </table>
         </td>
       </tr>
     </table>` : ''}
 
-    ${sectionHtml(examNum, 'Exame Físico', sections.exame_fisico || '', '#1565A8')}
+    ${sections.exame_fisico ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
+      <tr>
+        <td width="36" valign="top" style="padding-top:2px;">
+          <table cellpadding="0" cellspacing="0"><tr><td style="width:26px;height:26px;background:#1565A8;border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">${examNum}</td></tr></table>
+        </td>
+        <td valign="top" style="padding-left:10px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Exame Físico</td></tr>
+            <tr><td style="font-size:10pt;line-height:1.75;color:#334155;text-align:justify;padding-top:8px;">${fmt(sections.exame_fisico)}</td></tr>
+          </table>
+        </td>
+      </tr>
+    </table>` : ''}
 
     ${(sections.hipoteses?.principal || sections.hipoteses?.diferencial) ? `
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
       <tr>
-        <td width="30" valign="top">
-          <div style="width:26px;height:26px;background:#0B3D6B;border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">${hipNum}</div>
+        <td width="36" valign="top" style="padding-top:2px;">
+          <table cellpadding="0" cellspacing="0"><tr><td style="width:26px;height:26px;background:#0B3D6B;border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">${hipNum}</td></tr></table>
         </td>
-        <td style="padding-left:10px;" valign="top">
-          <div style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;margin-bottom:8px;">Hipótese Diagnóstica</div>
-          
-          ${sections.hipoteses?.principal ? `
-          <div style="border:2px solid #0B3D6B;border-radius:8px;overflow:hidden;margin-bottom:8px;">
-            <div style="background:linear-gradient(135deg,#0B3D6B,#1565A8);padding:6px 16px;font-size:7pt;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:1.5px;">Hipótese Principal</div>
-            <div style="padding:12px 16px;font-size:10.5pt;font-weight:600;color:#0F172A;background:#fff;">${sections.hipoteses.principal}</div>
-          </div>` : ''}
+        <td valign="top" style="padding-left:10px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Hipótese Diagnóstica</td></tr>
+            <tr><td style="padding-top:8px;">
 
-          ${sections.hipoteses?.diferencial ? `
-          <div style="border:1px solid #E2E8F0;border-radius:8px;overflow:hidden;margin-bottom:8px;">
-            <div style="background:#F1F5F9;padding:6px 16px;font-size:7pt;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:1.5px;border-bottom:1px solid #E2E8F0;">Diagnóstico Diferencial</div>
-            <div style="padding:12px 16px;font-size:10.5pt;font-weight:500;color:#334155;background:#fff;">${sections.hipoteses.diferencial}</div>
-          </div>` : ''}
+              ${sections.hipoteses?.principal ? `
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;border:2px solid #0B3D6B;">
+                <tr><td style="background:linear-gradient(135deg,#0B3D6B,#1565A8);padding:6px 16px;font-size:7pt;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:1.5px;">Hipótese Principal</td></tr>
+                <tr><td style="padding:12px 16px;font-size:10.5pt;font-weight:600;color:#0F172A;background:#fff;">${fmt(sections.hipoteses.principal)}</td></tr>
+              </table>` : ''}
+
+              ${sections.hipoteses?.diferencial ? `
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;border:1px solid #E2E8F0;">
+                <tr><td style="background:#F1F5F9;padding:6px 16px;font-size:7pt;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:1.5px;border-bottom:1px solid #E2E8F0;">Diagnóstico Diferencial</td></tr>
+                <tr><td style="padding:12px 16px;font-size:10.5pt;font-weight:500;color:#334155;background:#fff;">${fmt(sections.hipoteses.diferencial)}</td></tr>
+              </table>` : ''}
+
+            </td></tr>
+          </table>
         </td>
       </tr>
     </table>` : ''}
@@ -391,84 +417,120 @@ function generatePdfHtml(
     ${sections.cid10 && sections.cid10.length > 0 ? `
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
       <tr>
-        <td width="30" valign="top">
-          <div style="width:26px;height:26px;background:#C7944A;border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">C</div>
+        <td width="36" valign="top" style="padding-top:2px;">
+          <table cellpadding="0" cellspacing="0"><tr><td style="width:26px;height:26px;background:#C7944A;border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">C</td></tr></table>
         </td>
-        <td style="padding-left:10px;" valign="top">
-          <div style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;margin-bottom:8px;">Classificação CID-10</div>
-          <div style="padding-top:4px;">
-            ${sections.cid10.map(c => `<span style="display:inline-block;padding:3px 14px;background:#0B3D6B;color:#fff;border-radius:20px;font-size:8pt;font-weight:600;letter-spacing:0.5px;margin:2px 4px 2px 0;">${c}</span>`).join('')}
-          </div>
+        <td valign="top" style="padding-left:10px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Classificação CID-10</td></tr>
+            <tr><td style="padding-top:8px;">
+              ${sections.cid10.map(c => `<span style="display:inline-block;padding:3px 14px;background:#0B3D6B;color:#fff;border-radius:20px;font-size:8pt;font-weight:600;letter-spacing:0.5px;margin:2px 4px 2px 0;">${c}</span>`).join('')}
+            </td></tr>
+          </table>
         </td>
       </tr>
     </table>` : ''}
 
     ${redFlags && redFlags.length > 0 ? `
-    <div style="margin:8px 0 16px 0;background:#FFF5F5;border:1px solid #FECACA;border-left:4px solid #DC2626;border-radius:8px;padding:12px 18px;">
-      <div style="font-size:8.5pt;font-weight:700;color:#991B1B;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">⚠ Sinais de Alerta</div>
-      ${redFlags.map(f => `<div style="font-size:9pt;color:#7F1D1D;margin:3px 0;padding-left:16px;">▲ ${f}</div>`).join('')}
-    </div>` : ''}
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
+      <tr>
+        <td style="background:#FFF5F5;border:1px solid #FECACA;border-left:4px solid #DC2626;padding:12px 18px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="font-size:8.5pt;font-weight:700;color:#991B1B;text-transform:uppercase;letter-spacing:1px;padding-bottom:6px;">⚠ Sinais de Alerta</td></tr>
+            ${redFlags.map(f => `<tr><td style="font-size:9pt;color:#7F1D1D;padding:3px 0 3px 16px;">▲ ${f}</td></tr>`).join('')}
+          </table>
+        </td>
+      </tr>
+    </table>` : ''}
 
     ${(complementaryExams && complementaryExams.length > 0) ? `
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
       <tr>
-        <td width="30" valign="top">
-          <div style="width:26px;height:26px;background:#1565A8;border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">${examsCompNum}</div>
+        <td width="36" valign="top" style="padding-top:2px;">
+          <table cellpadding="0" cellspacing="0"><tr><td style="width:26px;height:26px;background:#1565A8;border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">${examsCompNum}</td></tr></table>
         </td>
-        <td style="padding-left:10px;" valign="top">
-          <div style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;margin-bottom:8px;">Exames Complementares</div>
-          ${complementaryExams.map(e => `<div style="font-size:9.5pt;color:#334155;margin:3px 0;padding-left:14px;">→ ${e}</div>`).join('')}
+        <td valign="top" style="padding-left:10px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Exames Complementares</td></tr>
+            ${complementaryExams.map(e => `<tr><td style="font-size:9.5pt;color:#334155;padding:3px 0 3px 14px;">→ ${e}</td></tr>`).join('')}
+          </table>
         </td>
       </tr>
     </table>` : ''}
 
-    ${sectionHtml(condutaNum, 'Conduta', sections.conduta || '', '#0B3D6B')}
+    ${sections.conduta ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
+      <tr>
+        <td width="36" valign="top" style="padding-top:2px;">
+          <table cellpadding="0" cellspacing="0"><tr><td style="width:26px;height:26px;background:#0B3D6B;border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">${condutaNum}</td></tr></table>
+        </td>
+        <td valign="top" style="padding-left:10px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Conduta</td></tr>
+            <tr><td style="font-size:10pt;line-height:1.75;color:#334155;text-align:justify;padding-top:8px;">${fmt(sections.conduta)}</td></tr>
+          </table>
+        </td>
+      </tr>
+    </table>` : ''}
 
     ${sections.embasamento_teorico ? `
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
       <tr>
-        <td width="30" valign="top">
-          <div style="width:26px;height:26px;background:#64748B;border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">R</div>
+        <td width="36" valign="top" style="padding-top:2px;">
+          <table cellpadding="0" cellspacing="0"><tr><td style="width:26px;height:26px;background:#64748B;border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:26px;">R</td></tr></table>
         </td>
-        <td style="padding-left:10px;" valign="top">
-          <div style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;margin-bottom:8px;">Embasamento Teórico</div>
-          <div style="background:#F0F7FF;border:1px solid #BFDBFE;border-radius:8px;padding:14px 18px;font-size:9pt;color:#1E40AF;line-height:1.7;margin-top:4px;">${fmt(sections.embasamento_teorico)}</div>
+        <td valign="top" style="padding-left:10px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="font-size:10pt;font-weight:700;color:#0B3D6B;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Embasamento Teórico</td></tr>
+            <tr><td style="padding-top:8px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #BFDBFE;background:#F0F7FF;">
+                <tr><td style="padding:14px 18px;font-size:9pt;color:#1E40AF;line-height:1.7;">${fmt(sections.embasamento_teorico)}</td></tr>
+              </table>
+            </td></tr>
+          </table>
         </td>
       </tr>
     </table>` : ''}
 
-  </div>
+    </td></tr>
+  </table>
 
   <!-- Signature -->
-  <div style="margin:36px 32px 0 32px;text-align:center;">
-    <div style="display:inline-block;min-width:260px;text-align:center;">
-      <div style="width:100%;height:1.5px;background:#0B3D6B;margin:8px 0 6px;"></div>
-      <div style="font-size:11pt;font-weight:700;color:#0B3D6B;">Dr(a). ${doctorName}</div>
-      ${doctorCrm ? `<div style="font-size:9pt;color:#1565A8;font-weight:600;">CRM ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</div>` : ''}
-      ${doctorSpecialty ? `<div style="font-size:8.5pt;color:#64748B;">${doctorSpecialty}</div>` : ''}
-    </div>
-  </div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:36px 32px 0 32px;">
+    <tr><td align="center">
+      <table cellpadding="0" cellspacing="0" style="min-width:260px;">
+        <tr><td style="border-bottom:2px solid #0B3D6B;padding-bottom:8px;font-size:0;line-height:0;">&nbsp;</td></tr>
+        <tr><td style="text-align:center;font-size:11pt;font-weight:700;color:#0B3D6B;padding-top:6px;">Dr(a). ${doctorName}</td></tr>
+        ${doctorCrm ? `<tr><td style="text-align:center;font-size:9pt;color:#1565A8;font-weight:600;">CRM ${doctorCrm}${doctorCrmUf ? '/' + doctorCrmUf : ''}</td></tr>` : ''}
+        ${doctorSpecialty ? `<tr><td style="text-align:center;font-size:8.5pt;color:#64748B;">${doctorSpecialty}</td></tr>` : ''}
+      </table>
+    </td></tr>
+  </table>
 
   <!-- Footer -->
-  <table width="100%" cellpadding="0" cellspacing="0" style="margin:28px 32px 0 32px;width:calc(100% - 64px);padding-top:12px;border-top:1px solid #E2E8F0;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:28px 32px 0 32px;">
+    <tr><td colspan="2" style="border-top:1px solid #E2E8F0;padding-top:12px;font-size:0;line-height:0;">&nbsp;</td></tr>
     <tr>
-      <td valign="bottom" style="font-size:7pt;color:#94A3B8;line-height:1.8;">
-        <div><strong style="color:#64748B;">Emitido via MindMed AI</strong> — Laudos Médicos Inteligentes</div>
-        <div>Documento protegido pela LGPD (Lei nº 13.709/2018)</div>
-        <div>Gerado em ${dateFormatted} às ${timeFormatted}</div>
+      <td width="60%" valign="bottom" style="font-size:7pt;color:#94A3B8;line-height:1.8;">
+        <table cellpadding="0" cellspacing="0">
+          <tr><td style="font-size:7pt;color:#64748B;font-weight:700;">Emitido via MindMed AI <span style="font-weight:400;color:#94A3B8;">— Laudos Médicos Inteligentes</span></td></tr>
+          <tr><td style="font-size:7pt;color:#94A3B8;">Documento protegido pela LGPD (Lei nº 13.709/2018)</td></tr>
+          <tr><td style="font-size:7pt;color:#94A3B8;">Gerado em ${dateFormatted} às ${timeFormatted}</td></tr>
+        </table>
       </td>
-      <td align="right" valign="bottom" style="text-align:right;font-size:6.5pt;color:#94A3B8;">
-        <div>Verificação Digital</div>
-        <div style="font-family:'Courier New',monospace;font-size:5.5pt;color:#94A3B8;background:#F8FAFC;padding:2px 8px;border-radius:4px;margin-top:3px;display:inline-block;border:1px solid #E2E8F0;word-break:break-all;">${hash.substring(0, 32)}…</div>
+      <td width="40%" align="right" valign="bottom" style="text-align:right;">
+        <table cellpadding="0" cellspacing="0" align="right">
+          <tr><td style="font-size:6.5pt;color:#94A3B8;text-align:right;">Verificação Digital</td></tr>
+          <tr><td style="text-align:right;padding-top:3px;">
+            <table cellpadding="0" cellspacing="0" align="right"><tr><td style="font-family:'Courier New',monospace;font-size:5.5pt;color:#94A3B8;background:#F8FAFC;padding:2px 8px;border:1px solid #E2E8F0;">${hash.substring(0, 32)}...</td></tr></table>
+          </td></tr>
+        </table>
       </td>
     </tr>
   </table>
 
   <!-- Bottom accent -->
-  <div style="height:3px;background:linear-gradient(90deg,#0B3D6B 0%,#1565A8 35%,#C7944A 65%,#D4A84B 100%);margin-top:16px;"></div>
-
-  <!-- QR Code placeholder -->
-  <div style="text-align:center;margin-top:8px;font-size:6pt;color:#CBD5E1;">📱 [QR Code seria gerado aqui]</div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding-top:16px;"><tr><td style="height:3px;background:linear-gradient(90deg,#0B3D6B 0%,#1565A8 35%,#C7944A 65%,#D4A84B 100%);font-size:0;line-height:0;">&nbsp;</td></tr></table>
 
 </div>
 </body>
