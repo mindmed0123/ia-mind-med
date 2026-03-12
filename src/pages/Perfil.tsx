@@ -8,8 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Activity, ArrowLeft, Upload, X, Save, CreditCard, Settings, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useSpecialtyTemplates } from '@/hooks/useSpecialtyTemplates';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
 import {
@@ -26,6 +28,7 @@ export default function Perfil() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { subscription, loading: subLoading } = useSubscription();
+  const { templates: specialtyTemplates, loading: templatesLoading } = useSpecialtyTemplates();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -286,12 +289,25 @@ export default function Perfil() {
                 </div>
                 <div>
                   <Label htmlFor="specialty">Especialidade</Label>
-                  <Input
-                    id="specialty"
-                    value={formData.specialty}
-                    onChange={(e) => setFormData(prev => ({ ...prev, specialty: e.target.value }))}
-                    placeholder="Cardiologia"
-                  />
+                  {templatesLoading ? (
+                    <Input disabled placeholder="Carregando..." />
+                  ) : (
+                    <Select
+                      value={formData.specialty || 'clinica_geral'}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, specialty: value }))}
+                    >
+                      <SelectTrigger id="specialty">
+                        <SelectValue placeholder="Selecione sua especialidade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {specialtyTemplates.map((t) => (
+                          <SelectItem key={t.specialty} value={t.specialty}>
+                            {t.display_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
             </CardContent>

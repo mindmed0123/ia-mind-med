@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Edit, Mic, FileText, CheckCircle, AlertCircle, Pill, Upload } from "lucide-react";
+import { ArrowLeft, Loader2, Edit, Mic, FileText, CheckCircle, AlertCircle, Pill, Upload, Stethoscope } from "lucide-react";
 import { PatientDataForm } from "@/components/laudos/PatientDataForm";
 import { LaudoViewer } from "@/components/laudos/LaudoViewer";
 import { LaudoEditor } from "@/components/laudos/LaudoEditor";
@@ -14,11 +14,14 @@ import { AudioRecorder } from "@/components/audio/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSpecialtyTemplates } from "@/hooks/useSpecialtyTemplates";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type PipelineStage = 'idle' | 'uploading' | 'transcribing' | 'preparing' | 'calling_ai' | 'structuring' | 'saving' | 'completed' | 'error';
 
@@ -39,6 +42,7 @@ const NovoLaudo = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { templates: specialtyTemplates } = useSpecialtyTemplates();
   const [laudoId, setLaudoId] = useState<string | null>(searchParams.get('id'));
   const initialTab = searchParams.get('tab');
   const [laudo, setLaudo] = useState<any>(null);
@@ -52,9 +56,21 @@ const NovoLaudo = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [patientLinked, setPatientLinked] = useState(false);
+  const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const channelRef = useRef<any>(null);
   const transcriptRef = useRef(transcript);
   const patientDataRef = useRef(patientData);
+
+  // Load doctor's specialty from profile
+  useEffect(() => {
+    if (user && !selectedSpecialty) {
+      supabase.from('profiles').select('specialty').eq('id', user.id).single()
+        .then(({ data }) => {
+          if (data?.specialty) setSelectedSpecialty(data.specialty);
+          else setSelectedSpecialty('clinica_geral');
+        });
+    }
+  }, [user]);
 
   // Keep refs in sync to avoid stale closures in Realtime
   const handleGenerateLaudoRef = useRef<(t?: string) => Promise<void>>();
@@ -228,6 +244,7 @@ const NovoLaudo = () => {
           historico: patientData?.historico || '',
           laudo_id: laudoId,
           mode: 'fast',
+          template_specialty: selectedSpecialty || undefined,
         },
       });
 
@@ -317,6 +334,7 @@ const NovoLaudo = () => {
           historico: patientData?.historico || '',
           laudo_id: newLaudo.id,
           mode: 'complete',
+          template_specialty: selectedSpecialty || undefined,
         },
       });
 
@@ -529,7 +547,47 @@ const NovoLaudo = () => {
           </div>
 
           <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 space-y-4">
+              {/* Specialty Selector */}
+              <Card>
+                <CardContent className="pt-4">
+                  <Label className="flex items-center gap-2 mb-2">
+                    <Stethoscope className="w-4 h-4 text-primary" />
+                    Tipo de consulta
+                  </Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Select value={selectedSpecialty || 'clinica_geral'} onValueChange={setSelectedSpecialty}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {specialtyTemplates.map((t) => (
+                                <SelectItem key={t.specialty} value={t.specialty}>
+                                  {t.display_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs">
+                        <p className="font-medium mb-1">Seções geradas:</p>
+                        <ul className="text-xs space-y-0.5">
+                          {specialtyTemplates.find(t => t.specialty === (selectedSpecialty || 'clinica_geral'))?.sections
+                            .sort((a, b) => a.order - b.order)
+                            .map((s) => (
+                              <li key={s.key}>• {s.label}</li>
+                            ))}
+                        </ul>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </CardContent>
+              </Card>
+
               <PatientDataForm initialData={patientData} onDataChange={setPatientData} autoSave={false} />
             </div>
 
@@ -609,7 +667,38 @@ const NovoLaudo = () => {
         <PipelineStatus />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-4">
+            {/* Specialty Selector (in laudo view) */}
+            {!laudo?.status || laudo.status !== 'completed' ? (
+              <Card>
+                <CardContent className="pt-4">
+                  <Label className="flex items-center gap-2 mb-2">
+                    <Stethoscope className="w-4 h-4 text-primary" />
+                    Tipo de consulta
+                  </Label>
+                  <Select value={selectedSpecialty || 'clinica_geral'} onValueChange={setSelectedSpecialty}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {specialtyTemplates.map((t) => (
+                        <SelectItem key={t.specialty} value={t.specialty}>
+                          {t.display_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </CardContent>
+              </Card>
+            ) : laudo?.specialty && (
+              <div className="flex items-center gap-2">
+                <Stethoscope className="w-4 h-4 text-primary" />
+                <Badge variant="secondary">
+                  {specialtyTemplates.find(t => t.specialty === laudo.specialty)?.display_name || laudo.specialty}
+                </Badge>
+              </div>
+            )}
+
             <PatientDataForm
               initialData={patientData}
               onDataChange={handlePatientDataChange}

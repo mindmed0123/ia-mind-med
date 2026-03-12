@@ -26,18 +26,18 @@ const LAUDO_TOOL = {
           type: "object",
           description: "Dados do paciente extraídos da transcrição/texto da consulta",
           properties: {
-            iniciais: { type: "string", description: "Iniciais do paciente mencionadas na consulta" },
-            idade: { type: "string", description: "Idade do paciente mencionada" },
-            sexo: { type: "string", description: "Sexo do paciente: M, F ou Não informado" },
-            queixa_principal: { type: "string", description: "Queixa principal identificada" },
-            medicacoes: { type: "array", items: { type: "string" }, description: "Medicações em uso mencionadas (incluir dose se mencionada, ex: Losartana 50mg)" },
-            alergias: { type: "array", items: { type: "string" }, description: "Alergias mencionadas" },
-            comorbidades: { type: "array", items: { type: "string" }, description: "Comorbidades/condições crônicas mencionadas" },
-            historico: { type: "string", description: "Histórico médico relevante mencionado" },
-            historico_familiar: { type: "string", description: "Histórico familiar mencionado ou null" },
-            tabagismo: { type: "boolean", description: "Se o paciente é tabagista. null se não mencionado" },
-            etilismo: { type: "boolean", description: "Se o paciente faz uso de álcool. null se não mencionado" },
-            observacoes_clinicas: { type: "string", description: "Outras informações clínicas relevantes mencionadas" },
+            iniciais: { type: "string" },
+            idade: { type: "string" },
+            sexo: { type: "string" },
+            queixa_principal: { type: "string" },
+            medicacoes: { type: "array", items: { type: "string" } },
+            alergias: { type: "array", items: { type: "string" } },
+            comorbidades: { type: "array", items: { type: "string" } },
+            historico: { type: "string" },
+            historico_familiar: { type: "string" },
+            tabagismo: { type: "boolean" },
+            etilismo: { type: "boolean" },
+            observacoes_clinicas: { type: "string" },
             sinais_vitais: {
               type: "object",
               properties: {
@@ -70,15 +70,14 @@ const LAUDO_TOOL = {
         condutas: { type: "array", items: { type: "string" }, description: "Máximo 6 condutas" },
         prescricoes_sugeridas: {
           type: "array",
-          description: "Medicamentos prescritos ou sugeridos durante a consulta. Extraia do contexto da conversa.",
           items: {
             type: "object",
             properties: {
-              medicamento: { type: "string", description: "Nome do medicamento" },
-              dosagem: { type: "string", description: "Dosagem ex: 500mg" },
-              posologia: { type: "string", description: "Posologia ex: 1 comprimido a cada 8h" },
-              duracao: { type: "string", description: "Duração do tratamento ex: 7 dias" },
-              observacoes: { type: "string", description: "Observações adicionais" },
+              medicamento: { type: "string" },
+              dosagem: { type: "string" },
+              posologia: { type: "string" },
+              duracao: { type: "string" },
+              observacoes: { type: "string" },
             },
             required: ["medicamento", "dosagem", "posologia"],
           },
@@ -88,6 +87,12 @@ const LAUDO_TOOL = {
         cid10: { type: "array", items: { type: "string" }, description: "Máximo 3 CID-10" },
         texto_laudo_md: { type: "string", description: "Laudo em Markdown, máximo 600 palavras" },
         texto_paciente_md: { type: "string", description: "Resumo acessível ao paciente, máximo 100 palavras" },
+        // Dynamic specialty sections (key-value pairs from the template)
+        specialty_sections: {
+          type: "object",
+          description: "Seções específicas da especialidade conforme template. Cada chave corresponde a uma seção do template.",
+          additionalProperties: { type: "string" },
+        },
       },
       required: ["resumo_clinico", "dados_paciente_extraidos", "hipotese_principal", "hipotese_diferencial", "condutas", "exames", "red_flags", "cid10", "texto_laudo_md", "texto_paciente_md"],
       additionalProperties: false,
@@ -97,8 +102,8 @@ const LAUDO_TOOL = {
 
 // Models by mode
 const MODELS = {
-  fast: 'google/gemini-3-flash-preview',    // fastest high-quality
-  complete: 'google/gemini-2.5-flash',       // balanced
+  fast: 'google/gemini-3-flash-preview',
+  complete: 'google/gemini-2.5-flash',
 };
 
 const MAX_TOKENS = { fast: 3000, complete: 5000 };
@@ -143,7 +148,8 @@ serve(async (req) => {
     // ===== PARSE BODY =====
     const {
       patient, specialty, chief_complaint, transcript, vitals, meds, allergies,
-      exam_findings, contexto_clinico, historico, laudo_id, mode = 'fast'
+      exam_findings, contexto_clinico, historico, laudo_id, mode = 'fast',
+      template_specialty,
     } = await req.json();
     currentLaudoId = laudo_id;
 
@@ -179,6 +185,46 @@ serve(async (req) => {
     const t2 = now();
     log(cid, 'checks_ok', { ms: t2 - t0 });
 
+    // ===== FETCH SPECIALTY TEMPLATE =====
+    let templateData: any = null;
+    let resolvedSpecialty = template_specialty || null;
+
+    // If no template_specialty provided, fetch from doctor's profile
+    if (!resolvedSpecialty) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('specialty')
+        .eq('id', user.id)
+        .single();
+      resolvedSpecialty = profile?.specialty || null;
+    }
+
+    // Fetch template by specialty
+    if (resolvedSpecialty) {
+      const { data: tmpl } = await supabase
+        .from('specialty_templates')
+        .select('system_prompt, sections, specialty, display_name')
+        .eq('specialty', resolvedSpecialty)
+        .maybeSingle();
+      if (tmpl) templateData = tmpl;
+    }
+
+    // Fallback to default template
+    if (!templateData) {
+      const { data: defaultTmpl } = await supabase
+        .from('specialty_templates')
+        .select('system_prompt, sections, specialty, display_name')
+        .eq('is_default', true)
+        .maybeSingle();
+      if (defaultTmpl) templateData = defaultTmpl;
+    }
+
+    const t2b = now();
+    log(cid, 'template_fetched', { 
+      specialty: templateData?.specialty || 'fallback', 
+      ms: t2b - t2 
+    });
+
     // ===== TRUNCATE TRANSCRIPT =====
     const transcriptText = typeof transcript === 'string' ? transcript : transcript?.text || '';
     const MAX_CHARS = mode === 'fast' ? 3000 : 5000;
@@ -186,8 +232,19 @@ serve(async (req) => {
       ? transcriptText.substring(0, MAX_CHARS) + '\n[...truncado]'
       : transcriptText;
 
-    // ===== BUILD COMPACT PROMPT =====
-    const systemPrompt = `Assistente clínico PT-BR. Gere laudo estruturado. REGRAS: sem diagnóstico definitivo, 2 hipóteses (provável + diferencial), red flags, CID-10. Use apenas iniciais/idade/sexo (LGPD). Disclaimer: "Conteúdo IA para apoio; não substitui avaliação clínica." IMPORTANTE: extraia dados do paciente (iniciais, idade, sexo, queixa principal, medicações com dose, alergias, comorbidades, histórico clínico e familiar, tabagismo, etilismo, sinais vitais) a partir da transcrição e preencha o campo dados_paciente_extraidos completamente. Se uma informação não foi mencionada, use null. Extraia TODOS os medicamentos prescritos ou sugeridos durante a consulta e preencha prescricoes_sugeridas com medicamento, dosagem, posologia, duração e observações.`;
+    // ===== BUILD PROMPT =====
+    // Use template system prompt if available, otherwise use default
+    const systemPrompt = templateData?.system_prompt || 
+      `Assistente clínico PT-BR. Gere laudo estruturado. REGRAS: sem diagnóstico definitivo, 2 hipóteses (provável + diferencial), red flags, CID-10. Use apenas iniciais/idade/sexo (LGPD). Disclaimer: "Conteúdo IA para apoio; não substitui avaliação clínica." IMPORTANTE: extraia dados do paciente (iniciais, idade, sexo, queixa principal, medicações com dose, alergias, comorbidades, histórico clínico e familiar, tabagismo, etilismo, sinais vitais) a partir da transcrição e preencha o campo dados_paciente_extraidos completamente. Se uma informação não foi mencionada, use null. Extraia TODOS os medicamentos prescritos ou sugeridos durante a consulta e preencha prescricoes_sugeridas com medicamento, dosagem, posologia, duração e observações.`;
+
+    // Add template sections instruction if available
+    let sectionsInstruction = '';
+    if (templateData?.sections) {
+      const sectionKeys = (templateData.sections as any[]).map((s: any) => s.key);
+      sectionsInstruction = `\n\nALÉM dos campos padrão, preencha também o campo specialty_sections com as seguintes chaves: ${sectionKeys.join(', ')}. Cada chave deve conter o texto correspondente à seção.`;
+    }
+
+    const fullSystemPrompt = systemPrompt + sectionsInstruction;
 
     const parts: string[] = [];
     parts.push(`PAC: ${patient?.iniciais || 'N/I'}, ${patient?.sexo || 'N/I'}, ${patient?.idade || 'N/I'}a`);
@@ -202,13 +259,14 @@ serve(async (req) => {
     if (historico) parts.push(`HIST: ${historico}`);
     const userPrompt = parts.join('\n');
 
-    const promptChars = systemPrompt.length + userPrompt.length;
+    const promptChars = fullSystemPrompt.length + userPrompt.length;
     const modelUsed = MODELS[mode as keyof typeof MODELS] || MODELS.fast;
     const maxTokens = MAX_TOKENS[mode as keyof typeof MAX_TOKENS] || MAX_TOKENS.fast;
 
     log(cid, 'llm_start', {
       laudo_id, model: modelUsed, mode, prompt_chars: promptChars,
       transcript_chars: transcriptText.length, max_tokens: maxTokens,
+      template: templateData?.specialty || 'default',
     });
 
     // ===== LLM CALL with tool calling =====
@@ -217,7 +275,7 @@ serve(async (req) => {
 
     const t4 = now();
     const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 45000); // 45s hard limit
+    const timeout = setTimeout(() => ctrl.abort(), 45000);
 
     let response;
     try {
@@ -230,7 +288,7 @@ serve(async (req) => {
         body: JSON.stringify({
           model: modelUsed,
           messages: [
-            { role: 'system', content: systemPrompt },
+            { role: 'system', content: fullSystemPrompt },
             { role: 'user', content: userPrompt },
           ],
           tools: [LAUDO_TOOL],
@@ -283,7 +341,6 @@ serve(async (req) => {
     const t6 = now();
     let laudoData: any;
 
-    // Try tool_calls first (structured output)
     const toolCall = choice?.message?.tool_calls?.[0];
     if (toolCall?.function?.arguments) {
       try {
@@ -294,7 +351,6 @@ serve(async (req) => {
       }
     }
 
-    // Fallback to content parsing
     if (!laudoData) {
       const content = choice?.message?.content;
       if (!content) throw new Error('Resposta vazia da IA.');
@@ -307,7 +363,6 @@ serve(async (req) => {
         log(cid, 'parse_content_ok', { ms: now() - t6 });
       } catch {
         log(cid, 'parse_fail', { content_len: content.length });
-        // Quick fix attempt with lite model
         const fixResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${lovableKey}`, 'Content-Type': 'application/json' },
@@ -335,7 +390,7 @@ serve(async (req) => {
       }
     }
 
-    // ===== NORMALIZE (handle both tool-call and legacy field names) =====
+    // ===== NORMALIZE =====
     const hipoteses = laudoData.hipoteses || {
       mais_provavel: laudoData.hipotese_principal || {},
       menos_provavel: laudoData.hipotese_diferencial || {},
@@ -349,8 +404,9 @@ serve(async (req) => {
     const textoPaciente = laudoData.texto_paciente_md || '';
     const resumo = laudoData.resumo_clinico || '';
     const disclaimer = laudoData.avisos_legais || 'Conteúdo gerado por IA para apoio à decisão clínica. Não substitui julgamento médico.';
+    const specialtySections = laudoData.specialty_sections || {};
 
-    // ===== DB UPDATE (single write) =====
+    // ===== DB UPDATE =====
     const t7 = now();
     const { error: updateError } = await supabase
       .from('laudos')
@@ -360,7 +416,12 @@ serve(async (req) => {
         summary: { resumo_clinico: resumo },
         hypotheses: hipoteses,
         conducts: condutas,
-        sections: { ...(laudoData.sections || {}), prescricoes_sugeridas: prescricoesSugeridas },
+        sections: { 
+          ...(laudoData.sections || {}), 
+          prescricoes_sugeridas: prescricoesSugeridas,
+          specialty_sections: specialtySections,
+          template_sections: templateData?.sections || [],
+        },
         complementary_exams: exames,
         red_flags: redFlags,
         cid10_codes: cid10,
@@ -379,6 +440,7 @@ serve(async (req) => {
           mode,
         },
         generation_mode: mode,
+        specialty: templateData?.specialty || specialty || null,
         last_update_type: 'complete',
         status: 'completed',
         updated_at: new Date().toISOString(),
@@ -393,12 +455,18 @@ serve(async (req) => {
     const t8 = now();
     log(cid, 'complete', {
       laudo_id, model: modelUsed, mode,
+      template: templateData?.specialty || 'default',
       tokens: usage?.total_tokens, llm_ms: llmMs, total_ms: t8 - t0,
       t_auth: t1 - t0, t_checks: t2 - t1, t_llm: llmMs, t_parse: t7 - t5, t_db: t8 - t7,
     });
 
     return new Response(JSON.stringify({
-      success: true, metadata: { model: modelUsed, mode, llm_ms: llmMs, total_ms: t8 - t0, correlation_id: cid },
+      success: true, 
+      metadata: { 
+        model: modelUsed, mode, llm_ms: llmMs, total_ms: t8 - t0, correlation_id: cid,
+        template_used: templateData?.specialty || 'default',
+        template_sections: templateData?.sections || [],
+      },
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error) {
