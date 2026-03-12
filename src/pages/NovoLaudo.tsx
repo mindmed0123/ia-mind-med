@@ -51,6 +51,8 @@ const NovoLaudo = () => {
   const [inputMode, setInputMode] = useState<'audio' | 'text'>('audio');
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>('idle');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPatientModal, setShowPatientModal] = useState(false);
+  const [patientLinked, setPatientLinked] = useState(false);
   const channelRef = useRef<any>(null);
   const transcriptRef = useRef(transcript);
   const patientDataRef = useRef(patientData);
