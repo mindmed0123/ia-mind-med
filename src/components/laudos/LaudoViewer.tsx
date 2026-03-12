@@ -165,7 +165,10 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
             </div>
           {laudo.patient_data && (
             <div className="text-sm text-muted-foreground mt-2">
-              Paciente: {laudo.patient_data.iniciais} • {laudo.patient_data.sexo} • {laudo.patient_data.idade} anos
+              Paciente: {laudo.patient_data.nome_completo || laudo.patient_data.iniciais || 'N/I'} 
+              {laudo.patient_data.nome_completo && laudo.patient_data.iniciais && ` (${laudo.patient_data.iniciais})`}
+              {laudo.patient_data.sexo && ` • ${laudo.patient_data.sexo}`}
+              {laudo.patient_data.idade && ` • ${laudo.patient_data.idade} anos`}
             </div>
           )}
         </CardHeader>
