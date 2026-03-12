@@ -240,7 +240,7 @@ export const PatientLinkingModal = ({
 
       const { data: newPatient, error: createError } = await supabase
         .from('patients')
-        .insert(patientData)
+        .insert(patientData as any)
         .select('id')
         .single();
 
