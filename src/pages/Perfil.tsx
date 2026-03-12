@@ -289,12 +289,25 @@ export default function Perfil() {
                 </div>
                 <div>
                   <Label htmlFor="specialty">Especialidade</Label>
-                  <Input
-                    id="specialty"
-                    value={formData.specialty}
-                    onChange={(e) => setFormData(prev => ({ ...prev, specialty: e.target.value }))}
-                    placeholder="Cardiologia"
-                  />
+                  {templatesLoading ? (
+                    <Input disabled placeholder="Carregando..." />
+                  ) : (
+                    <Select
+                      value={formData.specialty || 'clinica_geral'}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, specialty: value }))}
+                    >
+                      <SelectTrigger id="specialty">
+                        <SelectValue placeholder="Selecione sua especialidade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {specialtyTemplates.map((t) => (
+                          <SelectItem key={t.specialty} value={t.specialty}>
+                            {t.display_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
             </CardContent>
