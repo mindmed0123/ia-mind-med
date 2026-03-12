@@ -145,7 +145,7 @@ function renderHeader(doc: any, meta: PdfMeta): void {
 // =====================================================
 // Footer renderer (called on every page)
 // =====================================================
-function renderFooter(doc: jsPDF, meta: PdfMeta, pageNum: number, totalPages: number): void {
+function renderFooter(doc: any, meta: PdfMeta, pageNum: number, totalPages: number): void {
   const footerTop = PAGE_H - FOOTER_RESERVE;
 
   // 1. Separator line
