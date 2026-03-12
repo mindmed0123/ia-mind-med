@@ -177,7 +177,11 @@ const NovoLaudo = () => {
       // Set initial pipeline stage
       if (data.status === 'completed') {
         setPipelineStage('completed');
-        hasShownSuccessToast.current = true; // Don't show toast for already-completed laudos
+        hasShownSuccessToast.current = true;
+        setPatientLinked(!!data.patient_id);
+        if (!data.patient_id) {
+          setShowPatientModal(true);
+        }
       } else if (data.status === 'generating') {
         setPipelineStage('calling_ai');
       } else if (data.status === 'error' || data.transcript_status === 'error') {
