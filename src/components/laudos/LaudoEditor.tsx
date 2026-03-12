@@ -295,7 +295,8 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
         const pdfBlob = await generatePdf({
           html: data.html,
           fileName: data.fileName,
-          verifyUrl
+          verifyUrl,
+          pdfMeta: data.pdfMeta,
         });
 
         downloadPdf(pdfBlob, data.fileName);

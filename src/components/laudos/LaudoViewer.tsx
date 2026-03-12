@@ -78,7 +78,8 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
         const pdfBlob = await generatePdf({
           html: data.html,
           fileName: data.fileName,
-          verifyUrl
+          verifyUrl,
+          pdfMeta: data.pdfMeta,
         });
 
         downloadPdf(pdfBlob, data.fileName);
