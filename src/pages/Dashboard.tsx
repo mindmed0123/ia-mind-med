@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,12 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isAdmin, loading: adminLoading } = useAdmin();
-  const { needsOnboarding, loading: onboardingChecking, state: onboardingState, updateStep, completeOnboarding } = useOnboarding();
+  const { needsOnboarding, loading: onboardingChecking, state: onboardingState, updateStep, completeOnboarding, needsLgpdConsent, lgpdConsentLoading, markLgpdConsentGiven } = useOnboarding();
+
+  // After LGPD consent is given, trigger onboarding check
+  const handleConsentGiven = useCallback(() => {
+    markLgpdConsentGiven();
+  }, [markLgpdConsentGiven]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -109,7 +114,7 @@ const Dashboard = () => {
     navigate("/home");
   };
 
-  if (loading || onboardingChecking) {
+  if (loading || onboardingChecking || lgpdConsentLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -122,7 +127,16 @@ const Dashboard = () => {
 
   if (!user) return null;
 
-  // Show onboarding wizard for new users
+  // Step 1: Show LGPD consent first (blocks everything)
+  if (needsLgpdConsent) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">
+        <LgpdConsent userId={user.id} onConsentGiven={handleConsentGiven} forceOpen />
+      </div>
+    );
+  }
+
+  // Step 2: Show onboarding wizard after LGPD consent
   if (needsOnboarding) {
     return (
       <OnboardingWizard
@@ -136,7 +150,6 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
-      {user && <LgpdConsent userId={user.id} />}
       <TrialReminderBanner />
       {/* Header */}
       <header className="bg-background/80 backdrop-blur-lg border-b border-border sticky top-0 z-50">

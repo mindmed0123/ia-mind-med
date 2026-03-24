@@ -17,11 +17,12 @@ import { supabase } from "@/integrations/supabase/client";
 interface LgpdConsentProps {
   userId: string;
   onConsentGiven?: () => void;
+  forceOpen?: boolean;
 }
 
-export const LgpdConsent = ({ userId, onConsentGiven }: LgpdConsentProps) => {
+export const LgpdConsent = ({ userId, onConsentGiven, forceOpen }: LgpdConsentProps) => {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(forceOpen ?? false);
   const [consents, setConsents] = useState({
     dataProcessing: false,
     pdfExport: false,
@@ -30,8 +31,10 @@ export const LgpdConsent = ({ userId, onConsentGiven }: LgpdConsentProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    checkConsentStatus();
-  }, [userId]);
+    if (!forceOpen) {
+      checkConsentStatus();
+    }
+  }, [userId, forceOpen]);
 
   const checkConsentStatus = async () => {
     try {
@@ -158,7 +161,7 @@ export const LgpdConsent = ({ userId, onConsentGiven }: LgpdConsentProps) => {
   const allConsentsGiven = consents.dataProcessing && consents.pdfExport && consents.dataRetention;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={forceOpen ? undefined : setOpen}>
       <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
