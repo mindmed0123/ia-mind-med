@@ -26,6 +26,7 @@ import DavChat from "./pages/DavChat";
 import MedicosTrial from "./pages/MedicosTrial";
 import AssinaturaExpirada from "./pages/AssinaturaExpirada";
 import TrialConvite from "./pages/TrialConvite";
+import Unsubscribe from "./pages/Unsubscribe";
 
 const queryClient = new QueryClient();
 
