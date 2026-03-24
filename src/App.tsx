@@ -25,6 +25,7 @@ import NotFound from "./pages/NotFound";
 import DavChat from "./pages/DavChat";
 import MedicosTrial from "./pages/MedicosTrial";
 import AssinaturaExpirada from "./pages/AssinaturaExpirada";
+import TrialConvite from "./pages/TrialConvite";
 
 const queryClient = new QueryClient();
 
