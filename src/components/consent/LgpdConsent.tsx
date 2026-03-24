@@ -309,13 +309,15 @@ export const LgpdConsent = ({ userId, onConsentGiven, forceOpen }: LgpdConsentPr
         </ScrollArea>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setOpen(false)}
-            disabled={isSubmitting}
-          >
-            Cancelar
-          </Button>
+          {!forceOpen && (
+            <Button
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+          )}
           <Button
             onClick={handleSubmit}
             disabled={!allConsentsGiven || isSubmitting}
