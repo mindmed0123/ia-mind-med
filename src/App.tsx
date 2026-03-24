@@ -26,6 +26,7 @@ import DavChat from "./pages/DavChat";
 import MedicosTrial from "./pages/MedicosTrial";
 import AssinaturaExpirada from "./pages/AssinaturaExpirada";
 import TrialConvite from "./pages/TrialConvite";
+import Unsubscribe from "./pages/Unsubscribe";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="/medicos/teste-gratis" element={<MedicosTrial />} />
             <Route path="/medicos/assinatura-expirada" element={<AssinaturaExpirada />} />
             <Route path="/convite/trial-vip-2024" element={<TrialConvite />} />
+            <Route path="/unsubscribe" element={<Unsubscribe />} />
             
             {/* Protected routes - require active subscription */}
             <Route path="/dashboard" element={
