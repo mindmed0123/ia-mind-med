@@ -47,6 +47,7 @@ const App = () => (
             <Route path="/contato" element={<Contato />} />
             <Route path="/medicos/teste-gratis" element={<MedicosTrial />} />
             <Route path="/medicos/assinatura-expirada" element={<AssinaturaExpirada />} />
+            <Route path="/convite/trial-vip-2024" element={<TrialConvite />} />
             
             {/* Protected routes - require active subscription */}
             <Route path="/dashboard" element={

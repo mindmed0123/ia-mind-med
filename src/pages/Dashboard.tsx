@@ -17,6 +17,7 @@ import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { TrialReminderBanner } from "@/components/trial/TrialReminderBanner";
 
 const Dashboard = () => {
   const { user, signOut, loading } = useAuth();
