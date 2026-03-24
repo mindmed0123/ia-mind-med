@@ -100,7 +100,7 @@ export default function Unsubscribe() {
 
           {status === "success" && (
             <>
-              <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto" />
+              <CheckCircle2 className="w-12 h-12 text-primary mx-auto" />
               <h1 className="text-xl font-bold">Inscrição cancelada</h1>
               <p className="text-muted-foreground text-sm">
                 Você não receberá mais emails de lembrete.
