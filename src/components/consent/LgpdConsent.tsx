@@ -162,7 +162,7 @@ export const LgpdConsent = ({ userId, onConsentGiven, forceOpen }: LgpdConsentPr
 
   return (
     <Dialog open={open} onOpenChange={forceOpen ? undefined : setOpen}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
+      <DialogContent className="max-w-2xl max-h-[90vh]" hideCloseButton={forceOpen}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Shield className="w-6 h-6 text-primary" />
