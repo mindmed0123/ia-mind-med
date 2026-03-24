@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Clock, FileText, ArrowRight, Activity, Trash2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { CheckCircle, Clock, FileText, Activity, Trash2 } from "lucide-react";
 
 interface StepConfirmationProps {
   firstLaudoId?: string;
