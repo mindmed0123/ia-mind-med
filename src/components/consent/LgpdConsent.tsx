@@ -31,8 +31,10 @@ export const LgpdConsent = ({ userId, onConsentGiven, forceOpen }: LgpdConsentPr
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    checkConsentStatus();
-  }, [userId]);
+    if (!forceOpen) {
+      checkConsentStatus();
+    }
+  }, [userId, forceOpen]);
 
   const checkConsentStatus = async () => {
     try {
