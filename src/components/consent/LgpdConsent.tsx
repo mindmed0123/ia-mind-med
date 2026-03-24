@@ -161,7 +161,7 @@ export const LgpdConsent = ({ userId, onConsentGiven, forceOpen }: LgpdConsentPr
   const allConsentsGiven = consents.dataProcessing && consents.pdfExport && consents.dataRetention;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={forceOpen ? undefined : setOpen}>
       <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
