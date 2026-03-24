@@ -17,11 +17,12 @@ import { supabase } from "@/integrations/supabase/client";
 interface LgpdConsentProps {
   userId: string;
   onConsentGiven?: () => void;
+  forceOpen?: boolean;
 }
 
-export const LgpdConsent = ({ userId, onConsentGiven }: LgpdConsentProps) => {
+export const LgpdConsent = ({ userId, onConsentGiven, forceOpen }: LgpdConsentProps) => {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(forceOpen ?? false);
   const [consents, setConsents] = useState({
     dataProcessing: false,
     pdfExport: false,

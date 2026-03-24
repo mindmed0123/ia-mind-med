@@ -14,15 +14,36 @@ export const useOnboarding = () => {
   const [state, setState] = useState<OnboardingState>({ currentStep: 1, completed: false });
   const [loading, setLoading] = useState(true);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [needsLgpdConsent, setNeedsLgpdConsent] = useState(false);
+  const [lgpdConsentLoading, setLgpdConsentLoading] = useState(true);
 
   useEffect(() => {
     if (!user) {
       setLoading(false);
+      setLgpdConsentLoading(false);
       return;
     }
 
     const check = async () => {
-      // Users with active subscription skip onboarding entirely
+      // 1. Check LGPD consent first
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("lgpd_consent_given, full_name, crm")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.lgpd_consent_given) {
+        setNeedsLgpdConsent(true);
+        setLgpdConsentLoading(false);
+        // Don't check onboarding yet — wait for consent
+        setLoading(false);
+        return;
+      }
+
+      setNeedsLgpdConsent(false);
+      setLgpdConsentLoading(false);
+
+      // 2. Users with active subscription AND complete profile skip onboarding
       const { data: sub } = await supabase
         .from("subscriptions")
         .select("status")
@@ -31,20 +52,65 @@ export const useOnboarding = () => {
         .limit(1)
         .maybeSingle();
 
-      if (sub) {
+      if (sub && profile?.full_name && profile?.crm) {
         setNeedsOnboarding(false);
         setLoading(false);
         return;
       }
 
-      // Also check if profile is already complete (existing user before onboarding feature)
+      // 3. Check onboarding progress
+      const { data } = await supabase
+        .from("onboarding_progress" as any)
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      if (data && (data as any).completed) {
+        setNeedsOnboarding(false);
+      } else if (data) {
+        setState({
+          currentStep: (data as any).current_step || 1,
+          completed: false,
+          firstLaudoId: (data as any).first_laudo_id,
+          startedAt: (data as any).created_at,
+        });
+        setNeedsOnboarding(true);
+      } else {
+        // No record yet — new user needs onboarding
+        setNeedsOnboarding(true);
+        await supabase.from("onboarding_progress" as any).insert({
+          user_id: user.id,
+          current_step: 1,
+        });
+      }
+      setLoading(false);
+    };
+
+    check();
+  }, [user]);
+
+  const markLgpdConsentGiven = useCallback(() => {
+    setNeedsLgpdConsent(false);
+    // Re-trigger onboarding check
+    setLoading(true);
+    if (!user) return;
+
+    const recheckOnboarding = async () => {
       const { data: profile } = await supabase
         .from("profiles")
         .select("full_name, crm")
         .eq("id", user.id)
         .single();
 
-      if (profile?.full_name && profile?.crm) {
+      const { data: sub } = await supabase
+        .from("subscriptions")
+        .select("status")
+        .eq("user_id", user.id)
+        .in("status", ["ACTIVE", "TRIALING"])
+        .limit(1)
+        .maybeSingle();
+
+      if (sub && profile?.full_name && profile?.crm) {
         setNeedsOnboarding(false);
         setLoading(false);
         return;
@@ -67,7 +133,6 @@ export const useOnboarding = () => {
         });
         setNeedsOnboarding(true);
       } else {
-        // No record yet — new user
         setNeedsOnboarding(true);
         await supabase.from("onboarding_progress" as any).insert({
           user_id: user.id,
@@ -77,7 +142,7 @@ export const useOnboarding = () => {
       setLoading(false);
     };
 
-    check();
+    recheckOnboarding();
   }, [user]);
 
   const updateStep = useCallback(
@@ -100,6 +165,16 @@ export const useOnboarding = () => {
   const completeOnboarding = useCallback(
     async (firstLaudoId?: string, timeSavedSeconds?: number) => {
       if (!user) return;
+
+      // Auto-delete the test laudo if one was created
+      if (firstLaudoId) {
+        await supabase
+          .from("laudos")
+          .delete()
+          .eq("id", firstLaudoId)
+          .eq("user_id", user.id);
+      }
+
       await supabase
         .from("onboarding_progress" as any)
         .update({
@@ -117,5 +192,5 @@ export const useOnboarding = () => {
     [user]
   );
 
-  return { state, loading, needsOnboarding, updateStep, completeOnboarding };
+  return { state, loading, needsOnboarding, needsLgpdConsent, lgpdConsentLoading, updateStep, completeOnboarding, markLgpdConsentGiven };
 };

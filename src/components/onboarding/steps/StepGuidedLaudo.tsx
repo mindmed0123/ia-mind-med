@@ -46,7 +46,7 @@ export const StepGuidedLaudo = ({ onLaudoCreated, onSkip, onBack }: StepGuidedLa
         .from("laudos")
         .insert({
           user_id: user!.id,
-          title: `Primeiro Laudo - ${new Date().toLocaleDateString("pt-BR")}`,
+          title: `[TESTE] Laudo de demonstração - ${new Date().toLocaleDateString("pt-BR")}`,
           status: "draft",
           generation_mode: "text",
           transcript: { text: text.trim() },
