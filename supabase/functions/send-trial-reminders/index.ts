@@ -1,0 +1,113 @@
+import { createClient } from 'npm:@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return new Response(JSON.stringify({ error: 'Missing env vars' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+  // Find all TRIALING subscriptions where trial_end is within 5 days
+  const fiveDaysFromNow = new Date()
+  fiveDaysFromNow.setDate(fiveDaysFromNow.getDate() + 5)
+  
+  const now = new Date()
+
+  const { data: trials, error: trialsError } = await supabase
+    .from('subscriptions')
+    .select('user_id, trial_end')
+    .eq('status', 'TRIALING')
+    .gte('trial_end', now.toISOString())
+    .lte('trial_end', fiveDaysFromNow.toISOString())
+
+  if (trialsError) {
+    console.error('Failed to fetch trial subscriptions', trialsError)
+    return new Response(JSON.stringify({ error: 'DB query failed' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
+  if (!trials || trials.length === 0) {
+    return new Response(JSON.stringify({ sent: 0, message: 'No trials expiring soon' }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
+  let sent = 0
+  let skipped = 0
+
+  for (const trial of trials) {
+    const trialEnd = new Date(trial.trial_end)
+    const diffMs = trialEnd.getTime() - now.getTime()
+    const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+
+    // Only send emails for days 1-5 remaining
+    if (daysLeft < 1 || daysLeft > 5) {
+      skipped++
+      continue
+    }
+
+    // Get user profile for name and email
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email, full_name')
+      .eq('id', trial.user_id)
+      .maybeSingle()
+
+    if (!profile?.email) {
+      skipped++
+      continue
+    }
+
+    // Idempotency key includes the date so we only send once per day per user
+    const today = now.toISOString().slice(0, 10)
+    const idempotencyKey = `trial-reminder-${trial.user_id}-${today}`
+
+    try {
+      await supabase.functions.invoke('send-transactional-email', {
+        body: {
+          templateName: 'trial-reminder',
+          recipientEmail: profile.email,
+          idempotencyKey,
+          templateData: {
+            doctorName: profile.full_name || undefined,
+            daysLeft,
+          },
+        },
+      })
+      sent++
+    } catch (err) {
+      console.error('Failed to send trial reminder', {
+        userId: trial.user_id,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+
+  console.log(`Trial reminders processed: sent=${sent}, skipped=${skipped}`)
+
+  return new Response(
+    JSON.stringify({ sent, skipped, total: trials.length }),
+    {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    }
+  )
+})
