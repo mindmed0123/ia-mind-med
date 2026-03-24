@@ -17,6 +17,7 @@ import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { TrialReminderBanner } from "@/components/trial/TrialReminderBanner";
 
 const Dashboard = () => {
   const { user, signOut, loading } = useAuth();
@@ -136,7 +137,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-subtle">
       {user && <LgpdConsent userId={user.id} />}
-      
+      <TrialReminderBanner />
       {/* Header */}
       <header className="bg-background/80 backdrop-blur-lg border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
