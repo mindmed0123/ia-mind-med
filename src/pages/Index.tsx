@@ -47,12 +47,11 @@ const Index = () => {
               </div>
               
               <div className="pt-8">
-                <p className="text-white/70 text-sm mb-3">Confiado por médicos em:</p>
+                <p className="text-white/70 text-sm mb-3">Tecnologia confiável para profissionais de saúde</p>
                 <div className="flex flex-wrap gap-6 text-white/80 text-sm font-medium">
-                  <span>Hospital XYZ</span>
-                  <span>Clínica ABC</span>
-                  <span>Rede Med+</span>
-                  <span>Instituto DEF</span>
+                  <span>🔒 LGPD Compliant</span>
+                  <span>🧠 IA Médica Especializada</span>
+                  <span>📋 Multi-especialidade</span>
                 </div>
               </div>
             </div>
