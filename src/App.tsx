@@ -27,6 +27,8 @@ import MedicosTrial from "./pages/MedicosTrial";
 import AssinaturaExpirada from "./pages/AssinaturaExpirada";
 import TrialConvite from "./pages/TrialConvite";
 import Unsubscribe from "./pages/Unsubscribe";
+import Termos from "./pages/Termos";
+import Privacidade from "./pages/Privacidade";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +52,8 @@ const App = () => (
             <Route path="/medicos/assinatura-expirada" element={<AssinaturaExpirada />} />
             <Route path="/convite/trial-vip-2024" element={<TrialConvite />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
+            <Route path="/termos" element={<Termos />} />
+            <Route path="/privacidade" element={<Privacidade />} />
             
             {/* Protected routes - require active subscription */}
             <Route path="/dashboard" element={
