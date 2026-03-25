@@ -1,141 +1,224 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { useAdmin } from '@/hooks/useAdmin';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, Users, FileText, Pill, CreditCard } from 'lucide-react';
-import { toast } from 'sonner';
-
-interface Stats {
-  totalUsers: number;
-  totalLaudos: number;
-  totalPrescriptions: number;
-  activeSubscriptions: number;
-}
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAdmin } from "@/hooks/useAdmin";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Loader2, ArrowLeft, BarChart3, Users, Mail, Activity } from "lucide-react";
+import { toast } from "sonner";
+import { AdminKPICards } from "@/components/admin/AdminKPICards";
+import { AdminConversionFunnel } from "@/components/admin/AdminConversionFunnel";
+import { AdminSubscriptionBreakdown } from "@/components/admin/AdminSubscriptionBreakdown";
+import { AdminSignupChart } from "@/components/admin/AdminSignupChart";
+import { AdminEmailMonitor } from "@/components/admin/AdminEmailMonitor";
+import { AdminUserTable } from "@/components/admin/AdminUserTable";
+import { AdminRecentActivity } from "@/components/admin/AdminRecentActivity";
 
 interface UserData {
   id: string;
   email: string;
   full_name: string | null;
   crm: string | null;
+  specialty: string | null;
   subscription_plan: string | null;
   subscription_status: string | null;
+  laudos_count: number;
   created_at: string;
 }
 
 interface LaudoData {
-  id: string;
   title: string;
+  user_email: string;
   status: string;
   created_at: string;
-  user_email: string;
 }
 
 export default function Admin() {
   const navigate = useNavigate();
   const { isAdmin, loading: adminLoading } = useAdmin();
-  const [stats, setStats] = useState<Stats>({
+  const [loading, setLoading] = useState(true);
+
+  // KPI data
+  const [kpiData, setKpiData] = useState({
     totalUsers: 0,
     totalLaudos: 0,
     totalPrescriptions: 0,
     activeSubscriptions: 0,
+    trialingUsers: 0,
+    churned: 0,
+    conversionRate: 0,
+    mrr: 0,
   });
+
+  // Funnel data
+  const [funnelData, setFunnelData] = useState({
+    totalSignups: 0,
+    lgpdConsent: 0,
+    onboardingCompleted: 0,
+    firstLaudo: 0,
+    activePaid: 0,
+  });
+
+  // Subscription breakdown
+  const [subBreakdown, setSubBreakdown] = useState<{ status: string; plan: string; count: number }[]>([]);
+
+  // Signup chart
+  const [signupChart, setSignupChart] = useState<{ day: string; count: number }[]>([]);
+
+  // Users & Activity
   const [users, setUsers] = useState<UserData[]>([]);
   const [recentLaudos, setRecentLaudos] = useState<LaudoData[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
-      toast.error('Acesso negado');
-      navigate('/dashboard');
+      toast.error("Acesso negado");
+      navigate("/dashboard");
       return;
     }
-
-    if (isAdmin) {
-      loadAdminData();
-    }
+    if (isAdmin) loadAllData();
   }, [isAdmin, adminLoading, navigate]);
 
-  const loadAdminData = async () => {
+  const loadAllData = async () => {
     try {
       setLoading(true);
 
-      // Buscar estatísticas
-      const [usersCount, laudosCount, prescriptionsCount, activeSubsCount] = await Promise.all([
-        supabase.from('profiles').select('id', { count: 'exact', head: true }),
-        supabase.from('laudos').select('id', { count: 'exact', head: true }),
-        supabase.from('prescriptions').select('id', { count: 'exact', head: true }),
-        supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
+      const [
+        usersRes,
+        laudosRes,
+        prescriptionsRes,
+        subsRes,
+        onboardingRes,
+        profilesRes,
+        laudosDetailRes,
+      ] = await Promise.all([
+        supabase.from("profiles").select("id", { count: "exact", head: true }),
+        supabase.from("laudos").select("id", { count: "exact", head: true }),
+        supabase.from("prescriptions").select("id", { count: "exact", head: true }),
+        supabase.from("subscriptions").select("status, plan"),
+        supabase.from("onboarding_progress").select("completed, first_laudo_id"),
+        supabase.from("profiles").select("id, email, full_name, crm, specialty, lgpd_consent_given, created_at, subscriptions(plan, status)").order("created_at", { ascending: false }).limit(50),
+        supabase.from("laudos").select("title, status, created_at, profiles!inner(email)").order("created_at", { ascending: false }).limit(20),
       ]);
 
-      setStats({
-        totalUsers: usersCount.count || 0,
-        totalLaudos: laudosCount.count || 0,
-        totalPrescriptions: prescriptionsCount.count || 0,
-        activeSubscriptions: activeSubsCount.count || 0,
+      const totalUsers = usersRes.count || 0;
+      const totalLaudos = laudosRes.count || 0;
+      const totalPrescriptions = prescriptionsRes.count || 0;
+      const subs = (subsRes.data || []) as { status: string; plan: string }[];
+
+      // Subscription breakdown
+      const breakdownMap = new Map<string, number>();
+      let activeCount = 0;
+      let trialingCount = 0;
+      let canceledCount = 0;
+      let activePaidCount = 0;
+
+      for (const s of subs) {
+        const key = `${s.status}|${s.plan}`;
+        breakdownMap.set(key, (breakdownMap.get(key) || 0) + 1);
+        if (s.status === "ACTIVE") { activeCount++; activePaidCount++; }
+        if (s.status === "TRIALING") trialingCount++;
+        if (s.status === "CANCELED" || s.status === "EXPIRED") canceledCount++;
+      }
+
+      const breakdown = Array.from(breakdownMap.entries()).map(([key, count]) => {
+        const [status, plan] = key.split("|");
+        return { status, plan, count };
       });
 
-      // Buscar usuários com suas assinaturas
-      const { data: usersData, error: usersError } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          email,
-          full_name,
-          crm,
-          created_at,
-          subscriptions (
-            plan,
-            status
-          )
-        `)
-        .order('created_at', { ascending: false })
-        .limit(20);
+      // MRR estimate
+      const mrrStarter = subs.filter(s => s.status === "ACTIVE" && s.plan === "STARTER").length * 99.9;
+      const mrrPro = subs.filter(s => s.status === "ACTIVE" && s.plan === "PRO").length * 299;
+      const mrr = mrrStarter + mrrPro;
 
-      if (usersError) throw usersError;
+      // Conversion rate
+      const conversionRate = totalUsers > 0 ? (activePaidCount / totalUsers) * 100 : 0;
 
-      const formattedUsers: UserData[] = (usersData || []).map((user: any) => ({
-        id: user.id,
-        email: user.email,
-        full_name: user.full_name,
-        crm: user.crm,
-        subscription_plan: user.subscriptions?.[0]?.plan || null,
-        subscription_status: user.subscriptions?.[0]?.status || null,
-        created_at: user.created_at,
+      setKpiData({
+        totalUsers,
+        totalLaudos,
+        totalPrescriptions,
+        activeSubscriptions: activeCount,
+        trialingUsers: trialingCount,
+        churned: canceledCount,
+        conversionRate,
+        mrr,
+      });
+
+      setSubBreakdown(breakdown);
+
+      // Funnel
+      const onboardingData = (onboardingRes.data || []) as { completed: boolean; first_laudo_id: string | null }[];
+      const profilesData = (profilesRes.data || []) as any[];
+      const lgpdConsentCount = profilesData.filter((p: any) => p.lgpd_consent_given).length;
+      const onboardingCompleted = onboardingData.filter(o => o.completed).length;
+      const firstLaudoCount = onboardingData.filter(o => o.first_laudo_id).length;
+
+      setFunnelData({
+        totalSignups: totalUsers,
+        lgpdConsent: lgpdConsentCount,
+        onboardingCompleted,
+        firstLaudo: firstLaudoCount,
+        activePaid: activePaidCount,
+      });
+
+      // Signup chart (from profiles created_at)
+      const dayMap = new Map<string, number>();
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      for (const p of profilesData) {
+        const day = new Date(p.created_at).toISOString().split("T")[0];
+        if (new Date(p.created_at) >= thirtyDaysAgo) {
+          dayMap.set(day, (dayMap.get(day) || 0) + 1);
+        }
+      }
+
+      // Fill missing days
+      const chartData: { day: string; count: number }[] = [];
+      for (let d = new Date(thirtyDaysAgo); d <= new Date(); d.setDate(d.getDate() + 1)) {
+        const key = d.toISOString().split("T")[0];
+        chartData.push({ day: key, count: dayMap.get(key) || 0 });
+      }
+      setSignupChart(chartData);
+
+      // Users table with laudo counts
+      const laudoCountMap = new Map<string, number>();
+      // Get laudo counts per user
+      const { data: laudosByUser } = await supabase
+        .from("laudos")
+        .select("user_id");
+
+      for (const l of (laudosByUser || [])) {
+        laudoCountMap.set(l.user_id, (laudoCountMap.get(l.user_id) || 0) + 1);
+      }
+
+      const formattedUsers: UserData[] = profilesData.map((u: any) => ({
+        id: u.id,
+        email: u.email,
+        full_name: u.full_name,
+        crm: u.crm,
+        specialty: u.specialty,
+        subscription_plan: u.subscriptions?.[0]?.plan || null,
+        subscription_status: u.subscriptions?.[0]?.status || null,
+        laudos_count: laudoCountMap.get(u.id) || 0,
+        created_at: u.created_at,
       }));
 
       setUsers(formattedUsers);
 
-      // Buscar laudos recentes com email do usuário
-      const { data: laudosData, error: laudosError } = await supabase
-        .from('laudos')
-        .select(`
-          id,
-          title,
-          status,
-          created_at,
-          profiles!inner(email)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (laudosError) throw laudosError;
-
-      const formattedLaudos: LaudoData[] = (laudosData || []).map((laudo: any) => ({
-        id: laudo.id,
-        title: laudo.title,
-        status: laudo.status,
-        created_at: laudo.created_at,
-        user_email: laudo.profiles.email,
+      // Recent laudos
+      const formattedLaudos: LaudoData[] = ((laudosDetailRes.data || []) as any[]).map((l: any) => ({
+        title: l.title,
+        user_email: l.profiles?.email || "—",
+        status: l.status || "draft",
+        created_at: l.created_at,
       }));
 
       setRecentLaudos(formattedLaudos);
 
     } catch (error) {
-      console.error('Error loading admin data:', error);
-      toast.error('Erro ao carregar dados administrativos');
+      console.error("Admin data error:", error);
+      toast.error("Erro ao carregar dados");
     } finally {
       setLoading(false);
     }
@@ -149,138 +232,71 @@ export default function Admin() {
     );
   }
 
-  if (!isAdmin) {
-    return null;
-  }
+  if (!isAdmin) return null;
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-8">Dashboard Administrativa</h1>
+    <div className="min-h-screen bg-gradient-subtle">
+      <header className="bg-background/80 backdrop-blur-lg border-b border-border sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-xl font-bold">Dashboard Administrativa</h1>
+            <p className="text-sm text-muted-foreground">Visão completa da MindMed</p>
+          </div>
+        </div>
+      </header>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Usuários</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUsers}</div>
-          </CardContent>
-        </Card>
+      <main className="container mx-auto px-4 py-8">
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="grid w-full grid-cols-4 mb-8">
+            <TabsTrigger value="overview">
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Visão Geral
+            </TabsTrigger>
+            <TabsTrigger value="users">
+              <Users className="w-4 h-4 mr-2" />
+              Usuários
+            </TabsTrigger>
+            <TabsTrigger value="emails">
+              <Mail className="w-4 h-4 mr-2" />
+              Emails
+            </TabsTrigger>
+            <TabsTrigger value="activity">
+              <Activity className="w-4 h-4 mr-2" />
+              Atividade
+            </TabsTrigger>
+          </TabsList>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Laudos</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalLaudos}</div>
-          </CardContent>
-        </Card>
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            <AdminKPICards data={kpiData} />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Receituários</CardTitle>
-            <Pill className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalPrescriptions}</div>
-          </CardContent>
-        </Card>
+            <div className="grid lg:grid-cols-2 gap-6">
+              <AdminConversionFunnel data={funnelData} />
+              <AdminSubscriptionBreakdown data={subBreakdown} />
+            </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Assinaturas Ativas</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activeSubscriptions}</div>
-          </CardContent>
-        </Card>
-      </div>
+            <AdminSignupChart data={signupChart} />
+          </TabsContent>
 
-      {/* Usuários */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Usuários Registrados</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>CRM</TableHead>
-                <TableHead>Plano</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Cadastro</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.email}</TableCell>
-                  <TableCell>{user.full_name || '-'}</TableCell>
-                  <TableCell>{user.crm || '-'}</TableCell>
-                  <TableCell>
-                    {user.subscription_plan ? (
-                      <Badge variant={user.subscription_plan === 'PRO' ? 'default' : 'secondary'}>
-                        {user.subscription_plan}
-                      </Badge>
-                    ) : (
-                      '-'
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {user.subscription_status ? (
-                      <Badge variant={user.subscription_status === 'ACTIVE' ? 'default' : 'destructive'}>
-                        {user.subscription_status}
-                      </Badge>
-                    ) : (
-                      '-'
-                    )}
-                  </TableCell>
-                  <TableCell>{new Date(user.created_at).toLocaleDateString('pt-BR')}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+          {/* Users Tab */}
+          <TabsContent value="users">
+            <AdminUserTable users={users} />
+          </TabsContent>
 
-      {/* Laudos Recentes */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Laudos Recentes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Título</TableHead>
-                <TableHead>Usuário</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Criado em</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentLaudos.map((laudo) => (
-                <TableRow key={laudo.id}>
-                  <TableCell className="font-medium">{laudo.title}</TableCell>
-                  <TableCell>{laudo.user_email}</TableCell>
-                  <TableCell>
-                    <Badge variant={laudo.status === 'completed' ? 'default' : 'secondary'}>
-                      {laudo.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{new Date(laudo.created_at).toLocaleDateString('pt-BR')}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+          {/* Emails Tab */}
+          <TabsContent value="emails">
+            <AdminEmailMonitor />
+          </TabsContent>
+
+          {/* Activity Tab */}
+          <TabsContent value="activity">
+            <AdminRecentActivity laudos={recentLaudos} />
+          </TabsContent>
+        </Tabs>
+      </main>
     </div>
   );
 }
