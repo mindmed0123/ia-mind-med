@@ -77,26 +77,22 @@ const Index = () => {
           </div>
           
           {/* Stats Bar */}
-          <div className="mt-20 grid grid-cols-2 md:grid-cols-5 gap-8 max-w-5xl mx-auto">
+          <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
             <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-white mb-2">10.000+</div>
-              <div className="text-white/70 text-sm">Consultas Processadas</div>
+              <div className="text-3xl md:text-4xl font-bold text-white mb-2">~2h/dia</div>
+              <div className="text-white/70 text-sm">Tempo Recuperado</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-white mb-2">500+</div>
-              <div className="text-white/70 text-sm">Médicos Ativos</div>
+              <div className="text-3xl md:text-4xl font-bold text-white mb-2">40+</div>
+              <div className="text-white/70 text-sm">Especialidades</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-white mb-2">4.9</div>
-              <div className="text-white/70 text-sm">Avaliação Média</div>
+              <div className="text-3xl md:text-4xl font-bold text-white mb-2">Alta</div>
+              <div className="text-white/70 text-sm">Precisão Clínica</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-white mb-2">99.8%</div>
-              <div className="text-white/70 text-sm">Precisão IA</div>
-            </div>
-            <div className="text-center md:col-span-1 col-span-2">
-              <div className="text-3xl md:text-4xl font-bold text-white mb-2">2.5h</div>
-              <div className="text-white/70 text-sm">economizado/dia</div>
+              <div className="text-3xl md:text-4xl font-bold text-white mb-2">LGPD</div>
+              <div className="text-white/70 text-sm">100% Conforme</div>
             </div>
           </div>
         </div>
