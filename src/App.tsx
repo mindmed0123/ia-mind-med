@@ -27,6 +27,8 @@ import MedicosTrial from "./pages/MedicosTrial";
 import AssinaturaExpirada from "./pages/AssinaturaExpirada";
 import TrialConvite from "./pages/TrialConvite";
 import Unsubscribe from "./pages/Unsubscribe";
+import Termos from "./pages/Termos";
+import Privacidade from "./pages/Privacidade";
 
 const queryClient = new QueryClient();
 

@@ -282,47 +282,48 @@ const Index = () => {
       <section className="py-20 px-4 bg-muted/30">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <p className="text-primary font-semibold mb-4">Depoimentos</p>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">Médicos que já recuperaram seu tempo</h2>
+            <p className="text-primary font-semibold mb-4">Resultados Esperados</p>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">O que Médicos Podem Esperar</h2>
             <p className="text-xl text-muted-foreground">
-              Histórias reais de profissionais que transformaram sua prática
+              Estimativas baseadas no tempo médio gasto com documentação manual
             </p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
             <Card className="p-8 shadow-soft hover:shadow-medium transition-smooth">
               <div className="mb-6">
-                <div className="text-2xl font-bold text-primary mb-2">+35% faturamento</div>
-                <div className="text-sm text-muted-foreground">Cardiologia • São Paulo, SP</div>
+                <div className="text-2xl font-bold text-primary mb-2">~2h/dia recuperadas</div>
+                <div className="text-sm text-muted-foreground">Tempo médio estimado</div>
               </div>
-              <p className="text-muted-foreground mb-6 italic leading-relaxed">
-                "Recuperei 2 horas por dia que antes gastava com laudos. Agora consigo atender mais pacientes e ainda sair no horário. Meu faturamento aumentou 35% em 3 meses."
+              <p className="text-muted-foreground leading-relaxed">
+                Médicos gastam em média 2 horas por dia em documentação. A MindMed automatiza a maior parte desse trabalho, liberando tempo para mais atendimentos.
               </p>
-              <p className="font-semibold">Dra. Ana Silva</p>
             </Card>
             
             <Card className="p-8 shadow-soft hover:shadow-medium transition-smooth">
               <div className="mb-6">
-                <div className="text-2xl font-bold text-primary mb-2">10h/semana economizadas</div>
-                <div className="text-sm text-muted-foreground">Ortopedia • Rio de Janeiro, RJ</div>
+                <div className="text-2xl font-bold text-primary mb-2">Laudos em minutos</div>
+                <div className="text-sm text-muted-foreground">Geração automatizada</div>
               </div>
-              <p className="text-muted-foreground mb-6 italic leading-relaxed">
-                "A precisão da transcrição é impressionante. Termos técnicos complexos são capturados perfeitamente. Minha equipe toda usa e economizamos mais de 10 horas por semana."
+              <p className="text-muted-foreground leading-relaxed">
+                O que antes levava 20-30 minutos de digitação é gerado automaticamente pela IA em poucos minutos, com estrutura clínica completa e pronta para revisão.
               </p>
-              <p className="font-semibold">Dr. Carlos Mendes</p>
             </Card>
             
             <Card className="p-8 shadow-soft hover:shadow-medium transition-smooth">
               <div className="mb-6">
-                <div className="text-2xl font-bold text-primary mb-2">+8 pacientes/dia</div>
-                <div className="text-sm text-muted-foreground">Pediatria • Belo Horizonte, MG</div>
+                <div className="text-2xl font-bold text-primary mb-2">ROI imediato</div>
+                <div className="text-sm text-muted-foreground">Investimento que se paga</div>
               </div>
-              <p className="text-muted-foreground mb-6 italic leading-relaxed">
-                "Como mãe e médica, tempo é tudo. O MindMed me devolveu meu equilíbrio. Consigo atender mais crianças e ainda ter tempo para minha família. Investimento que se paga sozinho."
+              <p className="text-muted-foreground leading-relaxed">
+                Ao converter tempo burocrático em consultas adicionais, o investimento na plataforma pode se pagar já na primeira semana de uso.
               </p>
-              <p className="font-semibold">Dra. Marina Costa</p>
             </Card>
           </div>
+          
+          <p className="text-center text-xs text-muted-foreground mt-6">
+            * Estimativas baseadas em médias do setor. Resultados individuais podem variar.
+          </p>
         </div>
       </section>
 
