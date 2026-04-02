@@ -924,6 +924,7 @@ const NovoLaudo = () => {
                   </Button>
                 </div>
               )}
+            </>
             ) : (
               <Card>
                 <CardContent className="py-12 text-center">
