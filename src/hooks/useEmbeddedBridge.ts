@@ -29,7 +29,8 @@ interface EmbeddedBridgeReturn {
 
 function decodeBridgeToken(raw: string): BridgeToken | null {
   try {
-    const json = atob(raw);
+    const bytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0));
+    const json = new TextDecoder().decode(bytes);
     return JSON.parse(json) as BridgeToken;
   } catch {
     return null;
