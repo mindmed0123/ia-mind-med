@@ -43,7 +43,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const redirectUrl = `${window.location.origin}/dashboard`;
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -53,6 +53,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           },
         },
       });
+      
+      // Send welcome email (fire-and-forget)
+      if (!error && data?.user) {
+        supabase.functions.invoke('send-transactional-email', {
+          body: {
+            templateName: 'welcome',
+            recipientEmail: email,
+            idempotencyKey: `welcome-${data.user.id}`,
+            templateData: { doctorName: fullName },
+          },
+        }).catch(err => console.error('Welcome email failed:', err));
+      }
       
       return { error };
     } catch (error: any) {
