@@ -44,6 +44,7 @@ const NovoLaudo = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const { templates: specialtyTemplates } = useSpecialtyTemplates();
+  const { isEmbedded, bridgeToken, error: bridgeError, sendCompleted, sendCancelled } = useEmbeddedBridge();
   const [laudoId, setLaudoId] = useState<string | null>(searchParams.get('id'));
   const initialTab = searchParams.get('tab');
   const [laudo, setLaudo] = useState<any>(null);
@@ -61,6 +62,58 @@ const NovoLaudo = () => {
   const channelRef = useRef<any>(null);
   const transcriptRef = useRef(transcript);
   const patientDataRef = useRef(patientData);
+
+  // Auto-fill patient data from embedded bridge token
+  useEffect(() => {
+    if (isEmbedded && bridgeToken && !patientData?.nome_completo) {
+      const initials = bridgeToken.patient_name
+        .split(' ')
+        .map((w: string) => w[0])
+        .join('.')
+        .toUpperCase();
+      setPatientData((prev: any) => ({
+        ...prev,
+        iniciais: initials,
+        nome_completo: bridgeToken.patient_name,
+        sexo: bridgeToken.patient_gender === 'Masculino' ? 'M' : bridgeToken.patient_gender === 'Feminino' ? 'F' : 'Outro',
+        idade: bridgeToken.patient_age?.toString() || '',
+        medicacoes: bridgeToken.patient_medications ? bridgeToken.patient_medications.split(',').map(s => s.trim()).filter(Boolean) : [],
+        alergias: bridgeToken.patient_allergies ? bridgeToken.patient_allergies.split(',').map(s => s.trim()).filter(Boolean) : [],
+        contexto_clinico: bridgeToken.patient_comorbidities || '',
+      }));
+    }
+  }, [isEmbedded, bridgeToken]);
+
+  // Handle "Finalizar e Enviar" for embedded mode
+  const handleEmbeddedFinalize = useCallback(() => {
+    if (!laudo || !isEmbedded) return;
+    const sections = laudo.sections || {};
+    const payload = {
+      documents: {
+        laudo: {
+          content: laudo.report_markdown || '',
+          diagnosis: laudo.diagnosis_main || '',
+          specialty: laudo.specialty || '',
+        },
+        receita: {
+          content: '', // prescription content if available
+        },
+        exames: (laudo.complementary_exams as any[]) || [],
+        resumo: {
+          content: (laudo.summary as any)?.text || laudo.report_markdown?.substring(0, 500) || '',
+        },
+      },
+    };
+    sendCompleted(payload);
+    toast({ title: 'Laudo enviado', description: 'Os dados foram enviados ao MindPEP com sucesso.' });
+  }, [laudo, isEmbedded, sendCompleted, toast]);
+
+  // Show bridge error
+  useEffect(() => {
+    if (bridgeError) {
+      toast({ title: 'Erro de integração', description: bridgeError, variant: 'destructive' });
+    }
+  }, [bridgeError]);
 
   // Load doctor's specialty from profile
   useEffect(() => {
