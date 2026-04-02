@@ -140,6 +140,30 @@ serve(async (req) => {
               logStep("Error updating to ACTIVE", { error });
             } else {
               logStep("Subscription updated to ACTIVE");
+
+              // Send upgrade confirmed email
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("email, full_name")
+                .eq("id", subData.user_id)
+                .maybeSingle();
+
+              if (profile?.email) {
+                const planItems = subscription.items?.data || [];
+                const planName = planItems[0]?.price?.lookup_key?.includes('starter') ? 'Starter' : 'Pro';
+
+                await supabase.functions.invoke('send-transactional-email', {
+                  body: {
+                    templateName: 'upgrade-confirmed',
+                    recipientEmail: profile.email,
+                    idempotencyKey: `upgrade-${subData.user_id}-${subscriptionId}`,
+                    templateData: {
+                      doctorName: profile.full_name,
+                      planName,
+                    },
+                  },
+                }).catch((err: any) => logStep("Upgrade email failed", { error: err }));
+              }
             }
           }
         }

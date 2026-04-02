@@ -305,6 +305,19 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
           title: "PDF gerado!",
           description: "O documento foi gerado e está pronto para uso.",
         });
+
+        // Send PDF exported email (fire-and-forget)
+        supabase.functions.invoke('send-transactional-email', {
+          body: {
+            templateName: 'pdf-exported',
+            recipientEmail: (await supabase.auth.getUser()).data.user?.email,
+            idempotencyKey: `pdf-exported-${laudoId}-${Date.now()}`,
+            templateData: {
+              doctorName: data.pdfMeta?.doctorName,
+              laudoTitle: data.fileName?.replace('.pdf', ''),
+            },
+          },
+        }).catch(err => console.error('PDF export email failed:', err));
       }
     } catch (error: any) {
       console.error('Erro ao exportar PDF:', error);

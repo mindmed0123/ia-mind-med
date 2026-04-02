@@ -138,6 +138,39 @@ const NovoLaudo = () => {
               } else {
                 setPatientLinked(true);
               }
+
+              // Check if this is the user's first laudo and send email
+              (async () => {
+                try {
+                  const { data: { user: currentUser } } = await supabase.auth.getUser();
+                  if (!currentUser) return;
+                  const { count } = await supabase
+                    .from('laudos')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('user_id', currentUser.id)
+                    .eq('status', 'completed');
+                  if (count === 1) {
+                    const { data: profile } = await supabase
+                      .from('profiles')
+                      .select('full_name')
+                      .eq('id', currentUser.id)
+                      .maybeSingle();
+                    supabase.functions.invoke('send-transactional-email', {
+                      body: {
+                        templateName: 'first-laudo',
+                        recipientEmail: currentUser.email,
+                        idempotencyKey: `first-laudo-${currentUser.id}`,
+                        templateData: {
+                          doctorName: profile?.full_name,
+                          laudoTitle: updated.title,
+                        },
+                      },
+                    }).catch(err => console.error('First laudo email failed:', err));
+                  }
+                } catch (err) {
+                  console.error('First laudo check failed:', err);
+                }
+              })();
             }
             setIsSubmitting(false);
           } else if (updated.status === 'generating') {

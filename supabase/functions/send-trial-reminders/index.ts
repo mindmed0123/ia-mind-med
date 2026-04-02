@@ -22,17 +22,20 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-  // Find all TRIALING subscriptions where trial_end is within 5 days
+  // Find all TRIALING subscriptions where trial_end is within 5 days or just expired
   const fiveDaysFromNow = new Date()
   fiveDaysFromNow.setDate(fiveDaysFromNow.getDate() + 5)
   
+  const oneDayAgo = new Date()
+  oneDayAgo.setDate(oneDayAgo.getDate() - 1)
+
   const now = new Date()
 
   const { data: trials, error: trialsError } = await supabase
     .from('subscriptions')
-    .select('user_id, trial_end')
-    .eq('status', 'TRIALING')
-    .gte('trial_end', now.toISOString())
+    .select('user_id, trial_end, status')
+    .in('status', ['TRIALING', 'EXPIRED'])
+    .gte('trial_end', oneDayAgo.toISOString())
     .lte('trial_end', fiveDaysFromNow.toISOString())
 
   if (trialsError) {
@@ -58,8 +61,8 @@ Deno.serve(async (req) => {
     const diffMs = trialEnd.getTime() - now.getTime()
     const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
 
-    // Only send emails for days 1-5 remaining
-    if (daysLeft < 1 || daysLeft > 5) {
+    // Send trial-expired for day 0 or negative, trial-reminder for days 1-5
+    if (daysLeft < 0 || daysLeft > 5) {
       skipped++
       continue
     }
@@ -78,17 +81,30 @@ Deno.serve(async (req) => {
 
     // Idempotency key includes the date so we only send once per day per user
     const today = now.toISOString().slice(0, 10)
-    const idempotencyKey = `trial-reminder-${trial.user_id}-${today}`
+    const isExpired = daysLeft <= 0
+    const templateName = isExpired ? 'trial-expired' : 'trial-reminder'
+    const idempotencyKey = `${templateName}-${trial.user_id}-${today}`
+
+    // For trial-expired, get total laudos count
+    let totalLaudos = 0
+    if (isExpired) {
+      const { count } = await supabase
+        .from('laudos')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', trial.user_id)
+      totalLaudos = count || 0
+    }
 
     try {
       await supabase.functions.invoke('send-transactional-email', {
         body: {
-          templateName: 'trial-reminder',
+          templateName,
           recipientEmail: profile.email,
           idempotencyKey,
           templateData: {
             doctorName: profile.full_name || undefined,
             daysLeft,
+            ...(isExpired ? { totalLaudos } : {}),
           },
         },
       })
