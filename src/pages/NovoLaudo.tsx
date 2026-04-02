@@ -860,6 +860,7 @@ const NovoLaudo = () => {
 
           <div className="lg:col-span-2">
             {laudo?.status === 'completed' ? (
+              <>
               <Tabs defaultValue={showEditor ? "editor" : "viewer"} className="w-full">
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="viewer" onClick={() => setShowEditor(false)}>
