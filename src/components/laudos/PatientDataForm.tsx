@@ -78,6 +78,13 @@ export const PatientDataForm = ({
     ...initialData,
   });
 
+  // Sync external initialData changes (e.g. from embedded bridge)
+  useEffect(() => {
+    if (initialData) {
+      setData(prev => ({ ...prev, ...initialData }));
+    }
+  }, [initialData]);
+
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const debouncedData = useDebounce(data, 800);

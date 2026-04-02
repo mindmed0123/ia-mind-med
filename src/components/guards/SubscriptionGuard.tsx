@@ -1,12 +1,21 @@
 import { ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
 
 interface SubscriptionGuardProps {
   children: ReactNode;
+  allowEmbedded?: boolean;
 }
 
-export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
+export function SubscriptionGuard({ children, allowEmbedded }: SubscriptionGuardProps) {
+  const [searchParams] = useSearchParams();
+  const isEmbedded = allowEmbedded && searchParams.get('embedded') === 'true';
   const { isAllowed, loading } = useSubscriptionGuard();
+
+  // Skip guard in embedded mode (auth handled by bridge token)
+  if (isEmbedded) {
+    return <>{children}</>;
+  }
 
   if (loading) {
     return (
@@ -19,7 +28,6 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
     );
   }
 
-  // If not allowed, the hook will redirect automatically
   if (!isAllowed) {
     return null;
   }

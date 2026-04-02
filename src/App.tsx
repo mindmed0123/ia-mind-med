@@ -62,7 +62,7 @@ const App = () => (
               </SubscriptionGuard>
             } />
             <Route path="/novo-laudo" element={
-              <SubscriptionGuard>
+              <SubscriptionGuard allowEmbedded>
                 <NovoLaudo />
               </SubscriptionGuard>
             } />

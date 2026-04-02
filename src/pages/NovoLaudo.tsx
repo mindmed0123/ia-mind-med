@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Edit, Mic, FileText, CheckCircle, AlertCircle, Pill, Upload, Stethoscope } from "lucide-react";
+import { ArrowLeft, Loader2, Edit, Mic, FileText, CheckCircle, AlertCircle, Pill, Upload, Stethoscope, Send, X } from "lucide-react";
+import { useEmbeddedBridge } from "@/hooks/useEmbeddedBridge";
 import { PatientDataForm } from "@/components/laudos/PatientDataForm";
 import { LaudoViewer } from "@/components/laudos/LaudoViewer";
 import { LaudoEditor } from "@/components/laudos/LaudoEditor";
@@ -43,6 +44,7 @@ const NovoLaudo = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const { templates: specialtyTemplates } = useSpecialtyTemplates();
+  const { isEmbedded, bridgeToken, error: bridgeError, sendCompleted, sendCancelled } = useEmbeddedBridge();
   const [laudoId, setLaudoId] = useState<string | null>(searchParams.get('id'));
   const initialTab = searchParams.get('tab');
   const [laudo, setLaudo] = useState<any>(null);
@@ -60,6 +62,58 @@ const NovoLaudo = () => {
   const channelRef = useRef<any>(null);
   const transcriptRef = useRef(transcript);
   const patientDataRef = useRef(patientData);
+
+  // Auto-fill patient data from embedded bridge token
+  useEffect(() => {
+    if (isEmbedded && bridgeToken && !patientData?.nome_completo) {
+      const initials = bridgeToken.patient_name
+        .split(' ')
+        .map((w: string) => w[0])
+        .join('.')
+        .toUpperCase();
+      setPatientData((prev: any) => ({
+        ...prev,
+        iniciais: initials,
+        nome_completo: bridgeToken.patient_name,
+        sexo: bridgeToken.patient_gender === 'Masculino' ? 'M' : bridgeToken.patient_gender === 'Feminino' ? 'F' : 'Outro',
+        idade: bridgeToken.patient_age?.toString() || '',
+        medicacoes: bridgeToken.patient_medications ? bridgeToken.patient_medications.split(',').map(s => s.trim()).filter(Boolean) : [],
+        alergias: bridgeToken.patient_allergies ? bridgeToken.patient_allergies.split(',').map(s => s.trim()).filter(Boolean) : [],
+        contexto_clinico: bridgeToken.patient_comorbidities || '',
+      }));
+    }
+  }, [isEmbedded, bridgeToken]);
+
+  // Handle "Finalizar e Enviar" for embedded mode
+  const handleEmbeddedFinalize = useCallback(() => {
+    if (!laudo || !isEmbedded) return;
+    const sections = laudo.sections || {};
+    const payload = {
+      documents: {
+        laudo: {
+          content: laudo.report_markdown || '',
+          diagnosis: laudo.diagnosis_main || '',
+          specialty: laudo.specialty || '',
+        },
+        receita: {
+          content: '', // prescription content if available
+        },
+        exames: (laudo.complementary_exams as any[]) || [],
+        resumo: {
+          content: (laudo.summary as any)?.text || laudo.report_markdown?.substring(0, 500) || '',
+        },
+      },
+    };
+    sendCompleted(payload);
+    toast({ title: 'Laudo enviado', description: 'Os dados foram enviados ao MindPEP com sucesso.' });
+  }, [laudo, isEmbedded, sendCompleted, toast]);
+
+  // Show bridge error
+  useEffect(() => {
+    if (bridgeError) {
+      toast({ title: 'Erro de integração', description: bridgeError, variant: 'destructive' });
+    }
+  }, [bridgeError]);
 
   // Load doctor's specialty from profile
   useEffect(() => {
@@ -569,10 +623,22 @@ const NovoLaudo = () => {
       <div className="min-h-screen bg-gradient-subtle">
         <div className="container mx-auto px-4 py-8">
           <div className="mb-6">
-            <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-4">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar ao Dashboard
-            </Button>
+            {!isEmbedded && (
+              <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-4">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Voltar ao Dashboard
+              </Button>
+            )}
+            {isEmbedded && bridgeToken && (
+              <div className="flex items-center justify-between mb-4">
+                <Badge variant="outline" className="text-sm">
+                  MindPEP • {bridgeToken.patient_name}
+                </Badge>
+                <Button variant="ghost" size="sm" onClick={sendCancelled}>
+                  <X className="w-4 h-4 mr-1" /> Cancelar
+                </Button>
+              </div>
+            )}
             <h1 className="text-3xl font-bold">Novo Laudo com IA</h1>
             <p className="text-muted-foreground mt-2">
               Escolha como deseja criar o laudo: gravando áudio ou digitando texto
@@ -680,10 +746,28 @@ const NovoLaudo = () => {
     <div className="min-h-screen bg-gradient-subtle">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar ao Dashboard
-          </Button>
+          {!isEmbedded ? (
+            <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-4">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar ao Dashboard
+            </Button>
+          ) : bridgeToken && (
+            <div className="flex items-center justify-between mb-4">
+              <Badge variant="outline" className="text-sm">
+                MindPEP • {bridgeToken.patient_name}
+              </Badge>
+              <div className="flex gap-2">
+                {laudo?.status === 'completed' && (
+                  <Button onClick={handleEmbeddedFinalize} size="sm">
+                    <Send className="w-4 h-4 mr-1" /> Finalizar e Enviar
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={sendCancelled}>
+                  <X className="w-4 h-4 mr-1" /> Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
           <h1 className="text-3xl font-bold">
             {laudo?.status === 'completed' ? 'Editar Laudo' : 'Novo Laudo com IA'}
           </h1>
@@ -776,6 +860,7 @@ const NovoLaudo = () => {
 
           <div className="lg:col-span-2">
             {laudo?.status === 'completed' ? (
+              <>
               <Tabs defaultValue={showEditor ? "editor" : "viewer"} className="w-full">
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="viewer" onClick={() => setShowEditor(false)}>
@@ -828,6 +913,19 @@ const NovoLaudo = () => {
                   />
                 </TabsContent>
               </Tabs>
+
+              {/* Embedded mode: Finalizar e Enviar button */}
+              {isEmbedded && laudo?.status === 'completed' && (
+                <div className="flex justify-end gap-3 mt-6">
+                  <Button variant="outline" onClick={sendCancelled}>
+                    <X className="w-4 h-4 mr-2" /> Cancelar
+                  </Button>
+                  <Button onClick={handleEmbeddedFinalize} className="bg-primary">
+                    <Send className="w-4 h-4 mr-2" /> Finalizar e Enviar ao MindPEP
+                  </Button>
+                </div>
+              )}
+            </>
             ) : (
               <Card>
                 <CardContent className="py-12 text-center">
