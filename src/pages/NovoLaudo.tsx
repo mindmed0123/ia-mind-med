@@ -623,10 +623,22 @@ const NovoLaudo = () => {
       <div className="min-h-screen bg-gradient-subtle">
         <div className="container mx-auto px-4 py-8">
           <div className="mb-6">
-            <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-4">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar ao Dashboard
-            </Button>
+            {!isEmbedded && (
+              <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-4">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Voltar ao Dashboard
+              </Button>
+            )}
+            {isEmbedded && bridgeToken && (
+              <div className="flex items-center justify-between mb-4">
+                <Badge variant="outline" className="text-sm">
+                  MindPEP • {bridgeToken.patient_name}
+                </Badge>
+                <Button variant="ghost" size="sm" onClick={sendCancelled}>
+                  <X className="w-4 h-4 mr-1" /> Cancelar
+                </Button>
+              </div>
+            )}
             <h1 className="text-3xl font-bold">Novo Laudo com IA</h1>
             <p className="text-muted-foreground mt-2">
               Escolha como deseja criar o laudo: gravando áudio ou digitando texto
