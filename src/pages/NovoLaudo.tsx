@@ -912,6 +912,18 @@ const NovoLaudo = () => {
                   />
                 </TabsContent>
               </Tabs>
+
+              {/* Embedded mode: Finalizar e Enviar button */}
+              {isEmbedded && laudo?.status === 'completed' && (
+                <div className="flex justify-end gap-3 mt-6">
+                  <Button variant="outline" onClick={sendCancelled}>
+                    <X className="w-4 h-4 mr-2" /> Cancelar
+                  </Button>
+                  <Button onClick={handleEmbeddedFinalize} className="bg-primary">
+                    <Send className="w-4 h-4 mr-2" /> Finalizar e Enviar ao MindPEP
+                  </Button>
+                </div>
+              )}
             ) : (
               <Card>
                 <CardContent className="py-12 text-center">
