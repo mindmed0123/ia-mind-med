@@ -746,10 +746,28 @@ const NovoLaudo = () => {
     <div className="min-h-screen bg-gradient-subtle">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar ao Dashboard
-          </Button>
+          {!isEmbedded ? (
+            <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-4">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar ao Dashboard
+            </Button>
+          ) : bridgeToken && (
+            <div className="flex items-center justify-between mb-4">
+              <Badge variant="outline" className="text-sm">
+                MindPEP • {bridgeToken.patient_name}
+              </Badge>
+              <div className="flex gap-2">
+                {laudo?.status === 'completed' && (
+                  <Button onClick={handleEmbeddedFinalize} size="sm">
+                    <Send className="w-4 h-4 mr-1" /> Finalizar e Enviar
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={sendCancelled}>
+                  <X className="w-4 h-4 mr-1" /> Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
           <h1 className="text-3xl font-bold">
             {laudo?.status === 'completed' ? 'Editar Laudo' : 'Novo Laudo com IA'}
           </h1>
