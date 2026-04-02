@@ -81,17 +81,30 @@ Deno.serve(async (req) => {
 
     // Idempotency key includes the date so we only send once per day per user
     const today = now.toISOString().slice(0, 10)
-    const idempotencyKey = `trial-reminder-${trial.user_id}-${today}`
+    const isExpired = daysLeft <= 0
+    const templateName = isExpired ? 'trial-expired' : 'trial-reminder'
+    const idempotencyKey = `${templateName}-${trial.user_id}-${today}`
+
+    // For trial-expired, get total laudos count
+    let totalLaudos = 0
+    if (isExpired) {
+      const { count } = await supabase
+        .from('laudos')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', trial.user_id)
+      totalLaudos = count || 0
+    }
 
     try {
       await supabase.functions.invoke('send-transactional-email', {
         body: {
-          templateName: 'trial-reminder',
+          templateName,
           recipientEmail: profile.email,
           idempotencyKey,
           templateData: {
             doctorName: profile.full_name || undefined,
             daysLeft,
+            ...(isExpired ? { totalLaudos } : {}),
           },
         },
       })
