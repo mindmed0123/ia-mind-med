@@ -61,8 +61,8 @@ Deno.serve(async (req) => {
     const diffMs = trialEnd.getTime() - now.getTime()
     const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
 
-    // Only send emails for days 1-5 remaining
-    if (daysLeft < 1 || daysLeft > 5) {
+    // Send trial-expired for day 0 or negative, trial-reminder for days 1-5
+    if (daysLeft < 0 || daysLeft > 5) {
       skipped++
       continue
     }
