@@ -59,7 +59,6 @@ const NovoLaudo = () => {
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [patientLinked, setPatientLinked] = useState(false);
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
-  const channelRef = useRef<any>(null);
   const transcriptRef = useRef(transcript);
   const patientDataRef = useRef(patientData);
 
