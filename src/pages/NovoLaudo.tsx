@@ -84,28 +84,37 @@ const NovoLaudo = () => {
     }
   }, [isEmbedded, bridgeToken]);
 
-  // Handle "Finalizar e Enviar" for embedded mode
-  const handleEmbeddedFinalize = useCallback(() => {
+  // Handle "Finalizar e Enviar" for embedded/bridge mode
+  const [isSendingToMindPEP, setIsSendingToMindPEP] = useState(false);
+  const handleEmbeddedFinalize = useCallback(async () => {
     if (!laudo || !isEmbedded) return;
-    const sections = laudo.sections || {};
-    const payload = {
-      documents: {
-        laudo: {
-          content: laudo.report_markdown || '',
-          diagnosis: laudo.diagnosis_main || '',
-          specialty: laudo.specialty || '',
+    setIsSendingToMindPEP(true);
+    try {
+      const payload = {
+        documents: {
+          laudo: {
+            content: laudo.report_markdown || '',
+            diagnosis: laudo.diagnosis_main || '',
+            specialty: laudo.specialty || '',
+          },
+          receita: {
+            content: '',
+          },
+          exames: (laudo.complementary_exams as any[]) || [],
+          resumo: {
+            content: (laudo.summary as any)?.text || laudo.report_markdown?.substring(0, 500) || '',
+          },
         },
-        receita: {
-          content: '', // prescription content if available
-        },
-        exames: (laudo.complementary_exams as any[]) || [],
-        resumo: {
-          content: (laudo.summary as any)?.text || laudo.report_markdown?.substring(0, 500) || '',
-        },
-      },
-    };
-    sendCompleted(payload);
-    toast({ title: 'Laudo enviado', description: 'Os dados foram enviados ao MindPEP com sucesso.' });
+      };
+      const success = await sendCompleted(payload);
+      if (success) {
+        toast({ title: 'Laudo enviado', description: 'Os dados foram salvos no prontuário MindPEP. Você pode fechar esta aba.' });
+      } else {
+        toast({ title: 'Erro ao enviar', description: 'Não foi possível salvar no MindPEP. Tente novamente.', variant: 'destructive' });
+      }
+    } finally {
+      setIsSendingToMindPEP(false);
+    }
   }, [laudo, isEmbedded, sendCompleted, toast]);
 
   // Show bridge error
@@ -914,14 +923,19 @@ const NovoLaudo = () => {
                 </TabsContent>
               </Tabs>
 
-              {/* Embedded mode: Finalizar e Enviar button */}
+              {/* Bridge mode: Finalizar e Enviar button */}
               {isEmbedded && laudo?.status === 'completed' && (
                 <div className="flex justify-end gap-3 mt-6">
                   <Button variant="outline" onClick={sendCancelled}>
-                    <X className="w-4 h-4 mr-2" /> Cancelar
+                    <X className="w-4 h-4 mr-2" /> Fechar
                   </Button>
-                  <Button onClick={handleEmbeddedFinalize} className="bg-primary">
-                    <Send className="w-4 h-4 mr-2" /> Finalizar e Enviar ao MindPEP
+                  <Button onClick={handleEmbeddedFinalize} disabled={isSendingToMindPEP} className="bg-primary">
+                    {isSendingToMindPEP ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4 mr-2" />
+                    )}
+                    Finalizar e Enviar ao MindPEP
                   </Button>
                 </div>
               )}
