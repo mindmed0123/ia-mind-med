@@ -231,7 +231,7 @@ const NovoLaudo = () => {
       setPipelineStage('transcribing');
     }
 
-    // Auto-trigger generation when transcription completes
+      // Auto-trigger generation when transcription completes
     if (
       updated.transcript_status === 'completed' &&
       updated.status !== 'completed' &&
@@ -240,6 +240,7 @@ const NovoLaudo = () => {
       updated.transcript?.text
     ) {
       hasTriggeredGeneration.current = true;
+        setPipelineStage('preparing');
       handleGenerateLaudoRef.current?.(updated.transcript.text);
     }
   }, [toast, stopPolling]);
@@ -317,6 +318,12 @@ const NovoLaudo = () => {
       } else if (data.status === 'generating') {
         setPipelineStage('calling_ai');
         startPolling(laudoId);
+      } else if (data.transcript_status === 'completed' && data.status === 'draft' && transcriptData?.text) {
+        setPipelineStage('preparing');
+        if (!hasTriggeredGeneration.current) {
+          hasTriggeredGeneration.current = true;
+          Promise.resolve().then(() => handleGenerateLaudoRef.current?.(transcriptData.text));
+        }
       } else if (data.status === 'error' || data.transcript_status === 'error') {
         setPipelineStage('error');
       } else if (data.transcript_status === 'processing' || data.audio_processing_status === 'processing') {
@@ -330,7 +337,7 @@ const NovoLaudo = () => {
   };
 
   const handleGenerateLaudo = useCallback(async (transcriptText?: string) => {
-    if (!laudoId || isSubmitting) return;
+    if (!laudoId || (isSubmitting && pipelineStage !== 'transcribing')) return;
     
     const textToUse = transcriptText || transcript;
     if (!textToUse) {
@@ -379,7 +386,7 @@ const NovoLaudo = () => {
       setIsSubmitting(false);
       toast({ title: 'Erro', description: error.message || 'Erro ao gerar laudo', variant: 'destructive' });
     }
-  }, [laudoId, isSubmitting, transcript, patientData, toast, startPolling]);
+  }, [laudoId, isSubmitting, pipelineStage, transcript, patientData, toast, startPolling, selectedSpecialty]);
   
   // Keep ref in sync for Realtime callback
   useEffect(() => { handleGenerateLaudoRef.current = handleGenerateLaudo; }, [handleGenerateLaudo]);
