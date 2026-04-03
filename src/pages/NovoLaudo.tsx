@@ -140,7 +140,137 @@ const NovoLaudo = () => {
   useEffect(() => { transcriptRef.current = transcript; }, [transcript]);
   useEffect(() => { patientDataRef.current = patientData; }, [patientData]);
 
-  // ===== SUPABASE REALTIME (replaces polling) =====
+  // ===== POLLING-BASED STATUS TRACKING (Realtime disabled for PHI security) =====
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const pollCountRef = useRef(0);
+
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    pollCountRef.current = 0;
+  }, []);
+
+  const handleLaudoUpdate = useCallback((updated: any) => {
+    setLaudo(updated);
+
+    // Update transcript
+    if (updated.transcript?.text && updated.transcript.text !== transcriptRef.current) {
+      setTranscript(updated.transcript.text);
+    }
+
+    // Auto-populate patient data from AI extraction
+    if (updated.patient_data && updated.status === 'completed') {
+      const extracted = updated.patient_data;
+      setPatientData((prev: any) => ({
+        ...prev,
+        iniciais: extracted.iniciais || prev?.iniciais || '',
+        sexo: extracted.sexo || prev?.sexo || '',
+        idade: extracted.idade || prev?.idade || '',
+        queixa_principal: extracted.queixa_principal || prev?.queixa_principal || '',
+        medicacoes: extracted.medicacoes || prev?.medicacoes || [],
+        alergias: extracted.alergias || prev?.alergias || [],
+        historico: extracted.historico || prev?.historico || '',
+        sinais_vitais: extracted.sinais_vitais || prev?.sinais_vitais || {},
+      }));
+    }
+
+    // Update pipeline stage based on status
+    if (updated.transcript_status === 'error' || updated.audio_processing_status === 'error' || updated.status === 'error') {
+      setPipelineStage('error');
+      stopPolling();
+    } else if (updated.status === 'completed') {
+      setPipelineStage('completed');
+      stopPolling();
+      if (!hasShownSuccessToast.current) {
+        hasShownSuccessToast.current = true;
+        toast({ title: 'Laudo gerado!', description: 'O laudo foi gerado com sucesso' });
+        if (!updated.patient_id) {
+          setShowPatientModal(true);
+        } else {
+          setPatientLinked(true);
+        }
+
+        // Check if this is the user's first laudo and send email
+        (async () => {
+          try {
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (!currentUser) return;
+            const { count } = await supabase
+              .from('laudos')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', currentUser.id)
+              .eq('status', 'completed');
+            if (count === 1) {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('full_name')
+                .eq('id', currentUser.id)
+                .maybeSingle();
+              supabase.functions.invoke('send-transactional-email', {
+                body: {
+                  templateName: 'first-laudo',
+                  recipientEmail: currentUser.email,
+                  idempotencyKey: `first-laudo-${currentUser.id}`,
+                  templateData: {
+                    doctorName: profile?.full_name,
+                    laudoTitle: updated.title,
+                  },
+                },
+              }).catch(err => console.error('First laudo email failed:', err));
+            }
+          } catch (err) {
+            console.error('First laudo check failed:', err);
+          }
+        })();
+      }
+      setIsSubmitting(false);
+    } else if (updated.status === 'generating') {
+      setPipelineStage('calling_ai');
+    } else if (updated.transcript_status === 'processing' || updated.audio_processing_status === 'processing') {
+      setPipelineStage('transcribing');
+    }
+
+    // Auto-trigger generation when transcription completes
+    if (
+      updated.transcript_status === 'completed' &&
+      updated.status !== 'completed' &&
+      updated.status !== 'generating' &&
+      !hasTriggeredGeneration.current &&
+      updated.transcript?.text
+    ) {
+      hasTriggeredGeneration.current = true;
+      handleGenerateLaudoRef.current?.(updated.transcript.text);
+    }
+  }, [toast, stopPolling]);
+
+  const startPolling = useCallback((id: string) => {
+    stopPolling();
+    pollCountRef.current = 0;
+    pollingRef.current = setInterval(async () => {
+      pollCountRef.current++;
+      // Timeout after 3 minutes (90 polls × 2s)
+      if (pollCountRef.current > 90) {
+        stopPolling();
+        setPipelineStage('error');
+        setIsSubmitting(false);
+        toast({ title: 'Tempo esgotado', description: 'O processamento demorou demais. Tente novamente.', variant: 'destructive' });
+        return;
+      }
+      try {
+        const { data: updated } = await supabase
+          .from('laudos')
+          .select('*')
+          .eq('id', id)
+          .single();
+        if (updated) handleLaudoUpdate(updated);
+      } catch (err) {
+        console.error('Polling error:', err);
+      }
+    }, 2000);
+  }, [stopPolling, handleLaudoUpdate, toast]);
+
   useEffect(() => {
     if (!laudoId) return;
     
@@ -151,116 +281,8 @@ const NovoLaudo = () => {
     // Initial load
     loadLaudo();
 
-    // Subscribe to realtime changes on this specific laudo
-    const channel = supabase
-      .channel(`laudo-${laudoId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'laudos',
-          filter: `id=eq.${laudoId}`,
-        },
-        (payload) => {
-          const updated = payload.new as any;
-          setLaudo(updated);
-          
-          // Update transcript
-          if (updated.transcript?.text && updated.transcript.text !== transcriptRef.current) {
-            setTranscript(updated.transcript.text);
-          }
-
-          // Auto-populate patient data from AI extraction
-          if (updated.patient_data && updated.status === 'completed') {
-            const extracted = updated.patient_data;
-            setPatientData((prev: any) => ({
-              ...prev,
-              iniciais: extracted.iniciais || prev?.iniciais || '',
-              sexo: extracted.sexo || prev?.sexo || '',
-              idade: extracted.idade || prev?.idade || '',
-              queixa_principal: extracted.queixa_principal || prev?.queixa_principal || '',
-              medicacoes: extracted.medicacoes || prev?.medicacoes || [],
-              alergias: extracted.alergias || prev?.alergias || [],
-              historico: extracted.historico || prev?.historico || '',
-              sinais_vitais: extracted.sinais_vitais || prev?.sinais_vitais || {},
-            }));
-          }
-
-          // Update pipeline stage based on status
-          if (updated.transcript_status === 'error' || updated.audio_processing_status === 'error' || updated.status === 'error') {
-            setPipelineStage('error');
-          } else if (updated.status === 'completed') {
-            setPipelineStage('completed');
-            if (!hasShownSuccessToast.current) {
-              hasShownSuccessToast.current = true;
-              toast({ title: 'Laudo gerado!', description: 'O laudo foi gerado com sucesso' });
-              // Show patient linking modal if no patient linked yet
-              if (!updated.patient_id) {
-                setShowPatientModal(true);
-              } else {
-                setPatientLinked(true);
-              }
-
-              // Check if this is the user's first laudo and send email
-              (async () => {
-                try {
-                  const { data: { user: currentUser } } = await supabase.auth.getUser();
-                  if (!currentUser) return;
-                  const { count } = await supabase
-                    .from('laudos')
-                    .select('id', { count: 'exact', head: true })
-                    .eq('user_id', currentUser.id)
-                    .eq('status', 'completed');
-                  if (count === 1) {
-                    const { data: profile } = await supabase
-                      .from('profiles')
-                      .select('full_name')
-                      .eq('id', currentUser.id)
-                      .maybeSingle();
-                    supabase.functions.invoke('send-transactional-email', {
-                      body: {
-                        templateName: 'first-laudo',
-                        recipientEmail: currentUser.email,
-                        idempotencyKey: `first-laudo-${currentUser.id}`,
-                        templateData: {
-                          doctorName: profile?.full_name,
-                          laudoTitle: updated.title,
-                        },
-                      },
-                    }).catch(err => console.error('First laudo email failed:', err));
-                  }
-                } catch (err) {
-                  console.error('First laudo check failed:', err);
-                }
-              })();
-            }
-            setIsSubmitting(false);
-          } else if (updated.status === 'generating') {
-            setPipelineStage('calling_ai');
-          } else if (updated.transcript_status === 'processing' || updated.audio_processing_status === 'processing') {
-            setPipelineStage('transcribing');
-          }
-
-          // Auto-trigger generation when transcription completes
-          if (
-            updated.transcript_status === 'completed' &&
-            updated.status !== 'completed' &&
-            updated.status !== 'generating' &&
-            !hasTriggeredGeneration.current &&
-            updated.transcript?.text
-          ) {
-            hasTriggeredGeneration.current = true;
-            handleGenerateLaudoRef.current?.(updated.transcript.text);
-          }
-        }
-      )
-      .subscribe();
-
-    channelRef.current = channel;
-
     return () => {
-      supabase.removeChannel(channel);
+      stopPolling();
     };
   }, [laudoId]);
 
