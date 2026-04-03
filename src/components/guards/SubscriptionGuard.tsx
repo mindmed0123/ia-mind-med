@@ -9,7 +9,8 @@ interface SubscriptionGuardProps {
 
 export function SubscriptionGuard({ children, allowEmbedded }: SubscriptionGuardProps) {
   const [searchParams] = useSearchParams();
-  const isEmbedded = allowEmbedded && searchParams.get('embedded') === 'true';
+  const hasBridge = !!searchParams.get('bridge');
+  const isEmbedded = allowEmbedded && (searchParams.get('embedded') === 'true' || hasBridge);
   const { isAllowed, loading } = useSubscriptionGuard();
 
   // Skip guard in embedded mode (auth handled by bridge token)
