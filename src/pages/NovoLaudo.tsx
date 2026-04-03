@@ -472,6 +472,12 @@ const NovoLaudo = () => {
 
       toast({ title: "Processando áudio...", description: "A transcrição e geração do laudo serão automáticas" });
 
+      // Start polling BEFORE firing transcription so we catch updates immediately
+      startPolling(newLaudo.id);
+
+      navigate(`/novo-laudo?id=${newLaudo.id}`, { replace: true });
+
+      // Fire transcription in background (don't block UI)
       const { data: initial } = await supabase.auth.getSession();
       let accessToken = initial?.session?.access_token;
       if (!accessToken) return;
@@ -481,7 +487,7 @@ const NovoLaudo = () => {
         accessToken = refreshed.session.access_token;
       }
 
-      await supabase.functions.invoke('transcribe-audio', {
+      supabase.functions.invoke('transcribe-audio', {
         body: {
           audio_url: url,
           audio_path: path,
@@ -492,9 +498,10 @@ const NovoLaudo = () => {
           Authorization: `Bearer ${accessToken}`,
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
+      }).catch(err => {
+        console.error('Transcription invocation error:', err);
+        // Polling will detect the error status
       });
-
-      navigate(`/novo-laudo?id=${newLaudo.id}`, { replace: true });
     } catch (error: any) {
       console.error('Error processing audio:', error);
       setPipelineStage('error');
@@ -508,6 +515,8 @@ const NovoLaudo = () => {
     try {
       setIsSubmitting(true);
       setPipelineStage('transcribing');
+      hasTriggeredGeneration.current = false;
+      
       const { data: initial } = await supabase.auth.getSession();
       let accessToken = initial?.session?.access_token;
       if (!accessToken) throw new Error('Sessão expirada. Faça login novamente.');
@@ -517,6 +526,10 @@ const NovoLaudo = () => {
       }
       const sourceUrl = laudo?.source_audio_url;
       if (!sourceUrl) throw new Error('Áudio de origem não encontrado.');
+      
+      // Start polling before invoking
+      startPolling(laudoId);
+      
       const { error } = await supabase.functions.invoke('transcribe-audio', {
         body: { audio_url: sourceUrl, laudo_id: laudoId, mode: 'fast' },
         headers: { Authorization: `Bearer ${accessToken}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
