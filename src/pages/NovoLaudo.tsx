@@ -434,35 +434,8 @@ const NovoLaudo = () => {
 
       if (error) throw error;
 
-      // Fallback polling for text generation
-      const pollForCompletion = async (attempts = 0) => {
-        if (attempts > 30) {
-          setPipelineStage('error');
-          setIsSubmitting(false);
-          return;
-        }
-        const { data: updated } = await supabase
-          .from('laudos')
-          .select('*')
-          .eq('id', newLaudo.id)
-          .single();
-        if (updated?.status === 'completed') {
-          setLaudo(updated);
-          setPipelineStage('completed');
-          setIsSubmitting(false);
-          if (!hasShownSuccessToast.current) {
-            hasShownSuccessToast.current = true;
-            toast({ title: 'Laudo gerado!', description: 'O laudo foi gerado com sucesso' });
-          }
-        } else if (updated?.status === 'error') {
-          setLaudo(updated);
-          setPipelineStage('error');
-          setIsSubmitting(false);
-        } else {
-          setTimeout(() => pollForCompletion(attempts + 1), 2000);
-        }
-      };
-      setTimeout(() => pollForCompletion(), 3000);
+      // Start centralized polling
+      startPolling(newLaudo.id);
 
       navigate(`/novo-laudo?id=${newLaudo.id}`, { replace: true });
     } catch (error: any) {
