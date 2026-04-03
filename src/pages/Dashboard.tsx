@@ -81,7 +81,8 @@ const Dashboard = () => {
         accessToken = refreshed.session.access_token;
       }
 
-      await supabase.functions.invoke('transcribe-audio', {
+      // Fire transcription in background - NovoLaudo polling will handle the rest
+      supabase.functions.invoke('transcribe-audio', {
         body: {
           audio_url: url,
           audio_path: path,
@@ -92,7 +93,7 @@ const Dashboard = () => {
           Authorization: `Bearer ${accessToken}`,
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
-      });
+      }).catch(err => console.error('Transcription invocation error:', err));
     } catch (error: any) {
       console.error('Error invoking transcribe-audio:', error, error?.context);
       const status = error?.context?.status || error?.status;
