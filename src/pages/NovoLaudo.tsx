@@ -346,6 +346,8 @@ const NovoLaudo = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Não autenticado');
 
+      setPipelineStage('calling_ai');
+      
       const { error } = await supabase.functions.invoke('generate-laudo', {
         body: {
           patient: {
@@ -370,43 +372,15 @@ const NovoLaudo = () => {
 
       if (error) throw error;
       
-      // Fallback: poll for completion in case Realtime is delayed
-      const pollForCompletion = async (attempts = 0) => {
-        if (attempts > 30) {
-          setPipelineStage('error');
-          setIsSubmitting(false);
-          return;
-        }
-        const { data: updated } = await supabase
-          .from('laudos')
-          .select('*')
-          .eq('id', laudoId)
-          .single();
-        if (updated?.status === 'completed') {
-          setLaudo(updated);
-          setPipelineStage('completed');
-          setIsSubmitting(false);
-          if (!hasShownSuccessToast.current) {
-            hasShownSuccessToast.current = true;
-            toast({ title: 'Laudo gerado!', description: 'O laudo foi gerado com sucesso' });
-          }
-        } else if (updated?.status === 'error') {
-          setLaudo(updated);
-          setPipelineStage('error');
-          setIsSubmitting(false);
-        } else {
-          setTimeout(() => pollForCompletion(attempts + 1), 2000);
-        }
-      };
-      // Start polling as fallback after a short delay
-      setTimeout(() => pollForCompletion(), 3000);
+      // Polling is already running from startPolling - it will detect completion
+      startPolling(laudoId);
     } catch (error: any) {
       console.error('Error generating laudo:', error);
       setPipelineStage('error');
       setIsSubmitting(false);
       toast({ title: 'Erro', description: error.message || 'Erro ao gerar laudo', variant: 'destructive' });
     }
-  }, [laudoId, isSubmitting, transcript, patientData, toast]);
+  }, [laudoId, isSubmitting, transcript, patientData, toast, startPolling]);
   
   // Keep ref in sync for Realtime callback
   useEffect(() => { handleGenerateLaudoRef.current = handleGenerateLaudo; }, [handleGenerateLaudo]);
