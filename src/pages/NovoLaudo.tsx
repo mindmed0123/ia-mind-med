@@ -84,28 +84,37 @@ const NovoLaudo = () => {
     }
   }, [isEmbedded, bridgeToken]);
 
-  // Handle "Finalizar e Enviar" for embedded mode
-  const handleEmbeddedFinalize = useCallback(() => {
+  // Handle "Finalizar e Enviar" for embedded/bridge mode
+  const [isSendingToMindPEP, setIsSendingToMindPEP] = useState(false);
+  const handleEmbeddedFinalize = useCallback(async () => {
     if (!laudo || !isEmbedded) return;
-    const sections = laudo.sections || {};
-    const payload = {
-      documents: {
-        laudo: {
-          content: laudo.report_markdown || '',
-          diagnosis: laudo.diagnosis_main || '',
-          specialty: laudo.specialty || '',
+    setIsSendingToMindPEP(true);
+    try {
+      const payload = {
+        documents: {
+          laudo: {
+            content: laudo.report_markdown || '',
+            diagnosis: laudo.diagnosis_main || '',
+            specialty: laudo.specialty || '',
+          },
+          receita: {
+            content: '',
+          },
+          exames: (laudo.complementary_exams as any[]) || [],
+          resumo: {
+            content: (laudo.summary as any)?.text || laudo.report_markdown?.substring(0, 500) || '',
+          },
         },
-        receita: {
-          content: '', // prescription content if available
-        },
-        exames: (laudo.complementary_exams as any[]) || [],
-        resumo: {
-          content: (laudo.summary as any)?.text || laudo.report_markdown?.substring(0, 500) || '',
-        },
-      },
-    };
-    sendCompleted(payload);
-    toast({ title: 'Laudo enviado', description: 'Os dados foram enviados ao MindPEP com sucesso.' });
+      };
+      const success = await sendCompleted(payload);
+      if (success) {
+        toast({ title: 'Laudo enviado', description: 'Os dados foram salvos no prontuário MindPEP. Você pode fechar esta aba.' });
+      } else {
+        toast({ title: 'Erro ao enviar', description: 'Não foi possível salvar no MindPEP. Tente novamente.', variant: 'destructive' });
+      }
+    } finally {
+      setIsSendingToMindPEP(false);
+    }
   }, [laudo, isEmbedded, sendCompleted, toast]);
 
   // Show bridge error
