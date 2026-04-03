@@ -29,12 +29,12 @@ type PipelineStage = 'idle' | 'uploading' | 'transcribing' | 'preparing' | 'call
 const STAGE_LABELS: Record<PipelineStage, string> = {
   idle: 'Aguardando',
   uploading: 'Enviando áudio...',
-  transcribing: 'Transcrevendo consulta...',
+  transcribing: '🎙️ Transcrevendo consulta com IA... (10-30s)',
   preparing: 'Preparando dados clínicos...',
-  calling_ai: 'Chamando IA...',
+  calling_ai: '🧠 Gerando laudo com IA... (5-15s)',
   structuring: 'Estruturando laudo...',
   saving: 'Salvando...',
-  completed: 'Laudo pronto!',
+  completed: '✅ Laudo pronto!',
   error: 'Erro no processamento',
 };
 
