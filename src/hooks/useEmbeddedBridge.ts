@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-const MINDPEP_ORIGIN = 'https://mindpep-clinical-os.lovable.app';
+const MINDPEP_IMPORT_URL = 'https://spowqbiucpevpgncmoiv.supabase.co/functions/v1/mindmed-import';
 
 export interface BridgeToken {
   origin: string;
@@ -22,8 +22,7 @@ interface EmbeddedBridgeReturn {
   isEmbedded: boolean;
   bridgeToken: BridgeToken | null;
   error: string | null;
-  sendReady: () => void;
-  sendCompleted: (payload: any) => void;
+  sendCompleted: (payload: any) => Promise<boolean>;
   sendCancelled: () => void;
 }
 
@@ -45,9 +44,10 @@ export function useEmbeddedBridge(): EmbeddedBridgeReturn {
   const [searchParams] = useSearchParams();
   const [bridgeToken, setBridgeToken] = useState<BridgeToken | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const readySent = useRef(false);
 
-  const isEmbedded = searchParams.get('embedded') === 'true';
+  // Detect bridge mode: either ?embedded=true or just ?bridge=TOKEN
+  const hasBridge = !!searchParams.get('bridge');
+  const isEmbedded = searchParams.get('embedded') === 'true' || hasBridge;
 
   // Decode token from URL on mount
   useEffect(() => {
@@ -68,72 +68,47 @@ export function useEmbeddedBridge(): EmbeddedBridgeReturn {
     }
   }, [isEmbedded, searchParams]);
 
-  // Listen for postMessage from parent (MindPEP)
-  useEffect(() => {
-    if (!isEmbedded) return;
+  // Send completed: call MindPEP import endpoint directly
+  const sendCompleted = useCallback(async (payload: any): Promise<boolean> => {
+    if (!bridgeToken) return false;
 
-    const handler = (event: MessageEvent) => {
-      if (event.origin !== MINDPEP_ORIGIN) return;
-      if (event.data?.type === 'mindpep:context') {
-        try {
-          const raw = event.data.payload?.bridge_token;
-          if (!raw) return;
-          const token = decodeBridgeToken(raw);
-          if (!token) return;
-          if (isTokenExpired(token)) {
-            setError('Token de integração expirado');
-            return;
-          }
-          setBridgeToken(token);
-          setError(null);
-        } catch {
-          // Ignore malformed messages
-        }
+    try {
+      const rawBridge = searchParams.get('bridge') || '';
+      const response = await fetch(MINDPEP_IMPORT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Bridge-Token': rawBridge,
+        },
+        body: JSON.stringify({
+          patient_id: bridgeToken.patient_id,
+          documents: payload.documents,
+          source: 'mindmed',
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.text();
+        console.error('MindPEP import failed:', err);
+        return false;
       }
-    };
 
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, [isEmbedded]);
-
-  // Send ready message once token is loaded
-  useEffect(() => {
-    if (isEmbedded && bridgeToken && !readySent.current) {
-      readySent.current = true;
-      try {
-        window.parent.postMessage({ type: 'mindmed:ready' }, MINDPEP_ORIGIN);
-      } catch {
-        // Not in iframe or cross-origin blocked
-      }
+      return true;
+    } catch (err) {
+      console.error('MindPEP import error:', err);
+      return false;
     }
-  }, [isEmbedded, bridgeToken]);
+  }, [bridgeToken, searchParams]);
 
-  const sendReady = useCallback(() => {
-    if (!isEmbedded) return;
-    try {
-      window.parent.postMessage({ type: 'mindmed:ready' }, MINDPEP_ORIGIN);
-    } catch { /* ignore */ }
-  }, [isEmbedded]);
-
-  const sendCompleted = useCallback((payload: any) => {
-    if (!isEmbedded) return;
-    try {
-      window.parent.postMessage({ type: 'mindmed:completed', payload }, MINDPEP_ORIGIN);
-    } catch { /* ignore */ }
-  }, [isEmbedded]);
-
+  // Cancel: just close the tab
   const sendCancelled = useCallback(() => {
-    if (!isEmbedded) return;
-    try {
-      window.parent.postMessage({ type: 'mindmed:cancelled' }, MINDPEP_ORIGIN);
-    } catch { /* ignore */ }
-  }, [isEmbedded]);
+    window.close();
+  }, []);
 
   return {
     isEmbedded,
     bridgeToken,
     error,
-    sendReady,
     sendCompleted,
     sendCancelled,
   };
