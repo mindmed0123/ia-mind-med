@@ -307,7 +307,7 @@ const NovoLaudo = () => {
         setPatientData(data.patient_data);
       }
 
-      // Set initial pipeline stage
+      // Set initial pipeline stage and start polling if needed
       if (data.status === 'completed') {
         setPipelineStage('completed');
         hasShownSuccessToast.current = true;
@@ -317,10 +317,12 @@ const NovoLaudo = () => {
         }
       } else if (data.status === 'generating') {
         setPipelineStage('calling_ai');
+        startPolling(laudoId);
       } else if (data.status === 'error' || data.transcript_status === 'error') {
         setPipelineStage('error');
       } else if (data.transcript_status === 'processing' || data.audio_processing_status === 'processing') {
         setPipelineStage('transcribing');
+        startPolling(laudoId);
       }
     } catch (error: any) {
       console.error('Error loading laudo:', error);
