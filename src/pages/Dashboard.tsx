@@ -24,7 +24,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isAdmin, loading: adminLoading } = useAdmin();
-  const { needsOnboarding, loading: onboardingChecking, state: onboardingState, updateStep, completeOnboarding, needsLgpdConsent, lgpdConsentLoading, markLgpdConsentGiven } = useOnboarding();
+  const { needsWelcome, loading: onboardingChecking, completeOnboarding, needsLgpdConsent, lgpdConsentLoading, markLgpdConsentGiven } = useOnboarding();
 
   // After LGPD consent is given, trigger onboarding check
   const handleConsentGiven = useCallback(() => {
