@@ -137,14 +137,15 @@ const Dashboard = () => {
     );
   }
 
-  // Step 2: Show onboarding wizard after LGPD consent
-  if (needsOnboarding) {
+  // Step 2: Show instant welcome → redirect to novo-laudo
+  if (needsWelcome) {
     return (
-      <OnboardingWizard
-        onComplete={() => window.location.reload()}
-        initialStep={onboardingState.currentStep}
-        updateStep={updateStep}
-        completeOnboarding={completeOnboarding}
+      <InstantWelcome
+        onStart={async () => {
+          await completeOnboarding();
+          navigate("/novo-laudo");
+        }}
+        userName={user.email?.split("@")[0]}
       />
     );
   }
