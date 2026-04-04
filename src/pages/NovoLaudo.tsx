@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Edit, Mic, FileText, CheckCircle, AlertCircle, Pill, Upload, Stethoscope, Send, X } from "lucide-react";
+import { SmartProgress, type SmartStage } from "@/components/loading/SmartProgress";
 import { useEmbeddedBridge } from "@/hooks/useEmbeddedBridge";
 import { PatientDataForm } from "@/components/laudos/PatientDataForm";
 import { LaudoViewer } from "@/components/laudos/LaudoViewer";
@@ -572,52 +573,22 @@ const NovoLaudo = () => {
     }
   };
 
-  // Pipeline status indicator component
-  const PipelineStatus = () => {
-    if (pipelineStage === 'idle' || pipelineStage === 'completed') return null;
-
-    const stageConfig: Record<string, { icon: React.ReactNode; color: string }> = {
-      uploading: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-primary bg-primary/5' },
-      transcribing: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-primary bg-primary/5' },
-      preparing: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-primary bg-primary/5' },
-      calling_ai: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-accent bg-accent/5' },
-      structuring: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-accent bg-accent/5' },
-      saving: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-accent bg-accent/5' },
-      error: { icon: <AlertCircle className="w-5 h-5 text-destructive" />, color: 'border-destructive bg-destructive/5' },
-    };
-
-    const config = stageConfig[pipelineStage] || stageConfig.error;
-
-    return (
-      <Card className={`mb-6 border-2 ${config.color}`}>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
-            {config.icon}
-            <div className="flex-1">
-              <p className="font-medium">{STAGE_LABELS[pipelineStage]}</p>
-              {pipelineStage === 'transcribing' && (
-                <p className="text-sm text-muted-foreground">A transcrição e geração do laudo serão automáticas</p>
-              )}
-              {(pipelineStage === 'calling_ai' || pipelineStage === 'preparing') && (
-                <p className="text-sm text-muted-foreground">Analisando dados clínicos e gerando laudo estruturado...</p>
-              )}
-              {pipelineStage === 'saving' && (
-                <p className="text-sm text-muted-foreground">Salvando laudo no banco de dados...</p>
-              )}
-            </div>
-            {pipelineStage !== 'error' && (
-              <Badge variant="outline" className="animate-pulse">Em progresso</Badge>
-            )}
-          </div>
-          {pipelineStage === 'error' && (
-            <Button onClick={retryTranscription} className="mt-4" disabled={isSubmitting}>
-              Tentar novamente
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-    );
+  // Map pipeline stage to SmartProgress stage
+  const getSmartStage = (): SmartStage => {
+    switch (pipelineStage) {
+      case 'uploading': return 'uploading';
+      case 'transcribing': return 'transcribing';
+      case 'preparing': return 'organizing';
+      case 'calling_ai': return 'diagnosing';
+      case 'structuring': 
+      case 'saving': return 'structuring';
+      case 'completed': return 'completed';
+      case 'error': return 'error';
+      default: return 'uploading';
+    }
   };
+
+  const isProcessing = !['idle', 'completed'].includes(pipelineStage);
 
   // If no laudo exists yet, show the input mode selector
   if (!laudoId) {
@@ -779,12 +750,12 @@ const NovoLaudo = () => {
               Paciente: {laudo.patient_data.nome_completo} ({laudo.patient_data.iniciais})
             </p>
           )}
-          <p className="text-muted-foreground mt-1">
-            {STAGE_LABELS[pipelineStage]}
-          </p>
+          {!isProcessing && (
+            <p className="text-muted-foreground mt-1">
+              {STAGE_LABELS[pipelineStage]}
+            </p>
+          )}
         </div>
-
-        <PipelineStatus />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1 space-y-4">
@@ -934,14 +905,17 @@ const NovoLaudo = () => {
                 </div>
               )}
             </>
+            ) : isProcessing ? (
+              <SmartProgress
+                stage={getSmartStage()}
+                onRetry={retryTranscription}
+                isRetrying={isSubmitting}
+              />
             ) : (
               <Card>
                 <CardContent className="py-12 text-center">
                   <p className="text-muted-foreground">
-                    {pipelineStage === 'transcribing' || pipelineStage === 'calling_ai' || pipelineStage === 'preparing' || pipelineStage === 'structuring' || pipelineStage === 'saving'
-                      ? 'Processando... Os resultados aparecerão automaticamente.'
-                      : 'Preencha os dados do paciente e clique em "Gerar Laudo com IA"'
-                    }
+                    Preencha os dados do paciente e clique em "Gerar Laudo com IA"
                   </p>
                 </CardContent>
               </Card>
