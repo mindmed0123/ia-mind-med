@@ -13,7 +13,7 @@ import { QuotaDisplay } from "@/components/quota/QuotaDisplay";
 import { ProductivityMetrics } from "@/components/dashboard/ProductivityMetrics";
 import { LaudoHistory } from "@/components/dashboard/LaudoHistory";
 import { UpgradeBanner } from "@/components/upgrade/UpgradeBanner";
-import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { InstantWelcome } from "@/components/onboarding/InstantWelcome";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -24,7 +24,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isAdmin, loading: adminLoading } = useAdmin();
-  const { needsOnboarding, loading: onboardingChecking, state: onboardingState, updateStep, completeOnboarding, needsLgpdConsent, lgpdConsentLoading, markLgpdConsentGiven } = useOnboarding();
+  const { needsWelcome, loading: onboardingChecking, completeOnboarding, needsLgpdConsent, lgpdConsentLoading, markLgpdConsentGiven } = useOnboarding();
 
   // After LGPD consent is given, trigger onboarding check
   const handleConsentGiven = useCallback(() => {
@@ -137,14 +137,15 @@ const Dashboard = () => {
     );
   }
 
-  // Step 2: Show onboarding wizard after LGPD consent
-  if (needsOnboarding) {
+  // Step 2: Show instant welcome → redirect to novo-laudo
+  if (needsWelcome) {
     return (
-      <OnboardingWizard
-        onComplete={() => window.location.reload()}
-        initialStep={onboardingState.currentStep}
-        updateStep={updateStep}
-        completeOnboarding={completeOnboarding}
+      <InstantWelcome
+        onStart={async () => {
+          await completeOnboarding();
+          navigate("/novo-laudo");
+        }}
+        userName={user.email?.split("@")[0]}
       />
     );
   }

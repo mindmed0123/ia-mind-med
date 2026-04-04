@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { FirstLaudoSuccess } from "@/components/onboarding/FirstLaudoSuccess";
 
 type PipelineStage = 'idle' | 'uploading' | 'transcribing' | 'preparing' | 'calling_ai' | 'structuring' | 'saving' | 'completed' | 'error';
 
@@ -58,6 +59,7 @@ const NovoLaudo = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [patientLinked, setPatientLinked] = useState(false);
+  const [showFirstLaudoSuccess, setShowFirstLaudoSuccess] = useState(false);
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const transcriptRef = useRef(transcript);
   const patientDataRef = useRef(patientData);
@@ -202,6 +204,7 @@ const NovoLaudo = () => {
               .eq('user_id', currentUser.id)
               .eq('status', 'completed');
             if (count === 1) {
+              setShowFirstLaudoSuccess(true);
               const { data: profile } = await supabase
                 .from('profiles')
                 .select('full_name')
@@ -742,6 +745,7 @@ const NovoLaudo = () => {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-gradient-subtle">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
@@ -985,6 +989,15 @@ const NovoLaudo = () => {
         )}
       </div>
     </div>
+    <FirstLaudoSuccess
+      open={showFirstLaudoSuccess}
+      onClose={() => setShowFirstLaudoSuccess(false)}
+      onUpgrade={() => {
+        setShowFirstLaudoSuccess(false);
+        navigate("/precos");
+      }}
+    />
+    </>
   );
 };
 
