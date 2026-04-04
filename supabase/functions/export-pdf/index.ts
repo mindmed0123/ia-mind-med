@@ -23,7 +23,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // ===== AUTH =====
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Não autorizado' }), {
@@ -53,7 +52,7 @@ Deno.serve(async (req) => {
     const { laudo_id } = await req.json();
     if (!laudo_id) throw new Error('ID do laudo não fornecido');
 
-    // ===== RATE LIMITING =====
+    // Rate limiting
     const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
     const { count: recentExports } = await supabase
       .from('laudos')
@@ -74,7 +73,6 @@ Deno.serve(async (req) => {
 
     console.log('[export-pdf] Starting export:', { laudo_id, uid: user.id.substring(0, 8) });
 
-    // Buscar laudo
     const { data: laudo, error: laudoError } = await supabase
       .from('laudos')
       .select('*')
@@ -84,7 +82,6 @@ Deno.serve(async (req) => {
 
     if (laudoError || !laudo) throw new Error('Laudo não encontrado');
 
-    // Buscar perfil do médico
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const adminClient = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false }
@@ -96,7 +93,7 @@ Deno.serve(async (req) => {
       .eq('id', user.id)
       .single();
 
-    // Build sections from individual fields if sections is empty
+    // Build sections
     let sections = laudo.sections as PdfSection || {};
     const isSectionsEmpty = !sections.hipoteses?.principal && !sections.conduta;
     
@@ -133,12 +130,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Validate
     if (!sections.hipoteses?.principal && !laudo.report_markdown) {
       throw new Error('Laudo incompleto: gere o laudo antes de exportar o PDF');
     }
 
-    // Gerar hash
+    // Hash
     const contentForHash = JSON.stringify({
       id: laudo.id, sections, user_id: user.id,
       timestamp: new Date().toISOString()
@@ -146,7 +142,6 @@ Deno.serve(async (req) => {
     const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(contentForHash));
     const hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 
-    // Token de verificação
     const verifyToken = btoa(JSON.stringify({
       id: laudo.id, hash, exp: Date.now() + (90 * 24 * 60 * 60 * 1000)
     }));
@@ -159,10 +154,8 @@ Deno.serve(async (req) => {
     const redFlags = laudo.red_flags as string[] | null;
     const complementaryExams = laudo.complementary_exams as string[] | null;
 
-    // Generate content-only HTML (no header/footer - those are drawn by jsPDF)
     const html = generateContentHtml(sections, dateShort, redFlags, complementaryExams);
 
-    // Build structured metadata for jsPDF header/footer rendering
     const pdfMeta = {
       doctorName: profile?.full_name || 'Médico Responsável',
       doctorCrm: profile?.crm || '',
@@ -184,12 +177,10 @@ Deno.serve(async (req) => {
       verifyToken,
     };
 
-    // Atualizar laudo com hash
     await adminClient.from('laudos').update({
       pdf_hash: hash, pdf_verify_token: verifyToken
     }).eq('id', laudo.id);
 
-    // Audit log
     try {
       await supabase.rpc('log_audit_action', {
         p_entity: 'REPORT', p_entity_id: laudo.id, p_action: 'EXPORT',
@@ -224,9 +215,8 @@ Deno.serve(async (req) => {
 });
 
 /**
- * Generates CONTENT-ONLY HTML for the PDF body.
- * Header and footer are rendered by jsPDF post-processing on the client.
- * Uses CSS page-break-inside:avoid on all section blocks.
+ * Premium Hospital-Grade Content HTML
+ * Clean grid, consistent spacing, institutional typography
  */
 function generateContentHtml(
   sections: PdfSection,
@@ -236,7 +226,6 @@ function generateContentHtml(
 ): string {
   const fmt = (text: string) => text ? text.replace(/\n/g, '<br>') : '';
 
-  // Dynamic section numbering
   let sectionNum = 1;
   const nextNum = () => String(sectionNum++).padStart(2, '0');
 
@@ -247,249 +236,267 @@ function generateContentHtml(
 <head>
 <meta charset="UTF-8">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
+
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
   body {
-    font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif;
-    font-size: 10pt;
-    line-height: 1.6;
+    font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+    font-size: 9.5pt;
+    line-height: 1.65;
     color: #1E293B;
     background: #fff;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  /* All content in a single flow container - no fixed positioning */
+
   .content-wrapper {
     width: 100%;
     padding: 0;
   }
-  /* Every section block avoids page breaks inside */
+
   .section-block {
     page-break-inside: avoid;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
   }
-  /* Word wrapping safety */
+
   td, th, div, span, p {
     word-wrap: break-word;
     overflow-wrap: break-word;
     word-break: break-word;
   }
+
   table {
     border-collapse: collapse;
     table-layout: fixed;
     width: 100%;
   }
-  /* Section title style */
-  .section-title {
-    font-size: 10pt;
+
+  /* ── Section Header ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #E2E8F0;
+  }
+
+  .section-number {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #0B3D6B, #1565A8);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    line-height: 28px;
+    flex-shrink: 0;
+  }
+
+  .section-label {
+    font-family: 'Merriweather', Georgia, serif;
+    font-size: 11pt;
     font-weight: 700;
     color: #0B3D6B;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
-    border-bottom: 1px solid #E2E8F0;
-    padding-bottom: 5px;
-    margin-bottom: 6px;
+    letter-spacing: 1.2px;
   }
+
   .section-body {
-    font-size: 10pt;
-    line-height: 1.7;
+    font-size: 9.5pt;
+    line-height: 1.75;
     color: #334155;
     text-align: justify;
-    padding-top: 4px;
+    padding: 4px 0 0 38px;
   }
-  .badge-num {
-    width: 24px;
-    height: 24px;
-    border-radius: 5px;
-    color: #fff;
-    font-size: 10px;
-    font-weight: 700;
-    text-align: center;
-    line-height: 24px;
-    display: inline-block;
+
+  .subsection-label {
+    font-weight: 600;
+    color: #0B3D6B;
+    font-size: 9pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
   }
 </style>
 </head>
 <body>
 <div class="content-wrapper">
 
-  <!-- Patient identification card -->
-  <div class="section-block">
-    <table style="border:1px solid #E2E8F0;width:100%;">
+  <!-- ═══════════ PATIENT IDENTIFICATION CARD ═══════════ -->
+  <div class="section-block" style="margin-bottom: 20px;">
+    <table style="border: 1px solid #CBD5E1; border-radius: 8px; overflow: hidden;">
       <tr>
-        <td colspan="4" style="background:linear-gradient(135deg,#0B3D6B,#1565A8);padding:7px 16px;">
-          <span style="color:#fff;font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:2px;">&#9679; Identificação do Paciente</span>
+        <td colspan="4" style="background: linear-gradient(135deg, #0B3D6B 0%, #1565A8 100%); padding: 8px 18px;">
+          <span style="color: #fff; font-family: 'Merriweather', serif; font-size: 8pt; font-weight: 700; text-transform: uppercase; letter-spacing: 2.5px;">Identificação do Paciente</span>
         </td>
       </tr>
       <tr>
-        <td style="width:25%;padding:8px 14px;background:#F8FAFC;border-top:1px solid #E2E8F0;font-size:9pt;">
-          <span style="color:#64748B;font-weight:600;">Paciente:</span>
+        <td style="width: 15%; padding: 10px 18px; background: #F8FAFC; border-right: 1px solid #E2E8F0; border-top: 1px solid #E2E8F0;">
+          <div style="color: #94A3B8; font-size: 7pt; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Paciente</div>
+          <div style="color: #0F172A; font-size: 10pt; font-weight: 600;">${sections.identificacao?.nome || 'Não informado'}</div>
         </td>
-        <td style="width:25%;padding:8px 8px;background:#F8FAFC;border-top:1px solid #E2E8F0;font-size:9pt;">
-          <span style="color:#0F172A;font-weight:500;">${sections.identificacao?.nome || 'Não informado'}</span>
+        <td style="width: 15%; padding: 10px 18px; background: #F8FAFC; border-right: 1px solid #E2E8F0; border-top: 1px solid #E2E8F0;">
+          <div style="color: #94A3B8; font-size: 7pt; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Idade</div>
+          <div style="color: #0F172A; font-size: 10pt; font-weight: 600;">${sections.identificacao?.idade || 'N/I'}${sections.identificacao?.idade && sections.identificacao.idade !== 'N/I' ? ' anos' : ''}</div>
         </td>
-        <td style="width:25%;padding:8px 14px;background:#F8FAFC;border-top:1px solid #E2E8F0;font-size:9pt;">
-          <span style="color:#64748B;font-weight:600;">Idade:</span>
+        <td style="width: 15%; padding: 10px 18px; background: #F8FAFC; border-right: 1px solid #E2E8F0; border-top: 1px solid #E2E8F0;">
+          <div style="color: #94A3B8; font-size: 7pt; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Sexo</div>
+          <div style="color: #0F172A; font-size: 10pt; font-weight: 600;">${sections.identificacao?.sexo || 'N/I'}</div>
         </td>
-        <td style="width:25%;padding:8px 8px;background:#F8FAFC;border-top:1px solid #E2E8F0;font-size:9pt;">
-          <span style="color:#0F172A;font-weight:500;">${sections.identificacao?.idade || 'N/I'}${sections.identificacao?.idade && sections.identificacao.idade !== 'N/I' ? ' anos' : ''}</span>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:5px 14px 8px;background:#F8FAFC;font-size:9pt;">
-          <span style="color:#64748B;font-weight:600;">Sexo:</span>
-        </td>
-        <td style="padding:5px 8px 8px;background:#F8FAFC;font-size:9pt;">
-          <span style="color:#0F172A;font-weight:500;">${sections.identificacao?.sexo || 'N/I'}</span>
-        </td>
-        <td style="padding:5px 14px 8px;background:#F8FAFC;font-size:9pt;">
-          <span style="color:#64748B;font-weight:600;">Data:</span>
-        </td>
-        <td style="padding:5px 8px 8px;background:#F8FAFC;font-size:9pt;">
-          <span style="color:#0F172A;font-weight:500;">${dateShort}</span>
+        <td style="width: 15%; padding: 10px 18px; background: #F8FAFC; border-top: 1px solid #E2E8F0;">
+          <div style="color: #94A3B8; font-size: 7pt; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Data</div>
+          <div style="color: #0F172A; font-size: 10pt; font-weight: 600;">${dateShort}</div>
         </td>
       </tr>
     </table>
   </div>
 
-  <!-- Document title -->
-  <div class="section-block" style="text-align:center;padding:10px 0 14px 0;border-top:1px solid #E2E8F0;border-bottom:1px solid #E2E8F0;margin-bottom:16px;">
-    <div style="font-size:13pt;font-weight:700;color:#0B3D6B;letter-spacing:4px;text-transform:uppercase;">Laudo Médico</div>
-    <div style="width:40px;height:3px;background:linear-gradient(90deg,#C7944A,#D4A84B);margin:8px auto 0 auto;"></div>
+  <!-- ═══════════ DOCUMENT TITLE ═══════════ -->
+  <div class="section-block" style="text-align: center; padding: 16px 0 20px 0; margin-bottom: 20px;">
+    <div style="font-family: 'Merriweather', Georgia, serif; font-size: 16pt; font-weight: 900; color: #0B3D6B; letter-spacing: 6px; text-transform: uppercase;">Laudo Médico</div>
+    <div style="width: 60px; height: 3px; background: linear-gradient(90deg, #0B3D6B, #C7944A); margin: 10px auto 0 auto; border-radius: 2px;"></div>
   </div>
 
-  <!-- Clinical sections -->
+  <!-- ═══════════ ANAMNESE ═══════════ -->
   ${anamnese ? `
   <div class="section-block">
-    <table>
-      <tr>
-        <td style="width:32px;vertical-align:top;padding-top:2px;">
-          <div class="badge-num" style="background:#0B3D6B;">${nextNum()}</div>
-        </td>
-        <td style="padding-left:8px;vertical-align:top;">
-          <div class="section-title">Anamnese</div>
-          <div class="section-body">
-            ${sections.queixa ? `<strong style="color:#0B3D6B;">Queixa Principal:</strong> ${fmt(sections.queixa)}<br><br>` : ''}
-            ${sections.hda ? `<strong style="color:#0B3D6B;">História da Doença Atual:</strong><br>${fmt(sections.hda)}` : ''}
-          </div>
-        </td>
-      </tr>
-    </table>
+    <table><tr>
+      <td style="width: 38px; vertical-align: top; padding-top: 1px;">
+        <div class="section-number">${nextNum()}</div>
+      </td>
+      <td style="vertical-align: top;">
+        <div style="font-family: 'Merriweather', serif; font-size: 11pt; font-weight: 700; color: #0B3D6B; text-transform: uppercase; letter-spacing: 1.2px; padding-bottom: 8px; border-bottom: 2px solid #E2E8F0; margin-bottom: 10px;">Anamnese</div>
+        <div style="padding-top: 6px;">
+          ${sections.queixa ? `
+          <div style="margin-bottom: 12px;">
+            <div class="subsection-label">Queixa Principal</div>
+            <div style="font-size: 9.5pt; line-height: 1.75; color: #334155; text-align: justify;">${fmt(sections.queixa)}</div>
+          </div>` : ''}
+          ${sections.hda ? `
+          <div>
+            <div class="subsection-label">História da Doença Atual</div>
+            <div style="font-size: 9.5pt; line-height: 1.75; color: #334155; text-align: justify;">${fmt(sections.hda)}</div>
+          </div>` : ''}
+        </div>
+      </td>
+    </tr></table>
   </div>` : ''}
 
+  <!-- ═══════════ EXAME FÍSICO ═══════════ -->
   ${sections.exame_fisico ? `
   <div class="section-block">
-    <table>
-      <tr>
-        <td style="width:32px;vertical-align:top;padding-top:2px;">
-          <div class="badge-num" style="background:#1565A8;">${nextNum()}</div>
-        </td>
-        <td style="padding-left:8px;vertical-align:top;">
-          <div class="section-title">Exame Físico</div>
-          <div class="section-body">${fmt(sections.exame_fisico)}</div>
-        </td>
-      </tr>
-    </table>
+    <table><tr>
+      <td style="width: 38px; vertical-align: top; padding-top: 1px;">
+        <div class="section-number">${nextNum()}</div>
+      </td>
+      <td style="vertical-align: top;">
+        <div style="font-family: 'Merriweather', serif; font-size: 11pt; font-weight: 700; color: #0B3D6B; text-transform: uppercase; letter-spacing: 1.2px; padding-bottom: 8px; border-bottom: 2px solid #E2E8F0; margin-bottom: 10px;">Exame Físico</div>
+        <div style="font-size: 9.5pt; line-height: 1.75; color: #334155; text-align: justify; padding-top: 6px;">${fmt(sections.exame_fisico)}</div>
+      </td>
+    </tr></table>
   </div>` : ''}
 
+  <!-- ═══════════ HIPÓTESE DIAGNÓSTICA ═══════════ -->
   ${(sections.hipoteses?.principal || sections.hipoteses?.diferencial) ? `
   <div class="section-block">
-    <table>
-      <tr>
-        <td style="width:32px;vertical-align:top;padding-top:2px;">
-          <div class="badge-num" style="background:#0B3D6B;">${nextNum()}</div>
-        </td>
-        <td style="padding-left:8px;vertical-align:top;">
-          <div class="section-title">Hipótese Diagnóstica</div>
-          <div style="padding-top:4px;">
-            ${sections.hipoteses?.principal ? `
-            <div style="border:2px solid #0B3D6B;margin-bottom:8px;">
-              <div style="background:linear-gradient(135deg,#0B3D6B,#1565A8);padding:5px 14px;font-size:7pt;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:1.5px;">Hipótese Principal</div>
-              <div style="padding:10px 14px;font-size:10pt;font-weight:600;color:#0F172A;">${fmt(sections.hipoteses.principal)}</div>
-            </div>` : ''}
-            ${sections.hipoteses?.diferencial ? `
-            <div style="border:1px solid #E2E8F0;margin-bottom:6px;">
-              <div style="background:#F1F5F9;padding:5px 14px;font-size:7pt;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:1.5px;border-bottom:1px solid #E2E8F0;">Diagnóstico Diferencial</div>
-              <div style="padding:10px 14px;font-size:10pt;font-weight:500;color:#334155;">${fmt(sections.hipoteses.diferencial)}</div>
-            </div>` : ''}
+    <table><tr>
+      <td style="width: 38px; vertical-align: top; padding-top: 1px;">
+        <div class="section-number">${nextNum()}</div>
+      </td>
+      <td style="vertical-align: top;">
+        <div style="font-family: 'Merriweather', serif; font-size: 11pt; font-weight: 700; color: #0B3D6B; text-transform: uppercase; letter-spacing: 1.2px; padding-bottom: 8px; border-bottom: 2px solid #E2E8F0; margin-bottom: 12px;">Hipótese Diagnóstica</div>
+        
+        ${sections.hipoteses?.principal ? `
+        <div style="border: 2px solid #0B3D6B; border-radius: 8px; overflow: hidden; margin-bottom: 10px;">
+          <div style="background: linear-gradient(135deg, #0B3D6B, #1565A8); padding: 6px 16px;">
+            <span style="color: #C7944A; font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;">Hipótese Principal</span>
           </div>
-        </td>
-      </tr>
-    </table>
+          <div style="padding: 12px 16px; font-size: 10pt; font-weight: 600; color: #0F172A; line-height: 1.6; background: #FAFCFF;">${fmt(sections.hipoteses.principal)}</div>
+        </div>` : ''}
+
+        ${sections.hipoteses?.diferencial ? `
+        <div style="border: 1px solid #CBD5E1; border-radius: 8px; overflow: hidden;">
+          <div style="background: #F1F5F9; padding: 6px 16px; border-bottom: 1px solid #E2E8F0;">
+            <span style="color: #64748B; font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;">Diagnóstico Diferencial</span>
+          </div>
+          <div style="padding: 12px 16px; font-size: 9.5pt; font-weight: 500; color: #475569; line-height: 1.6;">${fmt(sections.hipoteses.diferencial)}</div>
+        </div>` : ''}
+      </td>
+    </tr></table>
   </div>` : ''}
 
+  <!-- ═══════════ CID-10 ═══════════ -->
   ${sections.cid10 && sections.cid10.length > 0 ? `
   <div class="section-block">
-    <table>
-      <tr>
-        <td style="width:32px;vertical-align:top;padding-top:2px;">
-          <div class="badge-num" style="background:#C7944A;">C</div>
-        </td>
-        <td style="padding-left:8px;vertical-align:top;">
-          <div class="section-title">Classificação CID-10</div>
-          <div style="padding-top:6px;">
-            ${sections.cid10.map(c => `<span style="display:inline-block;padding:3px 12px;background:#0B3D6B;color:#fff;border-radius:16px;font-size:8pt;font-weight:600;letter-spacing:0.5px;margin:2px 4px 2px 0;">${c}</span>`).join('')}
-          </div>
-        </td>
-      </tr>
-    </table>
+    <table><tr>
+      <td style="width: 38px; vertical-align: top; padding-top: 1px;">
+        <div class="section-number" style="background: linear-gradient(135deg, #C7944A, #D4A84B); font-size: 9px;">CID</div>
+      </td>
+      <td style="vertical-align: top;">
+        <div style="font-family: 'Merriweather', serif; font-size: 11pt; font-weight: 700; color: #0B3D6B; text-transform: uppercase; letter-spacing: 1.2px; padding-bottom: 8px; border-bottom: 2px solid #E2E8F0; margin-bottom: 10px;">Classificação CID-10</div>
+        <div style="padding-top: 6px;">
+          ${sections.cid10.map(c => `<span style="display: inline-block; padding: 4px 14px; background: linear-gradient(135deg, #0B3D6B, #1565A8); color: #fff; border-radius: 20px; font-size: 8pt; font-weight: 600; letter-spacing: 0.8px; margin: 3px 6px 3px 0;">${c}</span>`).join('')}
+        </div>
+      </td>
+    </tr></table>
   </div>` : ''}
 
+  <!-- ═══════════ RED FLAGS ═══════════ -->
   ${redFlags && redFlags.length > 0 ? `
   <div class="section-block">
-    <div style="background:#FFF5F5;border:1px solid #FECACA;border-left:4px solid #DC2626;padding:10px 16px;">
-      <div style="font-size:8.5pt;font-weight:700;color:#991B1B;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">⚠ Sinais de Alerta</div>
-      ${redFlags.map(f => `<div style="font-size:9pt;color:#7F1D1D;padding:2px 0 2px 14px;">▲ ${f}</div>`).join('')}
+    <div style="background: #FFF5F5; border: 1px solid #FECACA; border-left: 4px solid #DC2626; border-radius: 8px; padding: 14px 18px;">
+      <div style="font-family: 'Merriweather', serif; font-size: 9pt; font-weight: 700; color: #991B1B; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;">⚠ Sinais de Alerta</div>
+      ${redFlags.map(f => `<div style="font-size: 9pt; color: #7F1D1D; padding: 4px 0 4px 16px; line-height: 1.6; border-bottom: 1px solid #FEE2E2;">▸ ${f}</div>`).join('')}
     </div>
   </div>` : ''}
 
+  <!-- ═══════════ EXAMES COMPLEMENTARES ═══════════ -->
   ${(complementaryExams && complementaryExams.length > 0) ? `
   <div class="section-block">
-    <table>
-      <tr>
-        <td style="width:32px;vertical-align:top;padding-top:2px;">
-          <div class="badge-num" style="background:#1565A8;">${nextNum()}</div>
-        </td>
-        <td style="padding-left:8px;vertical-align:top;">
-          <div class="section-title">Exames Complementares</div>
-          <div style="padding-top:4px;">
-            ${complementaryExams.map(e => `<div style="font-size:9.5pt;color:#334155;padding:2px 0 2px 12px;">→ ${e}</div>`).join('')}
-          </div>
-        </td>
-      </tr>
-    </table>
+    <table><tr>
+      <td style="width: 38px; vertical-align: top; padding-top: 1px;">
+        <div class="section-number">${nextNum()}</div>
+      </td>
+      <td style="vertical-align: top;">
+        <div style="font-family: 'Merriweather', serif; font-size: 11pt; font-weight: 700; color: #0B3D6B; text-transform: uppercase; letter-spacing: 1.2px; padding-bottom: 8px; border-bottom: 2px solid #E2E8F0; margin-bottom: 10px;">Exames Complementares</div>
+        <div style="padding-top: 6px;">
+          ${complementaryExams.map(e => `<div style="font-size: 9.5pt; color: #334155; padding: 5px 0 5px 16px; line-height: 1.5; border-bottom: 1px solid #F1F5F9;">
+            <span style="color: #1565A8; font-weight: 600;">→</span> ${e}
+          </div>`).join('')}
+        </div>
+      </td>
+    </tr></table>
   </div>` : ''}
 
+  <!-- ═══════════ CONDUTA ═══════════ -->
   ${sections.conduta ? `
   <div class="section-block">
-    <table>
-      <tr>
-        <td style="width:32px;vertical-align:top;padding-top:2px;">
-          <div class="badge-num" style="background:#0B3D6B;">${nextNum()}</div>
-        </td>
-        <td style="padding-left:8px;vertical-align:top;">
-          <div class="section-title">Conduta</div>
-          <div class="section-body">${fmt(sections.conduta)}</div>
-        </td>
-      </tr>
-    </table>
+    <table><tr>
+      <td style="width: 38px; vertical-align: top; padding-top: 1px;">
+        <div class="section-number" style="background: linear-gradient(135deg, #0B3D6B, #0F4C81);">${nextNum()}</div>
+      </td>
+      <td style="vertical-align: top;">
+        <div style="font-family: 'Merriweather', serif; font-size: 11pt; font-weight: 700; color: #0B3D6B; text-transform: uppercase; letter-spacing: 1.2px; padding-bottom: 8px; border-bottom: 2px solid #0B3D6B; margin-bottom: 10px;">Conduta</div>
+        <div style="font-size: 10pt; line-height: 1.8; color: #1E293B; text-align: justify; padding: 8px 0; font-weight: 500;">${fmt(sections.conduta)}</div>
+      </td>
+    </tr></table>
   </div>` : ''}
 
+  <!-- ═══════════ EMBASAMENTO TEÓRICO ═══════════ -->
   ${sections.embasamento_teorico ? `
   <div class="section-block">
-    <table>
-      <tr>
-        <td style="width:32px;vertical-align:top;padding-top:2px;">
-          <div class="badge-num" style="background:#64748B;">R</div>
-        </td>
-        <td style="padding-left:8px;vertical-align:top;">
-          <div class="section-title">Embasamento Teórico</div>
-          <div style="padding-top:6px;">
-            <div style="border:1px solid #BFDBFE;background:#F0F7FF;padding:10px 14px;font-size:9pt;color:#1E40AF;line-height:1.7;">${fmt(sections.embasamento_teorico)}</div>
-          </div>
-        </td>
-      </tr>
-    </table>
+    <table><tr>
+      <td style="width: 38px; vertical-align: top; padding-top: 1px;">
+        <div class="section-number" style="background: #64748B; font-size: 9px;">REF</div>
+      </td>
+      <td style="vertical-align: top;">
+        <div style="font-family: 'Merriweather', serif; font-size: 11pt; font-weight: 700; color: #0B3D6B; text-transform: uppercase; letter-spacing: 1.2px; padding-bottom: 8px; border-bottom: 2px solid #E2E8F0; margin-bottom: 10px;">Embasamento Teórico</div>
+        <div style="border: 1px solid #BFDBFE; background: linear-gradient(135deg, #F0F7FF, #EFF6FF); border-radius: 8px; padding: 12px 16px; font-size: 9pt; color: #1E40AF; line-height: 1.75; margin-top: 6px;">${fmt(sections.embasamento_teorico)}</div>
+      </td>
+    </tr></table>
   </div>` : ''}
 
 </div>
