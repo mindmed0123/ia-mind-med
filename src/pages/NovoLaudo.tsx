@@ -573,52 +573,22 @@ const NovoLaudo = () => {
     }
   };
 
-  // Pipeline status indicator component
-  const PipelineStatus = () => {
-    if (pipelineStage === 'idle' || pipelineStage === 'completed') return null;
-
-    const stageConfig: Record<string, { icon: React.ReactNode; color: string }> = {
-      uploading: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-primary bg-primary/5' },
-      transcribing: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-primary bg-primary/5' },
-      preparing: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-primary bg-primary/5' },
-      calling_ai: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-accent bg-accent/5' },
-      structuring: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-accent bg-accent/5' },
-      saving: { icon: <Loader2 className="w-5 h-5 animate-spin" />, color: 'border-accent bg-accent/5' },
-      error: { icon: <AlertCircle className="w-5 h-5 text-destructive" />, color: 'border-destructive bg-destructive/5' },
-    };
-
-    const config = stageConfig[pipelineStage] || stageConfig.error;
-
-    return (
-      <Card className={`mb-6 border-2 ${config.color}`}>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
-            {config.icon}
-            <div className="flex-1">
-              <p className="font-medium">{STAGE_LABELS[pipelineStage]}</p>
-              {pipelineStage === 'transcribing' && (
-                <p className="text-sm text-muted-foreground">A transcrição e geração do laudo serão automáticas</p>
-              )}
-              {(pipelineStage === 'calling_ai' || pipelineStage === 'preparing') && (
-                <p className="text-sm text-muted-foreground">Analisando dados clínicos e gerando laudo estruturado...</p>
-              )}
-              {pipelineStage === 'saving' && (
-                <p className="text-sm text-muted-foreground">Salvando laudo no banco de dados...</p>
-              )}
-            </div>
-            {pipelineStage !== 'error' && (
-              <Badge variant="outline" className="animate-pulse">Em progresso</Badge>
-            )}
-          </div>
-          {pipelineStage === 'error' && (
-            <Button onClick={retryTranscription} className="mt-4" disabled={isSubmitting}>
-              Tentar novamente
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-    );
+  // Map pipeline stage to SmartProgress stage
+  const getSmartStage = (): SmartStage => {
+    switch (pipelineStage) {
+      case 'uploading': return 'uploading';
+      case 'transcribing': return 'transcribing';
+      case 'preparing': return 'organizing';
+      case 'calling_ai': return 'diagnosing';
+      case 'structuring': 
+      case 'saving': return 'structuring';
+      case 'completed': return 'completed';
+      case 'error': return 'error';
+      default: return 'uploading';
+    }
   };
+
+  const isProcessing = !['idle', 'completed'].includes(pipelineStage);
 
   // If no laudo exists yet, show the input mode selector
   if (!laudoId) {
