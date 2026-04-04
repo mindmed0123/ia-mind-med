@@ -204,6 +204,7 @@ const NovoLaudo = () => {
               .eq('user_id', currentUser.id)
               .eq('status', 'completed');
             if (count === 1) {
+              setShowFirstLaudoSuccess(true);
               const { data: profile } = await supabase
                 .from('profiles')
                 .select('full_name')
