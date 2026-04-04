@@ -718,205 +718,144 @@ const NovoLaudo = () => {
   return (
     <>
     <div className="min-h-screen bg-gradient-subtle">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          {!isEmbedded ? (
-            <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-4">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar ao Dashboard
-            </Button>
-          ) : bridgeToken && (
-            <div className="flex items-center justify-between mb-4">
-              <Badge variant="outline" className="text-sm">
-                MindPEP • {bridgeToken.patient_name}
-              </Badge>
-              <div className="flex gap-2">
-                {laudo?.status === 'completed' && (
-                  <Button onClick={handleEmbeddedFinalize} size="sm">
-                    <Send className="w-4 h-4 mr-1" /> Finalizar e Enviar
-                  </Button>
-                )}
-                <Button variant="ghost" size="sm" onClick={sendCancelled}>
-                  <X className="w-4 h-4 mr-1" /> Cancelar
+      <div className="container mx-auto px-4 py-6 max-w-7xl">
+        {/* ── Top Navigation ── */}
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3">
+            {!isEmbedded ? (
+              <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="gap-1.5 text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="w-4 h-4" /> Dashboard
+              </Button>
+            ) : bridgeToken && (
+              <Badge variant="outline" className="text-sm">MindPEP • {bridgeToken.patient_name}</Badge>
+            )}
+            <span className="text-muted-foreground/40">|</span>
+            <h1 className="text-lg font-bold text-foreground">
+              {laudo?.status === 'completed' ? 'Laudo Médico' : 'Nova Consulta'}
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            {isEmbedded && laudo?.status === 'completed' && (
+              <>
+                <Button variant="ghost" size="sm" onClick={sendCancelled}><X className="w-4 h-4 mr-1" /> Fechar</Button>
+                <Button size="sm" onClick={handleEmbeddedFinalize} disabled={isSendingToMindPEP}>
+                  {isSendingToMindPEP ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Send className="w-4 h-4 mr-1" />}
+                  Enviar ao MindPEP
                 </Button>
-              </div>
-            </div>
-          )}
-          <h1 className="text-3xl font-bold">
-            {laudo?.status === 'completed' ? 'Editar Laudo' : 'Novo Laudo com IA'}
-          </h1>
-          {laudo?.patient_data?.nome_completo && (
-            <p className="text-lg text-primary font-medium mt-1">
-              Paciente: {laudo.patient_data.nome_completo} ({laudo.patient_data.iniciais})
-            </p>
-          )}
-          {!isProcessing && (
-            <p className="text-muted-foreground mt-1">
-              {STAGE_LABELS[pipelineStage]}
-            </p>
-          )}
+              </>
+            )}
+            {!isEmbedded && laudo?.status === 'completed' && (
+              <Button size="sm" onClick={() => { setLaudoId(null); setLaudo(null); setTranscript(''); setPipelineStage('idle'); setIsSubmitting(false); hasShownSuccessToast.current = false; hasTriggeredGeneration.current = false; navigate('/novo-laudo'); }} className="gap-1.5">
+                <Mic className="w-4 h-4" /> Nova Consulta
+              </Button>
+            )}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 space-y-4">
-            {/* Specialty Selector (in laudo view) */}
+        {/* ── Main Grid ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* ── LEFT SIDEBAR ── */}
+          <div className="lg:col-span-3 space-y-4">
+            {/* Specialty Selector */}
             {!laudo?.status || laudo.status !== 'completed' ? (
-              <Card>
-                <CardContent className="pt-4">
-                  <Label className="flex items-center gap-2 mb-2">
-                    <Stethoscope className="w-4 h-4 text-primary" />
-                    Tipo de consulta
+              <Card className="border-border/60">
+                <CardContent className="pt-4 pb-3">
+                  <Label className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
+                    <Stethoscope className="w-3.5 h-3.5 text-primary" /> Tipo de consulta
                   </Label>
                   <Select value={selectedSpecialty || 'clinica_geral'} onValueChange={setSelectedSpecialty}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                     <SelectContent>
                       {specialtyTemplates.map((t) => (
-                        <SelectItem key={t.specialty} value={t.specialty}>
-                          {t.display_name}
-                        </SelectItem>
+                        <SelectItem key={t.specialty} value={t.specialty}>{t.display_name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </CardContent>
               </Card>
             ) : laudo?.specialty && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 px-1">
                 <Stethoscope className="w-4 h-4 text-primary" />
-                <Badge variant="secondary">
+                <Badge variant="secondary" className="text-xs">
                   {specialtyTemplates.find(t => t.specialty === laudo.specialty)?.display_name || laudo.specialty}
                 </Badge>
               </div>
             )}
 
-            <PatientDataForm
-              initialData={patientData}
-              onDataChange={handlePatientDataChange}
-              autoSave={true}
-            />
+            <PatientDataForm initialData={patientData} onDataChange={handlePatientDataChange} autoSave={true} />
 
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Transcrição</CardTitle>
+            {/* Transcript Card */}
+            <Card className="border-border/60">
+              <CardHeader className="pb-2 pt-4 px-5">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-primary" /> Transcrição
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <Label htmlFor="transcript">Texto da Consulta</Label>
+              <CardContent className="px-5 pb-4">
                 <Textarea
                   id="transcript"
                   value={transcript}
                   onChange={(e) => setTranscript(e.target.value)}
-                  rows={10}
-                  className="mt-2"
+                  rows={8}
+                  className="text-sm resize-none"
                   placeholder={pipelineStage === 'transcribing' ? "Transcrevendo..." : "Transcrição aparecerá aqui"}
                   disabled={pipelineStage === 'transcribing'}
                 />
-                
                 {transcript && pipelineStage !== 'transcribing' && laudo?.status !== 'completed' && laudo?.status !== 'generating' && (
-                  <Button
-                    onClick={() => handleGenerateLaudo()}
-                    disabled={isSubmitting}
-                    className="w-full mt-4 whitespace-nowrap"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Gerando...
-                      </>
-                    ) : (
-                      'Gerar Laudo'
-                    )}
+                  <Button onClick={() => handleGenerateLaudo()} disabled={isSubmitting} className="w-full mt-3 h-9 text-sm">
+                    {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Gerando...</> : 'Gerar Laudo'}
                   </Button>
                 )}
               </CardContent>
             </Card>
           </div>
 
-          <div className="lg:col-span-2">
+          {/* ── RIGHT CONTENT ── */}
+          <div className="lg:col-span-9">
             {laudo?.status === 'completed' ? (
               <>
               <Tabs defaultValue={showEditor ? "editor" : "viewer"} className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="viewer" onClick={() => setShowEditor(false)}>
-                    Visualizar
+                <TabsList className="grid w-full grid-cols-4 h-11 bg-muted/50 rounded-xl p-1 mb-5">
+                  <TabsTrigger value="viewer" onClick={() => setShowEditor(false)} className="rounded-lg text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    Resumo
                   </TabsTrigger>
-                  <TabsTrigger value="editor" onClick={() => setShowEditor(true)}>
-                    <Edit className="w-4 h-4 mr-2" />
-                    Editar
+                  <TabsTrigger value="editor" onClick={() => setShowEditor(true)} className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <Edit className="w-3.5 h-3.5" /> Laudo
                   </TabsTrigger>
-                  <TabsTrigger value="exams">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Exames
+                  <TabsTrigger value="exams" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <Upload className="w-3.5 h-3.5" /> Exames
                   </TabsTrigger>
-                  <TabsTrigger value="prescription">
-                    <Pill className="w-4 h-4 mr-2" />
-                    Receituário
+                  <TabsTrigger value="prescription" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <Pill className="w-3.5 h-3.5" /> Receita
                   </TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="viewer" className="mt-6">
+                <TabsContent value="viewer">
                   <LaudoViewer laudoId={laudoId} />
                 </TabsContent>
                 
-                <TabsContent value="editor" className="mt-6">
-                  <LaudoEditor 
-                    laudoId={laudoId} 
-                    initialData={laudo}
-                    onStatusChange={(newStatus) => {
-                      setLaudo({ ...laudo, status: newStatus });
-                    }}
-                  />
+                <TabsContent value="editor">
+                  <LaudoEditor laudoId={laudoId} initialData={laudo} onStatusChange={(newStatus) => { setLaudo({ ...laudo, status: newStatus }); }} />
                 </TabsContent>
 
-                <TabsContent value="exams" className="mt-6">
-                  <ExamUploadSection
-                    laudoId={laudoId}
-                    patientId={laudo?.patient_id}
-                    patientName={patientData?.iniciais || ''}
-                    onExamsAnalyzed={(summary) => {
-                      toast({ title: "Exames integrados", description: "Seção de exames complementares atualizada" });
-                      loadLaudo();
-                    }}
-                  />
+                <TabsContent value="exams">
+                  <ExamUploadSection laudoId={laudoId} patientId={laudo?.patient_id} patientName={patientData?.iniciais || ''} onExamsAnalyzed={() => { toast({ title: "Exames integrados", description: "Seção de exames complementares atualizada" }); loadLaudo(); }} />
                 </TabsContent>
 
-                <TabsContent value="prescription" className="mt-6">
-                  <PrescriptionTab
-                    laudoData={laudo}
-                    patientData={patientData}
-                  />
+                <TabsContent value="prescription">
+                  <PrescriptionTab laudoData={laudo} patientData={patientData} />
                 </TabsContent>
               </Tabs>
-
-              {/* Bridge mode: Finalizar e Enviar button */}
-              {isEmbedded && laudo?.status === 'completed' && (
-                <div className="flex justify-end gap-3 mt-6">
-                  <Button variant="outline" onClick={sendCancelled}>
-                    <X className="w-4 h-4 mr-2" /> Fechar
-                  </Button>
-                  <Button onClick={handleEmbeddedFinalize} disabled={isSendingToMindPEP} className="bg-primary">
-                    {isSendingToMindPEP ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Send className="w-4 h-4 mr-2" />
-                    )}
-                    Finalizar e Enviar ao MindPEP
-                  </Button>
-                </div>
-              )}
             </>
             ) : isProcessing ? (
-              <SmartProgress
-                stage={getSmartStage()}
-                onRetry={retryTranscription}
-                isRetrying={isSubmitting}
-              />
+              <SmartProgress stage={getSmartStage()} onRetry={retryTranscription} isRetrying={isSubmitting} />
             ) : (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <p className="text-muted-foreground">
-                    Preencha os dados do paciente e clique em "Gerar Laudo com IA"
-                  </p>
+              <Card className="border-border/60">
+                <CardContent className="py-16 text-center">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <Stethoscope className="w-6 h-6 text-primary" />
+                  </div>
+                  <p className="text-muted-foreground text-sm">Preencha os dados e clique em "Gerar Laudo"</p>
                 </CardContent>
               </Card>
             )}
