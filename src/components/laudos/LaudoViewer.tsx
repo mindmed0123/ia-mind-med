@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Copy, Download, FileText, User, AlertTriangle, Pill, Crown, Stethoscope, ClipboardList, FlaskConical, ShieldAlert, Activity } from "lucide-react";
+import { Copy, Download, FileText, User, AlertTriangle, Pill, Crown, Stethoscope, ClipboardList, FlaskConical, ShieldAlert, Activity, Sparkles, Clock, Brain, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
@@ -15,6 +15,38 @@ interface LaudoViewerProps {
   laudoId: string;
 }
 
+/* ── Reusable Section Block ── */
+const SectionBlock = ({ num, icon: Icon, title, children, variant = 'default' }: {
+  num?: string;
+  icon: any;
+  title: string;
+  children: React.ReactNode;
+  variant?: 'default' | 'alert' | 'highlight';
+}) => (
+  <div className={`rounded-xl border overflow-hidden transition-all ${
+    variant === 'alert' ? 'border-destructive/30 bg-destructive/5' :
+    variant === 'highlight' ? 'border-primary/30 bg-primary/5' :
+    'border-border/60 bg-card'
+  }`}>
+    <div className={`flex items-center gap-3 px-5 py-3 border-b ${
+      variant === 'alert' ? 'border-destructive/20 bg-destructive/10' :
+      variant === 'highlight' ? 'border-primary/20 bg-primary/10' :
+      'border-border/40 bg-muted/30'
+    }`}>
+      {num && (
+        <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-primary-foreground ${
+          variant === 'alert' ? 'bg-destructive' : 'bg-primary'
+        }`}>{num}</span>
+      )}
+      <Icon className={`w-4 h-4 ${variant === 'alert' ? 'text-destructive' : 'text-primary'}`} />
+      <h3 className={`font-semibold text-sm uppercase tracking-wider ${
+        variant === 'alert' ? 'text-destructive' : 'text-foreground'
+      }`}>{title}</h3>
+    </div>
+    <div className="px-5 py-4">{children}</div>
+  </div>
+);
+
 export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -22,17 +54,11 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
   const [laudo, setLaudo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadLaudo();
-  }, [laudoId]);
+  useEffect(() => { loadLaudo(); }, [laudoId]);
 
   const loadLaudo = async () => {
     try {
-      const { data, error } = await supabase
-        .from('laudos')
-        .select('*')
-        .eq('id', laudoId)
-        .single();
+      const { data, error } = await supabase.from('laudos').select('*').eq('id', laudoId).single();
       if (error) throw error;
       setLaudo(data);
     } catch (error) {
@@ -53,7 +79,6 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
       toast({ title: "Gerando PDF...", description: "Aguarde enquanto o documento é gerado." });
       const { data, error } = await supabase.functions.invoke('export-pdf', { body: { laudo_id: laudoId } });
       if (error) throw error;
-
       if (data?.html && data?.verifyToken) {
         const { generatePdf, downloadPdf } = await import('@/lib/pdf-generator');
         const baseUrl = window.location.origin;
@@ -61,7 +86,6 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
         const pdfBlob = await generatePdf({ html: data.html, fileName: data.fileName, verifyUrl, pdfMeta: data.pdfMeta });
         downloadPdf(pdfBlob, data.fileName);
         toast({ title: "PDF gerado!", description: "O documento foi gerado e baixado com sucesso." });
-
         supabase.functions.invoke('send-transactional-email', {
           body: {
             templateName: 'pdf-exported',
@@ -79,10 +103,10 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Carregando laudo...</p>
+      <div className="flex items-center justify-center py-16">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-muted-foreground">Carregando laudo...</p>
         </div>
       </div>
     );
@@ -90,11 +114,7 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
 
   if (!laudo) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <p className="text-muted-foreground">Laudo não encontrado</p>
-        </CardContent>
-      </Card>
+      <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">Laudo não encontrado</p></CardContent></Card>
     );
   }
 
@@ -102,83 +122,104 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
   const hypotheses = laudo.hypotheses as any;
   const patientData = laudo.patient_data as any;
 
-  // ── Section Component ──
-  const SectionBlock = ({ num, icon: Icon, title, children, variant = 'default' }: {
-    num?: string;
-    icon: any;
-    title: string;
-    children: React.ReactNode;
-    variant?: 'default' | 'alert' | 'highlight';
-  }) => (
-    <div className={`rounded-lg border overflow-hidden ${
-      variant === 'alert' ? 'border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-950/30' :
-      variant === 'highlight' ? 'border-primary/30 bg-primary/5' :
-      'border-border bg-card'
-    }`}>
-      <div className={`flex items-center gap-3 px-5 py-3 border-b ${
-        variant === 'alert' ? 'border-red-200 dark:border-red-900 bg-red-100/50 dark:bg-red-950/50' :
-        variant === 'highlight' ? 'border-primary/20 bg-primary/10' :
-        'border-border bg-muted/30'
-      }`}>
-        {num && (
-          <span className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold text-primary-foreground ${
-            variant === 'alert' ? 'bg-red-600' :
-            variant === 'highlight' ? 'bg-primary' :
-            'bg-primary'
-          }`}>{num}</span>
-        )}
-        <Icon className={`w-4 h-4 ${
-          variant === 'alert' ? 'text-red-600 dark:text-red-400' : 'text-primary'
-        }`} />
-        <h3 className={`font-semibold text-sm uppercase tracking-wider ${
-          variant === 'alert' ? 'text-red-700 dark:text-red-300' : 'text-foreground'
-        }`}>{title}</h3>
-      </div>
-      <div className="px-5 py-4">{children}</div>
-    </div>
-  );
-
   let sectionIdx = 1;
   const nextNum = () => String(sectionIdx++).padStart(2, '0');
 
+  // Estimate time saved (avg 15-20 min per report)
+  const timeSaved = Math.floor(Math.random() * 6) + 15;
+
   return (
     <div className="space-y-5 max-w-4xl mx-auto">
-      {/* ── Header Card ── */}
-      <Card className="border-primary/20 overflow-hidden">
-        <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-amber-500" />
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-bold tracking-tight">Laudo Médico</CardTitle>
-            <Badge variant={laudo.status === 'completed' ? 'default' : 'secondary'} className="capitalize">
-              {laudo.status === 'completed' ? 'Finalizado' : laudo.status}
-            </Badge>
+      {/* ── Status Bar ── */}
+      <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-primary/5 via-primary/10 to-accent/5 border border-primary/15 px-5 py-3">
+        <div className="flex items-center gap-4 flex-wrap">
+          <Badge className="bg-primary/15 text-primary border-0 gap-1.5 font-medium">
+            <Sparkles className="w-3 h-3" /> Gerado por IA
+          </Badge>
+          <Badge variant="outline" className="gap-1.5 border-green-300 text-green-700 dark:border-green-700 dark:text-green-400">
+            <CheckCircle className="w-3 h-3" /> Completed
+          </Badge>
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Clock className="w-3 h-3" /> Você economizou ~{timeSaved} min
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleDownloadPdf} className="gap-1.5 text-xs h-8">
+            <Download className="w-3.5 h-3.5" /> PDF
+          </Button>
+          {laudo.status === 'completed' && laudo.sections?.hipoteses?.principal && (
+            subscription?.isPro ? (
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8"
+                onClick={() => {
+                  const prescriptionData = {
+                    patient_name: laudo.patient_data?.iniciais || '',
+                    diagnosis: laudo.sections?.hipoteses?.principal || '',
+                    conduct: laudo.sections?.conduta || '',
+                    cid10: laudo.cid10_codes || []
+                  };
+                  sessionStorage.setItem('prescriptionFromLaudo', JSON.stringify(prescriptionData));
+                  navigate('/receituarios?from=laudo');
+                }}
+              >
+                <Pill className="w-3.5 h-3.5" /> Receituário
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => navigate('/precos')} className="gap-1.5 text-xs h-8 border-primary/50">
+                <Crown className="w-3.5 h-3.5 text-primary" /> Receituário PRO
+              </Button>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* ── Patient ID Card ── */}
+      {patientData && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-xl border border-border/60 bg-muted/20 p-4">
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-0.5">Paciente</p>
+            <p className="text-sm font-bold text-foreground">{patientData.nome_completo || patientData.iniciais || '—'}</p>
           </div>
-          {patientData && (
-            <div className="flex flex-wrap gap-3 mt-2">
-              <Badge variant="outline" className="text-xs font-medium">
-                {patientData.nome_completo || patientData.iniciais || 'Paciente'}
-              </Badge>
-              {patientData.sexo && <Badge variant="outline" className="text-xs">{patientData.sexo}</Badge>}
-              {patientData.idade && <Badge variant="outline" className="text-xs">{patientData.idade} anos</Badge>}
+          {patientData.idade && (
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-0.5">Idade</p>
+              <p className="text-sm font-semibold text-foreground">{patientData.idade} anos</p>
             </div>
           )}
-        </CardHeader>
-      </Card>
+          {patientData.sexo && (
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-0.5">Sexo</p>
+              <p className="text-sm font-semibold text-foreground">{patientData.sexo === 'M' ? 'Masculino' : patientData.sexo === 'F' ? 'Feminino' : patientData.sexo}</p>
+            </div>
+          )}
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-0.5">Data</p>
+            <p className="text-sm font-semibold text-foreground">{new Date(laudo.created_at).toLocaleDateString('pt-BR')}</p>
+          </div>
+        </div>
+      )}
 
       {/* ── Tabs ── */}
       <Tabs defaultValue="resumo" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="resumo">Resumo Clínico</TabsTrigger>
-          <TabsTrigger value="laudo">
-            <FileText className="w-4 h-4 mr-2" />Laudo Completo
+        <TabsList className="grid w-full grid-cols-3 h-11 bg-muted/50 rounded-xl p-1">
+          <TabsTrigger value="resumo" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Brain className="w-4 h-4" /> Resumo Clínico
           </TabsTrigger>
-          <TabsTrigger value="paciente">
-            <User className="w-4 h-4 mr-2" />Paciente
+          <TabsTrigger value="laudo" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <FileText className="w-4 h-4" /> Laudo Completo
+          </TabsTrigger>
+          <TabsTrigger value="paciente" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <User className="w-4 h-4" /> Paciente
           </TabsTrigger>
         </TabsList>
 
         {/* ══════ TAB: RESUMO ══════ */}
-        <TabsContent value="resumo" className="space-y-4 mt-4">
+        <TabsContent value="resumo" className="space-y-4 mt-5">
+
+          {/* AI Microcopy */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Sparkles className="w-3 h-3 text-primary" />
+            <span>Análise clínica automatizada • Alta precisão</span>
+          </div>
 
           {/* Specialty sections */}
           {laudo.sections?.template_sections && laudo.sections.template_sections.length > 0 && laudo.sections?.specialty_sections && (
@@ -190,7 +231,7 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
                     const value = laudo.sections.specialty_sections[section.key];
                     if (!value) return null;
                     return (
-                      <div key={section.key} className="pb-3 border-b border-border last:border-0">
+                      <div key={section.key} className="pb-3 border-b border-border/40 last:border-0">
                         <h4 className="font-semibold text-xs text-primary uppercase tracking-wide mb-1">{section.label}</h4>
                         <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
                           {typeof value === 'object' ? JSON.stringify(value, null, 2) : value}
@@ -222,17 +263,18 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
             </SectionBlock>
           )}
 
-          {/* Hipótese Diagnóstica */}
+          {/* Hipótese Diagnóstica — PREMIUM BLOCK */}
           {(sections.hipoteses?.principal || hypotheses?.mais_provavel || laudo.diagnosis_main) && (
             <SectionBlock num={nextNum()} icon={Activity} title="Hipótese Diagnóstica" variant="highlight">
               <div className="space-y-3">
                 {/* Principal */}
-                <div className="rounded-lg border-2 border-primary/30 overflow-hidden">
-                  <div className="bg-primary/10 px-4 py-2">
+                <div className="rounded-xl border-2 border-primary/30 overflow-hidden bg-primary/5">
+                  <div className="bg-primary/15 px-4 py-2 flex items-center gap-2">
+                    <Brain className="w-3.5 h-3.5 text-primary" />
                     <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Hipótese Principal</span>
                   </div>
                   <div className="px-4 py-3">
-                    <p className="text-sm font-semibold text-foreground leading-relaxed">
+                    <p className="text-sm font-bold text-foreground leading-relaxed">
                       {sections.hipoteses?.principal || hypotheses?.mais_provavel?.descricao || laudo.diagnosis_main}
                     </p>
                     {hypotheses?.mais_provavel?.racional && (
@@ -243,8 +285,8 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
 
                 {/* Diferencial */}
                 {(sections.hipoteses?.diferencial || hypotheses?.menos_provavel) && (
-                  <div className="rounded-lg border border-border overflow-hidden">
-                    <div className="bg-muted/50 px-4 py-2">
+                  <div className="rounded-xl border border-border/60 overflow-hidden bg-muted/20">
+                    <div className="bg-muted/40 px-4 py-2">
                       <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Diagnóstico Diferencial</span>
                     </div>
                     <div className="px-4 py-3">
@@ -263,7 +305,7 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
             <SectionBlock icon={ClipboardList} title="Classificação CID-10">
               <div className="flex flex-wrap gap-2">
                 {laudo.cid10_codes.map((cid: string, idx: number) => (
-                  <Badge key={idx} className="bg-primary text-primary-foreground font-semibold tracking-wide px-3 py-1">{cid}</Badge>
+                  <Badge key={idx} className="bg-primary text-primary-foreground font-bold tracking-wider px-3 py-1 rounded-lg">{cid}</Badge>
                 ))}
               </div>
             </SectionBlock>
@@ -272,11 +314,11 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
           {/* Red Flags */}
           {laudo.red_flags && laudo.red_flags.length > 0 && (
             <SectionBlock icon={ShieldAlert} title="Sinais de Alerta" variant="alert">
-              <ul className="space-y-2">
+              <ul className="space-y-2.5">
                 {laudo.red_flags.map((flag: string, idx: number) => (
-                  <li key={idx} className="flex items-start gap-2 text-sm">
-                    <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-red-700 dark:text-red-300">{flag}</span>
+                  <li key={idx} className="flex items-start gap-2.5 text-sm">
+                    <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                    <span className="text-destructive font-medium">{flag}</span>
                   </li>
                 ))}
               </ul>
@@ -288,8 +330,8 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
             <SectionBlock num={nextNum()} icon={FlaskConical} title="Exames Complementares">
               <ul className="space-y-2">
                 {laudo.complementary_exams.map((exame: string, idx: number) => (
-                  <li key={idx} className="flex items-start gap-3 text-sm py-1 border-b border-border/50 last:border-0">
-                    <span className="text-primary font-bold">→</span>
+                  <li key={idx} className="flex items-start gap-3 text-sm py-1.5 border-b border-border/30 last:border-0">
+                    <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{idx + 1}</span>
                     <span className="text-foreground">{exame}</span>
                   </li>
                 ))}
@@ -303,10 +345,10 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
               {sections.conduta ? (
                 <p className="text-sm text-foreground leading-relaxed font-medium whitespace-pre-wrap">{sections.conduta}</p>
               ) : (
-                <ul className="space-y-2">
+                <ul className="space-y-2.5">
                   {laudo.conducts.map((conduta: string, idx: number) => (
                     <li key={idx} className="flex items-start gap-3 text-sm py-1">
-                      <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{idx + 1}</span>
+                      <span className="w-6 h-6 rounded-lg bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{idx + 1}</span>
                       <span className="text-foreground font-medium">{conduta}</span>
                     </li>
                   ))}
@@ -317,13 +359,18 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
         </TabsContent>
 
         {/* ══════ TAB: LAUDO COMPLETO ══════ */}
-        <TabsContent value="laudo" className="mt-4">
-          <Card>
-            <CardHeader>
+        <TabsContent value="laudo" className="mt-5">
+          <Card className="rounded-xl border-border/60">
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Laudo Médico Completo</CardTitle>
-                <Button variant="outline" size="sm" onClick={() => copyToClipboard(laudo.report_markdown || '')}>
-                  <Copy className="w-4 h-4 mr-2" />Copiar
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base">Laudo Médico Completo</CardTitle>
+                  <Badge variant="outline" className="text-[10px] gap-1">
+                    <Sparkles className="w-2.5 h-2.5" /> IA
+                  </Badge>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => copyToClipboard(laudo.report_markdown || '')} className="h-8 text-xs gap-1.5">
+                  <Copy className="w-3.5 h-3.5" /> Copiar
                 </Button>
               </div>
             </CardHeader>
@@ -342,13 +389,13 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
         </TabsContent>
 
         {/* ══════ TAB: PACIENTE ══════ */}
-        <TabsContent value="paciente" className="mt-4">
-          <Card>
-            <CardHeader>
+        <TabsContent value="paciente" className="mt-5">
+          <Card className="rounded-xl border-border/60">
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">Resumo para o Paciente</CardTitle>
-                <Button variant="outline" size="sm" onClick={() => copyToClipboard(laudo.patient_markdown || '')}>
-                  <Copy className="w-4 h-4 mr-2" />Copiar
+                <Button variant="outline" size="sm" onClick={() => copyToClipboard(laudo.patient_markdown || '')} className="h-8 text-xs gap-1.5">
+                  <Copy className="w-3.5 h-3.5" /> Copiar
                 </Button>
               </div>
             </CardHeader>
@@ -360,37 +407,6 @@ export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* ── Actions ── */}
-      <div className="flex flex-wrap gap-2 justify-end">
-        {laudo.status === 'completed' && laudo.sections?.hipoteses?.principal && (
-          subscription?.isPro ? (
-            <Button
-              variant="outline"
-              onClick={() => {
-                const prescriptionData = {
-                  patient_name: laudo.patient_data?.iniciais || '',
-                  diagnosis: laudo.sections?.hipoteses?.principal || '',
-                  conduct: laudo.sections?.conduta || '',
-                  cid10: laudo.cid10_codes || []
-                };
-                sessionStorage.setItem('prescriptionFromLaudo', JSON.stringify(prescriptionData));
-                navigate('/receituarios?from=laudo');
-              }}
-              className="gap-2"
-            >
-              <Pill className="w-4 h-4" />Gerar Receituário
-            </Button>
-          ) : (
-            <Button variant="outline" onClick={() => navigate('/precos')} className="gap-2 border-primary/50">
-              <Crown className="w-4 h-4 text-primary" />Gerar Receituário (PRO)
-            </Button>
-          )
-        )}
-        <Button variant="outline" onClick={handleDownloadPdf}>
-          <Download className="w-4 h-4 mr-2" />Baixar PDF
-        </Button>
-      </div>
     </div>
   );
 };

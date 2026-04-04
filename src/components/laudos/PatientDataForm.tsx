@@ -1,37 +1,29 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Save } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Save, ChevronDown, ChevronUp, User, Heart, Pill, AlertTriangle } from 'lucide-react';
 import { useDebounce } from '@/hooks/use-debounce';
 import { z } from 'zod';
-import { toast } from 'sonner';
-
-// Validation schemas for patient medical data
-const vitalSignsSchema = z.object({
-  PA: z.string().regex(/^\d{2,3}\/\d{2,3}$/).optional().or(z.literal('')),
-  FC: z.number().int().min(30).max(250).optional().or(z.literal('')),
-  FR: z.number().int().min(8).max(60).optional().or(z.literal('')),
-  Temp: z.string().regex(/^\d{2}\.\d$/).optional().or(z.literal('')),
-  SpO2: z.string().regex(/^\d{2,3}%?$/).optional().or(z.literal(''))
-});
 
 const patientDataSchema = z.object({
-  iniciais: z.string().max(10, "Iniciais muito longas").optional().or(z.literal('')),
+  iniciais: z.string().max(10).optional().or(z.literal('')),
   idade: z.union([
     z.string().refine((val) => {
-      if (val === '') return true; // Allow empty
+      if (val === '') return true;
       const num = parseInt(val);
       return !isNaN(num) && num >= 0 && num <= 120;
     }, { message: "Idade deve estar entre 0 e 120 anos" }),
     z.number().int().min(0).max(120)
   ]).optional(),
   sexo: z.string().optional().or(z.literal('')),
-  especialidade: z.string().max(100, "Especialidade muito longa").optional().or(z.literal('')),
-  queixa_principal: z.string().max(1000, "Queixa principal muito longa").optional().or(z.literal(''))
+  especialidade: z.string().max(100).optional().or(z.literal('')),
+  queixa_principal: z.string().max(1000).optional().or(z.literal(''))
 });
 
 interface PatientData {
@@ -78,7 +70,9 @@ export const PatientDataForm = ({
     ...initialData,
   });
 
-  // Sync external initialData changes (e.g. from embedded bridge)
+  const [isOpen, setIsOpen] = useState(true);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
   useEffect(() => {
     if (initialData) {
       setData(prev => ({ ...prev, ...initialData }));
@@ -91,7 +85,6 @@ export const PatientDataForm = ({
 
   useEffect(() => {
     if (autoSave && onDataChange && debouncedData) {
-      // Validate before saving
       const result = patientDataSchema.safeParse(debouncedData);
       if (result.success) {
         onDataChange(debouncedData);
@@ -105,176 +98,132 @@ export const PatientDataForm = ({
 
   const handleChange = (field: string, value: any) => {
     setData(prev => ({ ...prev, [field]: value }));
-    // Clear validation errors when user types
     setValidationErrors([]);
   };
 
   const handleVitalChange = (vital: string, value: string) => {
     setData(prev => ({
       ...prev,
-      sinais_vitais: {
-        ...prev.sinais_vitais,
-        [vital]: value,
-      },
+      sinais_vitais: { ...prev.sinais_vitais, [vital]: value },
     }));
   };
 
+  const filledCount = [data.iniciais, data.sexo, data.idade, data.queixa_principal].filter(Boolean).length;
+
   return (
-    <Card className="h-full">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Dados do Paciente</CardTitle>
-          <div className="flex items-center gap-2">
-            {validationErrors.length > 0 && (
-              <Badge variant="destructive" className="text-xs">
-                {validationErrors.length} erro(s)
-              </Badge>
-            )}
-            {lastSaved && validationErrors.length === 0 && (
-              <Badge variant="outline" className="flex items-center gap-2">
-                <Save className="w-3 h-3" />
-                Salvo {lastSaved.toLocaleTimeString()}
-              </Badge>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <Label htmlFor="iniciais">Iniciais</Label>
-            <Input
-              id="iniciais"
-              value={data.iniciais}
-              onChange={(e) => handleChange('iniciais', e.target.value)}
-              placeholder="Ex: M.M."
-              maxLength={10}
-            />
-          </div>
-          <div>
-            <Label htmlFor="sexo">Sexo</Label>
-            <Select value={data.sexo} onValueChange={(v) => handleChange('sexo', v)}>
-              <SelectTrigger id="sexo">
-                <SelectValue placeholder="Selecione" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="F">Feminino</SelectItem>
-                <SelectItem value="M">Masculino</SelectItem>
-                <SelectItem value="Outro">Outro</SelectItem>
-                <SelectItem value="Não informado">Não informado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="idade">Idade</Label>
-            <Input
-              id="idade"
-              type="number"
-              value={data.idade}
-              onChange={(e) => handleChange('idade', e.target.value)}
-              placeholder="Ex: 37"
-            />
-          </div>
-        </div>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Card className="border-border/60 shadow-sm overflow-hidden">
+        <CollapsibleTrigger asChild>
+          <button className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <User className="w-4 h-4 text-primary" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-semibold text-foreground">Dados do Paciente</p>
+                <p className="text-xs text-muted-foreground">{filledCount}/4 campos preenchidos</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {validationErrors.length > 0 && (
+                <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{validationErrors.length} erro(s)</Badge>
+              )}
+              {lastSaved && validationErrors.length === 0 && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
+                  <Save className="w-2.5 h-2.5" /> Salvo
+                </Badge>
+              )}
+              {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+            </div>
+          </button>
+        </CollapsibleTrigger>
 
-        <div>
-          <Label htmlFor="especialidade">Especialidade</Label>
-          <Input
-            id="especialidade"
-            value={data.especialidade}
-            onChange={(e) => handleChange('especialidade', e.target.value)}
-            placeholder="Ex: Clínica Médica"
-          />
-        </div>
+        <CollapsibleContent>
+          <CardContent className="pt-0 pb-4 px-5 space-y-3">
+            {/* Core fields */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label htmlFor="iniciais" className="text-xs text-muted-foreground">Iniciais</Label>
+                <Input id="iniciais" value={data.iniciais} onChange={(e) => handleChange('iniciais', e.target.value)} placeholder="M.M." maxLength={10} className="h-9 text-sm" />
+              </div>
+              <div>
+                <Label htmlFor="sexo" className="text-xs text-muted-foreground">Sexo</Label>
+                <Select value={data.sexo} onValueChange={(v) => handleChange('sexo', v)}>
+                  <SelectTrigger id="sexo" className="h-9 text-sm"><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="F">Feminino</SelectItem>
+                    <SelectItem value="M">Masculino</SelectItem>
+                    <SelectItem value="Outro">Outro</SelectItem>
+                    <SelectItem value="Não informado">N/I</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="idade" className="text-xs text-muted-foreground">Idade</Label>
+                <Input id="idade" type="number" value={data.idade} onChange={(e) => handleChange('idade', e.target.value)} placeholder="37" className="h-9 text-sm" />
+              </div>
+            </div>
 
-        <div>
-          <Label htmlFor="queixa">Queixa Principal</Label>
-          <Textarea
-            id="queixa"
-            value={data.queixa_principal}
-            onChange={(e) => handleChange('queixa_principal', e.target.value)}
-            placeholder="Ex: Dor torácica intermitente há 2 dias"
-            rows={2}
-          />
-        </div>
+            <div>
+              <Label htmlFor="queixa" className="text-xs text-muted-foreground">Queixa Principal</Label>
+              <Textarea id="queixa" value={data.queixa_principal} onChange={(e) => handleChange('queixa_principal', e.target.value)} placeholder="Dor torácica intermitente há 2 dias" rows={2} className="text-sm resize-none" />
+            </div>
 
-        <div>
-          <Label className="mb-2 block">Sinais Vitais</Label>
-          <div className="grid grid-cols-5 gap-2">
-            <Input
-              placeholder="PA"
-              value={data.sinais_vitais.PA || ''}
-              onChange={(e) => handleVitalChange('PA', e.target.value)}
-            />
-            <Input
-              placeholder="FC"
-              type="number"
-              value={data.sinais_vitais.FC || ''}
-              onChange={(e) => handleVitalChange('FC', e.target.value)}
-            />
-            <Input
-              placeholder="FR"
-              type="number"
-              value={data.sinais_vitais.FR || ''}
-              onChange={(e) => handleVitalChange('FR', e.target.value)}
-            />
-            <Input
-              placeholder="Temp"
-              value={data.sinais_vitais.Temp || ''}
-              onChange={(e) => handleVitalChange('Temp', e.target.value)}
-            />
-            <Input
-              placeholder="SpO2"
-              value={data.sinais_vitais.SpO2 || ''}
-              onChange={(e) => handleVitalChange('SpO2', e.target.value)}
-            />
-          </div>
-        </div>
+            {/* Expandable details */}
+            <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-foreground gap-1.5 h-8">
+                  {detailsOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  {detailsOpen ? 'Menos detalhes' : 'Mais detalhes (sinais vitais, medicações...)'}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-3 pt-2">
+                <div>
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                    <Heart className="w-3 h-3" /> Sinais Vitais
+                  </Label>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    <Input placeholder="PA" value={data.sinais_vitais.PA || ''} onChange={(e) => handleVitalChange('PA', e.target.value)} className="h-8 text-xs" />
+                    <Input placeholder="FC" type="number" value={data.sinais_vitais.FC || ''} onChange={(e) => handleVitalChange('FC', e.target.value)} className="h-8 text-xs" />
+                    <Input placeholder="FR" type="number" value={data.sinais_vitais.FR || ''} onChange={(e) => handleVitalChange('FR', e.target.value)} className="h-8 text-xs" />
+                    <Input placeholder="Temp" value={data.sinais_vitais.Temp || ''} onChange={(e) => handleVitalChange('Temp', e.target.value)} className="h-8 text-xs" />
+                    <Input placeholder="SpO2" value={data.sinais_vitais.SpO2 || ''} onChange={(e) => handleVitalChange('SpO2', e.target.value)} className="h-8 text-xs" />
+                  </div>
+                </div>
 
-        <div>
-          <Label htmlFor="medicacoes">Medicações em Uso</Label>
-          <Textarea
-            id="medicacoes"
-            value={data.medicacoes.join('\n')}
-            onChange={(e) => handleChange('medicacoes', e.target.value.split('\n').filter(Boolean))}
-            placeholder="Uma medicação por linha"
-            rows={3}
-          />
-        </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                    <Pill className="w-3 h-3" /> Medicações
+                  </Label>
+                  <Textarea value={data.medicacoes.join('\n')} onChange={(e) => handleChange('medicacoes', e.target.value.split('\n').filter(Boolean))} placeholder="Uma por linha" rows={2} className="text-xs resize-none" />
+                </div>
 
-        <div>
-          <Label htmlFor="alergias">Alergias</Label>
-          <Textarea
-            id="alergias"
-            value={data.alergias.join('\n')}
-            onChange={(e) => handleChange('alergias', e.target.value.split('\n').filter(Boolean))}
-            placeholder="Uma alergia por linha"
-            rows={2}
-          />
-        </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                    <AlertTriangle className="w-3 h-3" /> Alergias
+                  </Label>
+                  <Textarea value={data.alergias.join('\n')} onChange={(e) => handleChange('alergias', e.target.value.split('\n').filter(Boolean))} placeholder="Uma por linha" rows={2} className="text-xs resize-none" />
+                </div>
 
-        <div>
-          <Label htmlFor="contexto">Contexto Clínico</Label>
-          <Textarea
-            id="contexto"
-            value={data.contexto_clinico}
-            onChange={(e) => handleChange('contexto_clinico', e.target.value)}
-            placeholder="Ex: Sedentária, histórico familiar de DAC"
-            rows={2}
-          />
-        </div>
+                <div>
+                  <Label htmlFor="contexto" className="text-xs text-muted-foreground">Contexto Clínico</Label>
+                  <Textarea id="contexto" value={data.contexto_clinico} onChange={(e) => handleChange('contexto_clinico', e.target.value)} placeholder="Sedentária, histórico familiar de DAC" rows={2} className="text-xs resize-none" />
+                </div>
 
-        <div>
-          <Label htmlFor="historico">Histórico</Label>
-          <Textarea
-            id="historico"
-            value={data.historico}
-            onChange={(e) => handleChange('historico', e.target.value)}
-            placeholder="Ex: HAS controlada"
-            rows={2}
-          />
-        </div>
-      </CardContent>
-    </Card>
+                <div>
+                  <Label htmlFor="historico" className="text-xs text-muted-foreground">Histórico</Label>
+                  <Textarea id="historico" value={data.historico} onChange={(e) => handleChange('historico', e.target.value)} placeholder="HAS controlada" rows={2} className="text-xs resize-none" />
+                </div>
+
+                <div>
+                  <Label htmlFor="especialidade" className="text-xs text-muted-foreground">Especialidade</Label>
+                  <Input id="especialidade" value={data.especialidade} onChange={(e) => handleChange('especialidade', e.target.value)} placeholder="Clínica Médica" className="h-9 text-sm" />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 };
