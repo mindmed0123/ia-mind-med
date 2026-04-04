@@ -988,15 +988,14 @@ const NovoLaudo = () => {
         )}
       </div>
     </div>
-
-      <FirstLaudoSuccess
-        open={showFirstLaudoSuccess}
-        onClose={() => setShowFirstLaudoSuccess(false)}
-        onUpgrade={() => {
-          setShowFirstLaudoSuccess(false);
-          navigate("/precos");
-        }}
-      />
+    <FirstLaudoSuccess
+      open={showFirstLaudoSuccess}
+      onClose={() => setShowFirstLaudoSuccess(false)}
+      onUpgrade={() => {
+        setShowFirstLaudoSuccess(false);
+        navigate("/precos");
+      }}
+    />
     </>
   );
 };
