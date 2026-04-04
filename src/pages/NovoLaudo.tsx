@@ -997,7 +997,7 @@ const NovoLaudo = () => {
           navigate("/precos");
         }}
       />
-    </div>
+    </>
   );
 };
 
