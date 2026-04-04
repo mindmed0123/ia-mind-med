@@ -250,8 +250,15 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
                   <div className="flex items-center gap-2">
                     {getFileIcon(exam.file_type)}
                     <span className="text-sm font-medium truncate max-w-[200px]">{exam.file_name}</span>
-                    {exam.analyzing && <Badge variant="outline"><Loader2 className="w-3 h-3 animate-spin mr-1" />Analisando</Badge>}
-                    {exam.analyzed_at && !exam.analyzing && <Badge variant="secondary">Analisado</Badge>}
+                    {exam.analyzing && (
+                      <Badge variant="outline" className="animate-pulse">
+                        <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                        Analisando com IA...
+                      </Badge>
+                    )}
+                    {exam.analyzed_at && !exam.analyzing && (
+                      <Badge variant="secondary" className="animate-fade-in">✅ Analisado</Badge>
+                    )}
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => window.open(exam.file_url, '_blank')}>
