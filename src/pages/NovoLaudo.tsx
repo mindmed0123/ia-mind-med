@@ -750,19 +750,12 @@ const NovoLaudo = () => {
               Paciente: {laudo.patient_data.nome_completo} ({laudo.patient_data.iniciais})
             </p>
           )}
-          <p className="text-muted-foreground mt-1">
-            {STAGE_LABELS[pipelineStage]}
-          </p>
+          {!isProcessing && (
+            <p className="text-muted-foreground mt-1">
+              {STAGE_LABELS[pipelineStage]}
+            </p>
+          )}
         </div>
-
-        {isProcessing && (
-          <SmartProgress
-            stage={getSmartStage()}
-            onRetry={retryTranscription}
-            isRetrying={isSubmitting}
-            className="mb-6"
-          />
-        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1 space-y-4">
