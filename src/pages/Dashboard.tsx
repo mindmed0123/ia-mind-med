@@ -13,7 +13,7 @@ import { QuotaDisplay } from "@/components/quota/QuotaDisplay";
 import { ProductivityMetrics } from "@/components/dashboard/ProductivityMetrics";
 import { LaudoHistory } from "@/components/dashboard/LaudoHistory";
 import { UpgradeBanner } from "@/components/upgrade/UpgradeBanner";
-import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { InstantWelcome } from "@/components/onboarding/InstantWelcome";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
