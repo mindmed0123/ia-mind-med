@@ -335,7 +335,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
 
           {/* Exames Complementares */}
           {laudo.complementary_exams && laudo.complementary_exams.length > 0 && (
-            <SectionBlock num={nextNum()} icon={FlaskConical} title="Exames Complementares">
+            <SectionBlock num={nextNum()} icon={FlaskConical} title="Exames Complementares" delay={350}>
               <ul className="space-y-2">
                 {laudo.complementary_exams.map((exame: string, idx: number) => (
                   <li key={idx} className="flex items-start gap-3 text-sm py-1.5 border-b border-border/30 last:border-0">
