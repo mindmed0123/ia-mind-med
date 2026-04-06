@@ -349,7 +349,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
 
           {/* Conduta */}
           {(laudo.conducts?.length > 0 || sections.conduta) && (
-            <SectionBlock num={nextNum()} icon={ClipboardList} title="Conduta" variant="highlight">
+            <SectionBlock num={nextNum()} icon={ClipboardList} title="Conduta" variant="highlight" delay={400}>
               {sections.conduta ? (
                 <p className="text-sm text-foreground leading-relaxed font-medium whitespace-pre-wrap">{sections.conduta}</p>
               ) : (
