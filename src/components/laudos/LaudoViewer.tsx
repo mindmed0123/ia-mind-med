@@ -273,7 +273,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
 
           {/* Hipótese Diagnóstica — PREMIUM BLOCK */}
           {(sections.hipoteses?.principal || hypotheses?.mais_provavel || laudo.diagnosis_main) && (
-            <SectionBlock num={nextNum()} icon={Activity} title="Hipótese Diagnóstica" variant="highlight">
+            <SectionBlock num={nextNum()} icon={Activity} title="Hipótese Diagnóstica" variant="highlight" delay={200}>
               <div className="space-y-3">
                 {/* Principal */}
                 <div className="rounded-xl border-2 border-primary/30 overflow-hidden bg-primary/5">
