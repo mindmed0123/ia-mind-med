@@ -310,7 +310,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
 
           {/* CID-10 */}
           {laudo.cid10_codes && laudo.cid10_codes.length > 0 && (
-            <SectionBlock icon={ClipboardList} title="Classificação CID-10">
+            <SectionBlock icon={ClipboardList} title="Classificação CID-10" delay={250}>
               <div className="flex flex-wrap gap-2">
                 {laudo.cid10_codes.map((cid: string, idx: number) => (
                   <Badge key={idx} className="bg-primary text-primary-foreground font-bold tracking-wider px-3 py-1 rounded-lg">{cid}</Badge>
