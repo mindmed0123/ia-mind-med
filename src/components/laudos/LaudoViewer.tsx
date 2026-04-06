@@ -16,19 +16,23 @@ interface LaudoViewerProps {
   refreshKey?: number;
 }
 
-/* ── Reusable Section Block ── */
-const SectionBlock = ({ num, icon: Icon, title, children, variant = 'default' }: {
+/* ── Reusable Section Block with entrance animation ── */
+const SectionBlock = ({ num, icon: Icon, title, children, variant = 'default', delay = 0 }: {
   num?: string;
   icon: any;
   title: string;
   children: React.ReactNode;
   variant?: 'default' | 'alert' | 'highlight';
+  delay?: number;
 }) => (
-  <div className={`rounded-xl border overflow-hidden transition-all ${
-    variant === 'alert' ? 'border-destructive/30 bg-destructive/5' :
-    variant === 'highlight' ? 'border-primary/30 bg-primary/5' :
-    'border-border/60 bg-card'
-  }`}>
+  <div 
+    className={`rounded-xl border overflow-hidden transition-all animate-fade-in ${
+      variant === 'alert' ? 'border-destructive/30 bg-destructive/5' :
+      variant === 'highlight' ? 'border-primary/30 bg-primary/5' :
+      'border-border/60 bg-card'
+    }`}
+    style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
+  >
     <div className={`flex items-center gap-3 px-5 py-3 border-b ${
       variant === 'alert' ? 'border-destructive/20 bg-destructive/10' :
       variant === 'highlight' ? 'border-primary/20 bg-primary/10' :
