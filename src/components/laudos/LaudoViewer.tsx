@@ -48,14 +48,14 @@ const SectionBlock = ({ num, icon: Icon, title, children, variant = 'default' }:
   </div>
 );
 
-export const LaudoViewer = ({ laudoId }: LaudoViewerProps) => {
+export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { subscription } = useSubscription();
   const [laudo, setLaudo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { loadLaudo(); }, [laudoId]);
+  useEffect(() => { loadLaudo(); }, [laudoId, refreshKey]);
 
   const loadLaudo = async () => {
     try {
