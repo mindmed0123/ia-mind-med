@@ -231,7 +231,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
 
           {/* Specialty sections */}
           {laudo.sections?.template_sections && laudo.sections.template_sections.length > 0 && laudo.sections?.specialty_sections && (
-            <SectionBlock icon={Stethoscope} title="Seções da Especialidade">
+            <SectionBlock icon={Stethoscope} title="Seções da Especialidade" delay={50}>
               <div className="space-y-3">
                 {(laudo.sections.template_sections as any[])
                   .sort((a: any, b: any) => a.order - b.order)
