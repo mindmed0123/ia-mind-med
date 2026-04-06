@@ -125,8 +125,8 @@ export const SmartProgress = ({ stage, onRetry, onEmailFallback, isRetrying, cla
     setShowSlowWarning(false);
     setShowEmailOption(false);
 
-    const slowTimer = setTimeout(() => setShowSlowWarning(true), 8000);
-    const emailTimer = setTimeout(() => setShowEmailOption(true), 15000);
+    const slowTimer = setTimeout(() => setShowSlowWarning(true), 15000);
+    const emailTimer = setTimeout(() => setShowEmailOption(true), 30000);
 
     return () => {
       clearTimeout(slowTimer);

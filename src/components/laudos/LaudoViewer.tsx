@@ -128,8 +128,9 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
   let sectionIdx = 1;
   const nextNum = () => String(sectionIdx++).padStart(2, '0');
 
-  // Estimate time saved (avg 15-20 min per report)
-  const timeSaved = Math.floor(Math.random() * 6) + 15;
+  // Estimate time saved based on report length (deterministic, not random)
+  const reportLength = (laudo.report_markdown || '').length;
+  const timeSaved = Math.max(12, Math.min(25, Math.floor(reportLength / 200) + 12));
 
   return (
     <div className="space-y-5 max-w-4xl mx-auto">
