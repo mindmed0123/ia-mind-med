@@ -273,7 +273,7 @@ const NovoLaudo = () => {
       } catch (err) {
         console.error('Polling error:', err);
       }
-    }, 2000);
+    }, pollCountRef.current < 15 ? 1500 : 2500); // Faster polling in first 30s, then slower
   }, [stopPolling, handleLaudoUpdate, toast]);
 
   useEffect(() => {

@@ -75,11 +75,22 @@ export const PatientDataForm = ({
   const [isOpen, setIsOpen] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  // Sync from parent only when meaningful fields actually change
+  const initialDataKey = initialData ? JSON.stringify({
+    iniciais: initialData.iniciais,
+    nome_completo: initialData.nome_completo,
+    sexo: initialData.sexo,
+    idade: initialData.idade,
+    queixa_principal: initialData.queixa_principal,
+    medicacoes: initialData.medicacoes,
+    alergias: initialData.alergias,
+  }) : '';
+
   useEffect(() => {
     if (initialData) {
       setData(prev => ({ ...prev, ...initialData }));
     }
-  }, [initialData]);
+  }, [initialDataKey]);
 
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);

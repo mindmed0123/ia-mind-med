@@ -16,19 +16,23 @@ interface LaudoViewerProps {
   refreshKey?: number;
 }
 
-/* ── Reusable Section Block ── */
-const SectionBlock = ({ num, icon: Icon, title, children, variant = 'default' }: {
+/* ── Reusable Section Block with entrance animation ── */
+const SectionBlock = ({ num, icon: Icon, title, children, variant = 'default', delay = 0 }: {
   num?: string;
   icon: any;
   title: string;
   children: React.ReactNode;
   variant?: 'default' | 'alert' | 'highlight';
+  delay?: number;
 }) => (
-  <div className={`rounded-xl border overflow-hidden transition-all ${
-    variant === 'alert' ? 'border-destructive/30 bg-destructive/5' :
-    variant === 'highlight' ? 'border-primary/30 bg-primary/5' :
-    'border-border/60 bg-card'
-  }`}>
+  <div 
+    className={`rounded-xl border overflow-hidden transition-all animate-fade-in ${
+      variant === 'alert' ? 'border-destructive/30 bg-destructive/5' :
+      variant === 'highlight' ? 'border-primary/30 bg-primary/5' :
+      'border-border/60 bg-card'
+    }`}
+    style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
+  >
     <div className={`flex items-center gap-3 px-5 py-3 border-b ${
       variant === 'alert' ? 'border-destructive/20 bg-destructive/10' :
       variant === 'highlight' ? 'border-primary/20 bg-primary/10' :
@@ -58,6 +62,8 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
   useEffect(() => { loadLaudo(); }, [laudoId, refreshKey]);
 
   const loadLaudo = async () => {
+    // Only show full loading spinner on initial load, not on refreshKey updates
+    if (!laudo) setLoading(true);
     try {
       const { data, error } = await supabase.from('laudos').select('*').eq('id', laudoId).single();
       if (error) throw error;
@@ -126,8 +132,9 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
   let sectionIdx = 1;
   const nextNum = () => String(sectionIdx++).padStart(2, '0');
 
-  // Estimate time saved (avg 15-20 min per report)
-  const timeSaved = Math.floor(Math.random() * 6) + 15;
+  // Estimate time saved based on report length (deterministic, not random)
+  const reportLength = (laudo.report_markdown || '').length;
+  const timeSaved = Math.max(12, Math.min(25, Math.floor(reportLength / 200) + 12));
 
   return (
     <div className="space-y-5 max-w-4xl mx-auto">
@@ -224,7 +231,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
 
           {/* Specialty sections */}
           {laudo.sections?.template_sections && laudo.sections.template_sections.length > 0 && laudo.sections?.specialty_sections && (
-            <SectionBlock icon={Stethoscope} title="Seções da Especialidade">
+            <SectionBlock icon={Stethoscope} title="Seções da Especialidade" delay={50}>
               <div className="space-y-3">
                 {(laudo.sections.template_sections as any[])
                   .sort((a: any, b: any) => a.order - b.order)
@@ -246,7 +253,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
 
           {/* Anamnese */}
           {(sections.queixa || sections.hda || laudo.summary?.resumo_clinico) && (
-            <SectionBlock num={nextNum()} icon={Stethoscope} title="Anamnese">
+            <SectionBlock num={nextNum()} icon={Stethoscope} title="Anamnese" delay={100}>
               <div className="space-y-4">
                 {sections.queixa && (
                   <div>
@@ -266,7 +273,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
 
           {/* Hipótese Diagnóstica — PREMIUM BLOCK */}
           {(sections.hipoteses?.principal || hypotheses?.mais_provavel || laudo.diagnosis_main) && (
-            <SectionBlock num={nextNum()} icon={Activity} title="Hipótese Diagnóstica" variant="highlight">
+            <SectionBlock num={nextNum()} icon={Activity} title="Hipótese Diagnóstica" variant="highlight" delay={200}>
               <div className="space-y-3">
                 {/* Principal */}
                 <div className="rounded-xl border-2 border-primary/30 overflow-hidden bg-primary/5">
@@ -303,7 +310,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
 
           {/* CID-10 */}
           {laudo.cid10_codes && laudo.cid10_codes.length > 0 && (
-            <SectionBlock icon={ClipboardList} title="Classificação CID-10">
+            <SectionBlock icon={ClipboardList} title="Classificação CID-10" delay={250}>
               <div className="flex flex-wrap gap-2">
                 {laudo.cid10_codes.map((cid: string, idx: number) => (
                   <Badge key={idx} className="bg-primary text-primary-foreground font-bold tracking-wider px-3 py-1 rounded-lg">{cid}</Badge>
@@ -314,7 +321,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
 
           {/* Red Flags */}
           {laudo.red_flags && laudo.red_flags.length > 0 && (
-            <SectionBlock icon={ShieldAlert} title="Sinais de Alerta" variant="alert">
+            <SectionBlock icon={ShieldAlert} title="Sinais de Alerta" variant="alert" delay={300}>
               <ul className="space-y-2.5">
                 {laudo.red_flags.map((flag: string, idx: number) => (
                   <li key={idx} className="flex items-start gap-2.5 text-sm">
@@ -328,7 +335,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
 
           {/* Exames Complementares */}
           {laudo.complementary_exams && laudo.complementary_exams.length > 0 && (
-            <SectionBlock num={nextNum()} icon={FlaskConical} title="Exames Complementares">
+            <SectionBlock num={nextNum()} icon={FlaskConical} title="Exames Complementares" delay={350}>
               <ul className="space-y-2">
                 {laudo.complementary_exams.map((exame: string, idx: number) => (
                   <li key={idx} className="flex items-start gap-3 text-sm py-1.5 border-b border-border/30 last:border-0">
@@ -342,7 +349,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
 
           {/* Conduta */}
           {(laudo.conducts?.length > 0 || sections.conduta) && (
-            <SectionBlock num={nextNum()} icon={ClipboardList} title="Conduta" variant="highlight">
+            <SectionBlock num={nextNum()} icon={ClipboardList} title="Conduta" variant="highlight" delay={400}>
               {sections.conduta ? (
                 <p className="text-sm text-foreground leading-relaxed font-medium whitespace-pre-wrap">{sections.conduta}</p>
               ) : (
