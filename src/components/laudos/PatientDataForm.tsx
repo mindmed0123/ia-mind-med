@@ -110,7 +110,7 @@ export const PatientDataForm = ({
     }));
   };
 
-  const filledCount = [data.iniciais, data.sexo, data.idade, data.queixa_principal].filter(Boolean).length;
+  const filledCount = [data.nome_completo || data.iniciais, data.sexo, data.idade, data.queixa_principal].filter(Boolean).length;
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
