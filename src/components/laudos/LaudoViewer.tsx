@@ -253,7 +253,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
 
           {/* Anamnese */}
           {(sections.queixa || sections.hda || laudo.summary?.resumo_clinico) && (
-            <SectionBlock num={nextNum()} icon={Stethoscope} title="Anamnese">
+            <SectionBlock num={nextNum()} icon={Stethoscope} title="Anamnese" delay={100}>
               <div className="space-y-4">
                 {sections.queixa && (
                   <div>
