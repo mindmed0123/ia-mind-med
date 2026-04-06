@@ -58,6 +58,8 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
   useEffect(() => { loadLaudo(); }, [laudoId, refreshKey]);
 
   const loadLaudo = async () => {
+    // Only show full loading spinner on initial load, not on refreshKey updates
+    if (!laudo) setLoading(true);
     try {
       const { data, error } = await supabase.from('laudos').select('*').eq('id', laudoId).single();
       if (error) throw error;
