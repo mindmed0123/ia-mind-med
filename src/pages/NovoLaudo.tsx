@@ -576,6 +576,7 @@ const NovoLaudo = () => {
         
         // Update local laudo state so LaudoViewer reflects changes immediately
         setLaudo((prev: any) => prev ? { ...prev, patient_data: merged } : prev);
+        setLaudoRefreshKey(k => k + 1);
       } catch (err) {
         console.error('Error saving patient data:', err);
       }
