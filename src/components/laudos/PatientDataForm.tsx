@@ -59,6 +59,7 @@ export const PatientDataForm = ({
 }: PatientDataFormProps) => {
   const [data, setData] = useState<PatientData>({
     iniciais: '',
+    nome_completo: '',
     sexo: '',
     idade: '',
     especialidade: '',
