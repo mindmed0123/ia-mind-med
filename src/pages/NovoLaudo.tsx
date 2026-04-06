@@ -906,6 +906,7 @@ const NovoLaudo = () => {
                 iniciais: initials,
                 nome_completo: patientName,
               }));
+              setLaudoRefreshKey(k => k + 1);
               loadLaudo();
             }}
           />
