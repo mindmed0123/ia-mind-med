@@ -13,6 +13,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 
 interface LaudoViewerProps {
   laudoId: string;
+  refreshKey?: number;
 }
 
 /* ── Reusable Section Block ── */
