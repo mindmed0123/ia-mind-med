@@ -142,6 +142,13 @@ export const PatientDataForm = ({
 
         <CollapsibleContent>
           <CardContent className="pt-0 pb-4 px-5 space-y-3">
+            {/* Patient name (from linking) */}
+            {data.nome_completo && (
+              <div>
+                <Label htmlFor="nome_completo" className="text-xs text-muted-foreground">Nome do Paciente</Label>
+                <Input id="nome_completo" value={data.nome_completo} onChange={(e) => handleChange('nome_completo', e.target.value)} className="h-9 text-sm font-medium" />
+              </div>
+            )}
             {/* Core fields */}
             <div className="grid grid-cols-3 gap-3">
               <div>
