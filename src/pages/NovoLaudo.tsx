@@ -62,6 +62,7 @@ const NovoLaudo = () => {
   const [patientLinked, setPatientLinked] = useState(false);
   const [showFirstLaudoSuccess, setShowFirstLaudoSuccess] = useState(false);
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
+  const [laudoRefreshKey, setLaudoRefreshKey] = useState(0);
   const transcriptRef = useRef(transcript);
   const patientDataRef = useRef(patientData);
 
@@ -558,15 +559,24 @@ const NovoLaudo = () => {
   };
 
   const handlePatientDataChange = async (data: any) => {
-    setPatientData(data);
+    // Preserve nome_completo from linked patient if form doesn't have it
+    const merged = {
+      ...data,
+      nome_completo: data.nome_completo || patientData?.nome_completo || laudo?.patient_data?.nome_completo || '',
+    };
+    setPatientData(merged);
     
-    // Persist patient data to the laudo record so PDF export picks it up
+    // Persist patient data to the laudo record so PDF export and LaudoViewer pick it up
     if (laudoId) {
       try {
         await supabase
           .from('laudos')
-          .update({ patient_data: data })
+          .update({ patient_data: merged })
           .eq('id', laudoId);
+        
+        // Update local laudo state so LaudoViewer reflects changes immediately
+        setLaudo((prev: any) => prev ? { ...prev, patient_data: merged } : prev);
+        setLaudoRefreshKey(k => k + 1);
       } catch (err) {
         console.error('Error saving patient data:', err);
       }
@@ -831,7 +841,7 @@ const NovoLaudo = () => {
                 </TabsList>
                 
                 <TabsContent value="viewer">
-                  <LaudoViewer laudoId={laudoId} />
+                  <LaudoViewer laudoId={laudoId} refreshKey={laudoRefreshKey} />
                 </TabsContent>
                 
                 <TabsContent value="editor">
@@ -896,6 +906,7 @@ const NovoLaudo = () => {
                 iniciais: initials,
                 nome_completo: patientName,
               }));
+              setLaudoRefreshKey(k => k + 1);
               loadLaudo();
             }}
           />
