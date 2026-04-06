@@ -321,7 +321,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
 
           {/* Red Flags */}
           {laudo.red_flags && laudo.red_flags.length > 0 && (
-            <SectionBlock icon={ShieldAlert} title="Sinais de Alerta" variant="alert">
+            <SectionBlock icon={ShieldAlert} title="Sinais de Alerta" variant="alert" delay={300}>
               <ul className="space-y-2.5">
                 {laudo.red_flags.map((flag: string, idx: number) => (
                   <li key={idx} className="flex items-start gap-2.5 text-sm">
