@@ -28,6 +28,7 @@ const patientDataSchema = z.object({
 
 interface PatientData {
   iniciais: string;
+  nome_completo?: string;
   sexo: string;
   idade: number | string;
   especialidade: string;

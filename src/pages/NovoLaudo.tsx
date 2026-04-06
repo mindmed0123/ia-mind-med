@@ -558,15 +558,23 @@ const NovoLaudo = () => {
   };
 
   const handlePatientDataChange = async (data: any) => {
-    setPatientData(data);
+    // Preserve nome_completo from linked patient if form doesn't have it
+    const merged = {
+      ...data,
+      nome_completo: data.nome_completo || patientData?.nome_completo || laudo?.patient_data?.nome_completo || '',
+    };
+    setPatientData(merged);
     
-    // Persist patient data to the laudo record so PDF export picks it up
+    // Persist patient data to the laudo record so PDF export and LaudoViewer pick it up
     if (laudoId) {
       try {
         await supabase
           .from('laudos')
-          .update({ patient_data: data })
+          .update({ patient_data: merged })
           .eq('id', laudoId);
+        
+        // Update local laudo state so LaudoViewer reflects changes immediately
+        setLaudo((prev: any) => prev ? { ...prev, patient_data: merged } : prev);
       } catch (err) {
         console.error('Error saving patient data:', err);
       }
