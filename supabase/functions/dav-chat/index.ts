@@ -160,9 +160,11 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error("DAV Chat error:", error);
+    const errorId = crypto.randomUUID();
+    console.error(`[${errorId}]`, error);
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "Erro desconhecido" 
+      error: "Erro ao processar sua mensagem. Tente novamente.",
+      error_id: errorId
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

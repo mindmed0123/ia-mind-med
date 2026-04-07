@@ -30,9 +30,7 @@ export const useQuota = () => {
         return;
       }
 
-      const { data, error } = await supabase.rpc('get_quota_status', {
-        p_user_id: user.id
-      });
+      const { data, error } = await supabase.rpc('get_quota_status' as any);
 
       if (error) throw error;
 
@@ -47,8 +45,7 @@ export const useQuota = () => {
         unlimited: result.unlimited,
         status: result.status
       });
-    } catch (error) {
-      console.error('Erro ao buscar status de quota:', error);
+    } catch (_error) {
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar informações do plano.',
@@ -64,9 +61,7 @@ export const useQuota = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
 
-      const { data, error } = await supabase.rpc('check_and_consume_quota', {
-        p_user_id: user.id
-      });
+      const { data, error } = await supabase.rpc('check_and_consume_quota' as any);
 
       if (error) throw error;
 
@@ -89,11 +84,9 @@ export const useQuota = () => {
         return false;
       }
 
-      // Atualizar status local
       await fetchQuotaStatus();
       return true;
-    } catch (error) {
-      console.error('Erro ao consumir quota:', error);
+    } catch (_error) {
       toast({
         title: 'Erro',
         description: 'Não foi possível processar a operação.',
