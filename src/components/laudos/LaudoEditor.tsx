@@ -317,7 +317,8 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
             },
           },
         }).catch(() => {});
-      } catch (error: any) {
+      }
+    } catch (error: any) {
         toast({
           title: "Erro ao gerar PDF",
           description: error.message,

@@ -223,7 +223,8 @@ const NovoLaudo = () => {
                   },
                 },
               }).catch(() => {});
-            } catch (_err) {
+            }
+          } catch (_err) {
             }
         })();
       }
