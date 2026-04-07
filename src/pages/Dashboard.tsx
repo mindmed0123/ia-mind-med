@@ -89,6 +89,7 @@ const Dashboard = () => {
           Authorization: `Bearer ${accessToken}`,
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
+      }).catch(() => {});
     } catch (error: any) {
       const status = error?.context?.status || error?.status;
       const body = error?.context?.body ?? error?.body;
