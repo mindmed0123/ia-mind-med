@@ -64,7 +64,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             templateData: { doctorName: fullName },
           },
         }).catch(() => {});
-      
+      }
       return { error };
     } catch (error: any) {
       return { error };
