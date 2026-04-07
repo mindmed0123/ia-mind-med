@@ -217,7 +217,6 @@ export default function Admin() {
       setRecentLaudos(formattedLaudos);
 
     } catch (error) {
-      console.error("Admin data error:", error);
       toast.error("Erro ao carregar dados");
     } finally {
       setLoading(false);

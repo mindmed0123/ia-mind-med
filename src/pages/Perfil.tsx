@@ -83,7 +83,6 @@ export default function Perfil() {
         });
       }
     } catch (error) {
-      console.error('Erro ao carregar perfil:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar seus dados',

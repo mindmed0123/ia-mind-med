@@ -42,7 +42,6 @@ export function useSubscriptionGuard(): SubscriptionGuardResult {
           .maybeSingle();
 
         if (error) {
-          console.error('Error checking subscription:', error);
           setStatus(null);
           setLoading(false);
           setChecked(true);
@@ -72,7 +71,6 @@ export function useSubscriptionGuard(): SubscriptionGuardResult {
         setPlan(data.plan);
         setTrialEnd(data.trial_end);
       } catch (err) {
-        console.error('Subscription check failed:', err);
         setStatus(null);
       } finally {
         setLoading(false);

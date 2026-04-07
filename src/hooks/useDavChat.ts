@@ -34,7 +34,6 @@ export function useDavChat() {
       .order('updated_at', { ascending: false });
 
     if (error) {
-      console.error('Error loading conversations:', error);
       return;
     }
 
@@ -49,7 +48,6 @@ export function useDavChat() {
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('Error loading messages:', error);
       return;
     }
 
@@ -74,7 +72,6 @@ export function useDavChat() {
       .single();
 
     if (error) {
-      console.error('Error creating conversation:', error);
       toast({
         title: "Erro",
         description: "Não foi possível criar a conversa",
@@ -109,7 +106,6 @@ export function useDavChat() {
       .eq('id', conversationId);
 
     if (error) {
-      console.error('Error deleting conversation:', error);
       toast({
         title: "Erro",
         description: "Não foi possível excluir a conversa",
@@ -133,7 +129,6 @@ export function useDavChat() {
       .single();
 
     if (error) {
-      console.error('Error saving message:', error);
       return null;
     }
 
@@ -276,11 +271,9 @@ export function useDavChat() {
 
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
-        console.log('Request aborted');
         return;
       }
 
-      console.error('Error sending message:', error);
       toast({
         title: "Erro",
         description: (error as Error).message || "Não foi possível enviar a mensagem",

@@ -84,7 +84,6 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
             .single();
 
           if (docError) {
-            console.error('Error saving document:', docError);
           } else if (doc) {
             docId = doc.id;
           }
@@ -134,7 +133,6 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
           : e
       ));
     } catch (error: any) {
-      console.error('Error analyzing exam:', error);
       setExams(prev => prev.map(e => e.id === exam.id ? { ...e, analyzing: false } : e));
       toast({ title: "Erro na análise", description: "Não foi possível analisar o exame", variant: "destructive" });
     }

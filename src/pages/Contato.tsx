@@ -27,7 +27,6 @@ const Contato = () => {
     }
 
     // Em produção, aqui faria a chamada para o backend
-    console.log("Form submitted:", formData);
     toast.success("Mensagem enviada! Entraremos em contato em breve.");
     
     // Reset form

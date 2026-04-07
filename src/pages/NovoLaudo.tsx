@@ -222,11 +222,10 @@ const NovoLaudo = () => {
                     laudoTitle: updated.title,
                   },
                 },
-              }).catch(err => console.error('First laudo email failed:', err));
+              }).catch(() => {});
             }
-          } catch (err) {
-            console.error('First laudo check failed:', err);
-          }
+          } catch (_err) {
+            }
         })();
       }
       setIsSubmitting(false);
@@ -271,7 +270,6 @@ const NovoLaudo = () => {
           .single();
         if (updated) handleLaudoUpdate(updated);
       } catch (err) {
-        console.error('Polling error:', err);
       }
     }, pollCountRef.current < 15 ? 1500 : 2500); // Faster polling in first 30s, then slower
   }, [stopPolling, handleLaudoUpdate, toast]);
@@ -336,7 +334,6 @@ const NovoLaudo = () => {
         startPolling(laudoId);
       }
     } catch (error: any) {
-      console.error('Error loading laudo:', error);
       toast({ title: 'Erro', description: 'Não foi possível carregar o laudo', variant: 'destructive' });
     }
   };
@@ -386,7 +383,6 @@ const NovoLaudo = () => {
       // Polling is already running from startPolling - it will detect completion
       startPolling(laudoId);
     } catch (error: any) {
-      console.error('Error generating laudo:', error);
       setPipelineStage('error');
       setIsSubmitting(false);
       toast({ title: 'Erro', description: error.message || 'Erro ao gerar laudo', variant: 'destructive' });
@@ -450,7 +446,6 @@ const NovoLaudo = () => {
 
       navigate(`/novo-laudo?id=${newLaudo.id}`, { replace: true });
     } catch (error: any) {
-      console.error('Error generating laudo from text:', error);
       setPipelineStage('error');
       setIsSubmitting(false);
       toast({ title: 'Erro', description: error.message || 'Erro ao gerar laudo', variant: 'destructive' });
@@ -510,11 +505,9 @@ const NovoLaudo = () => {
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
       }).catch(err => {
-        console.error('Transcription invocation error:', err);
         // Polling will detect the error status
       });
     } catch (error: any) {
-      console.error('Error processing audio:', error);
       setPipelineStage('error');
       setIsSubmitting(false);
       toast({ title: 'Erro ao processar', description: error.message || 'Tente novamente', variant: 'destructive' });
@@ -578,7 +571,6 @@ const NovoLaudo = () => {
         setLaudo((prev: any) => prev ? { ...prev, patient_data: merged } : prev);
         setLaudoRefreshKey(k => k + 1);
       } catch (err) {
-        console.error('Error saving patient data:', err);
       }
     }
   };

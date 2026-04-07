@@ -332,8 +332,8 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Erro desconhecido',
-      correlation_id: correlationId,
+      error: 'Erro ao processar transcrição. Tente novamente.',
+      error_id: correlationId,
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

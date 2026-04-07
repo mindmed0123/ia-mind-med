@@ -891,7 +891,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      check_and_consume_quota: { Args: { p_user_id: string }; Returns: Json }
+      check_and_consume_quota:
+        | { Args: never; Returns: Json }
+        | { Args: { p_user_id: string }; Returns: Json }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -900,7 +902,9 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
-      get_quota_status: { Args: { p_user_id: string }; Returns: Json }
+      get_quota_status:
+        | { Args: never; Returns: Json }
+        | { Args: { p_user_id: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

@@ -63,9 +63,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             idempotencyKey: `welcome-${data.user.id}`,
             templateData: { doctorName: fullName },
           },
-        }).catch(err => console.error('Welcome email failed:', err));
+        }).catch(() => {});
       }
-      
       return { error };
     } catch (error: any) {
       return { error };

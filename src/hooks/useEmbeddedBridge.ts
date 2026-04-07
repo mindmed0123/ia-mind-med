@@ -89,13 +89,11 @@ export function useEmbeddedBridge(): EmbeddedBridgeReturn {
 
       if (!response.ok) {
         const err = await response.text();
-        console.error('MindPEP import failed:', err);
         return false;
       }
 
       return true;
     } catch (err) {
-      console.error('MindPEP import error:', err);
       return false;
     }
   }, [bridgeToken, searchParams]);

@@ -81,7 +81,6 @@ export default function MedicosTrial() {
         .eq('id', authData.user.id);
 
       if (profileError) {
-        console.error('Error updating profile:', profileError);
       }
 
       // 3. Create checkout session
@@ -106,7 +105,6 @@ export default function MedicosTrial() {
         throw new Error('Não foi possível criar a sessão de checkout');
       }
     } catch (error: any) {
-      console.error('Error:', error);
       toast.error(error.message || 'Erro ao processar cadastro');
     } finally {
       setLoading(false);
