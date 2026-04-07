@@ -63,7 +63,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             idempotencyKey: `welcome-${data.user.id}`,
             templateData: { doctorName: fullName },
           },
-      }
+        }).catch(() => {});
       
       return { error };
     } catch (error: any) {

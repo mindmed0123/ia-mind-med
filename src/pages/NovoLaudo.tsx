@@ -222,9 +222,9 @@ const NovoLaudo = () => {
                     laudoTitle: updated.title,
                   },
                 },
+              }).catch(() => {});
+            } catch (_err) {
             }
-          } catch (err) {
-          }
         })();
       }
       setIsSubmitting(false);
