@@ -86,7 +86,6 @@ export default function EvolutionReportPage() {
         setReport(reportData as unknown as EvolutionReport);
       }
     } catch (error) {
-      console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
@@ -114,7 +113,6 @@ export default function EvolutionReportPage() {
       toast.success('Relatório evolutivo gerado!');
       loadData();
     } catch (error) {
-      console.error('Error generating report:', error);
       toast.error('Erro ao gerar relatório evolutivo');
     } finally {
       setGenerating(false);
@@ -135,7 +133,6 @@ export default function EvolutionReportPage() {
         window.open(data.pdfUrl, '_blank');
       }
     } catch (error) {
-      console.error('Error exporting PDF:', error);
       toast.error('Erro ao exportar PDF');
     }
   };

@@ -68,7 +68,6 @@ export default function AssinaturaExpirada() {
         throw new Error('Não foi possível criar a sessão de checkout');
       }
     } catch (error: any) {
-      console.error('Error:', error);
       toast.error(error.message || 'Erro ao processar');
     } finally {
       setLoading(false);

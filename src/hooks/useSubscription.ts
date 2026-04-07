@@ -74,7 +74,6 @@ export function useSubscription() {
         });
       }
     } catch (error) {
-      console.error('Error fetching subscription:', error);
       setSubscription(null);
     } finally {
       setLoading(false);

@@ -39,10 +39,8 @@ const Dashboard = () => {
 
   const handleAudioUploadComplete = async (url: string, path: string) => {
     if (!user?.id) {
-      console.error('User ID is missing');
       return;
     }
-    console.log('handleAudioUploadComplete called with:', { url, path, userId: user?.id });
     try {
       const { data: newLaudo, error: createError } = await supabase
         .from('laudos')
@@ -58,7 +56,6 @@ const Dashboard = () => {
         .single();
 
       if (createError) {
-        console.error('Error creating laudo:', createError);
         throw createError;
       }
 
@@ -72,7 +69,6 @@ const Dashboard = () => {
       const { data: initial } = await supabase.auth.getSession();
       let accessToken = initial?.session?.access_token;
       if (!accessToken) {
-        console.error('No access token found');
         return;
       }
       
@@ -93,9 +89,7 @@ const Dashboard = () => {
           Authorization: `Bearer ${accessToken}`,
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
-      }).catch(err => console.error('Transcription invocation error:', err));
     } catch (error: any) {
-      console.error('Error invoking transcribe-audio:', error, error?.context);
       const status = error?.context?.status || error?.status;
       const body = error?.context?.body ?? error?.body;
       const parsedBody = typeof body === 'string' ? body : body ? (body.error || JSON.stringify(body)) : '';

@@ -69,7 +69,6 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
       if (error) throw error;
       setLaudo(data);
     } catch (error) {
-      console.error('Erro ao carregar laudo:', error);
       toast({ title: "Erro ao carregar laudo", description: "Não foi possível carregar os dados do laudo", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -100,10 +99,8 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
             idempotencyKey: `pdf-exported-${laudoId}-${Date.now()}`,
             templateData: { doctorName: data.pdfMeta?.doctorName, laudoTitle: data.fileName?.replace('.pdf', '') },
           },
-        }).catch(err => console.error('PDF export email failed:', err));
       }
     } catch (error: any) {
-      console.error('Erro ao exportar PDF:', error);
       toast({ title: "Erro ao gerar PDF", description: error.message || 'Não foi possível gerar o PDF', variant: "destructive" });
     }
   };

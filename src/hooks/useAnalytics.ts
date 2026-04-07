@@ -15,7 +15,6 @@ export const useAnalytics = () => {
           event_data: eventData,
         });
       } catch (e) {
-        console.error("Analytics track error:", e);
       }
     },
     [user?.id]

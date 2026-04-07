@@ -104,7 +104,6 @@ export const AnonymizeDialog = ({ laudoId, patientName, onAnonymized }: Anonymiz
       setConfirmation("");
       onAnonymized?.();
     } catch (error: any) {
-      console.error('Erro ao anonimizar:', error);
       toast({
         title: "Erro",
         description: error.message || "Não foi possível anonimizar o laudo",

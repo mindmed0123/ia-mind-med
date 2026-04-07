@@ -154,7 +154,6 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
       
       setLastSaved(new Date());
     } catch (error: any) {
-      console.error('Erro ao salvar:', error);
     } finally {
       setIsSaving(false);
     }
@@ -317,10 +316,8 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
               laudoTitle: data.fileName?.replace('.pdf', ''),
             },
           },
-        }).catch(err => console.error('PDF export email failed:', err));
       }
     } catch (error: any) {
-      console.error('Erro ao exportar PDF:', error);
       toast({
         title: "Erro ao gerar PDF",
         description: error.message,
@@ -360,7 +357,6 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
         });
       }
     } catch (error: any) {
-      console.error('Erro ao importar PDF:', error);
       toast({
         title: "Erro ao importar",
         description: error.message || "Não foi possível extrair o texto do PDF.",

@@ -77,7 +77,6 @@ export default function Pacientes() {
       if (error) throw error;
       setPatients((data || []) as unknown as Patient[]);
     } catch (error) {
-      console.error('Error loading patients:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar os pacientes',

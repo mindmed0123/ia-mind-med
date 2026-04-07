@@ -83,7 +83,6 @@ export default function Receituarios() {
             description: 'Preencha os medicamentos para completar o receituário.',
           });
         } catch (e) {
-          console.error('Error parsing laudo data:', e);
         }
       }
     }
@@ -109,7 +108,6 @@ export default function Receituarios() {
         items: item.items as unknown as PrescriptionItem[]
       })));
     } catch (error) {
-      console.error('Erro ao carregar receituários:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar os receituários',
@@ -314,7 +312,6 @@ export default function Receituarios() {
         });
       }
     } catch (error: any) {
-      console.error('Erro ao gerar PDF:', error);
       toast({
         title: 'Erro ao gerar PDF',
         description: error.message || 'Não foi possível gerar o PDF',

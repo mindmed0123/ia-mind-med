@@ -99,7 +99,6 @@ export const useAudioUpload = () => {
         mime: file.type,
       };
     } catch (error: any) {
-      console.error('Upload error:', error);
       toast({
         title: "Erro no upload",
         description: error.message || "Não foi possível fazer o upload do arquivo",

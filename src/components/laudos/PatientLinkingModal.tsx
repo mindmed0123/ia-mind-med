@@ -92,7 +92,6 @@ export const PatientLinkingModal = ({
           setResults(data as unknown as PatientResult[]);
         }
       } catch (e) {
-        console.error('Search error:', e);
       } finally {
         setSearching(false);
       }
