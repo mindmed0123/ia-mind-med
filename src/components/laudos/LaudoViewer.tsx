@@ -100,9 +100,9 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
             templateData: { doctorName: data.pdfMeta?.doctorName, laudoTitle: data.fileName?.replace('.pdf', '') },
           },
         }).catch(() => {});
+      } catch (error: any) {
+        toast({ title: "Erro ao gerar PDF", description: error.message || 'Não foi possível gerar o PDF', variant: "destructive" });
       }
-      toast({ title: "Erro ao gerar PDF", description: error.message || 'Não foi possível gerar o PDF', variant: "destructive" });
-    }
   };
 
   if (loading) {

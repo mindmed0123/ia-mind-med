@@ -318,11 +318,12 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
           },
         }).catch(() => {});
       } catch (error: any) {
-        title: "Erro ao gerar PDF",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
+        toast({
+          title: "Erro ao gerar PDF",
+          description: error.message,
+          variant: "destructive"
+        });
+      }
   };
 
   const handleImportPdf = async (file: File) => {
