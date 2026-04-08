@@ -11,9 +11,16 @@ import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 import { useSubscription } from "@/hooks/useSubscription";
 
+interface LaudoSectionConfig {
+  key: string;
+  label: string;
+  enabled: boolean;
+}
+
 interface LaudoViewerProps {
   laudoId: string;
   refreshKey?: number;
+  visibleSections?: LaudoSectionConfig[];
 }
 
 /* ── Reusable Section Block with entrance animation ── */
