@@ -295,6 +295,7 @@ const NovoLaudo = () => {
     // Reset flags for new laudo
     hasShownSuccessToast.current = false;
     hasTriggeredGeneration.current = false;
+    patientModalDismissedRef.current = false;
     
     // Initial load
     loadLaudo();
