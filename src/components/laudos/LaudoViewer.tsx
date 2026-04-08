@@ -398,7 +398,7 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections }: LaudoViewe
               <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-primary prose-strong:text-foreground">
                 <ReactMarkdown>{laudo.report_markdown || 'Laudo não disponível'}</ReactMarkdown>
               </div>
-              {laudo.legal_disclaimer && (
+              {isSectionVisible('disclaimer') && laudo.legal_disclaimer && (
                 <>
                   <Separator className="my-4" />
                   <p className="text-xs text-muted-foreground italic">{laudo.legal_disclaimer}</p>
