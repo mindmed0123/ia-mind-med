@@ -197,7 +197,7 @@ export function MindChatWidget({ context }: MindChatWidgetProps) {
           title="MindChat - Copiloto Clínico"
         >
           <MessageCircle className="w-6 h-6" />
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background animate-pulse" />
+          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-background animate-pulse bg-emerald-500" />
         </button>
       )}
 
