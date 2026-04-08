@@ -959,6 +959,7 @@ const NovoLaudo = () => {
             } : undefined}
             onPatientLinked={(patientId, patientName) => {
               setShowPatientModal(false);
+              patientModalDismissedRef.current = true;
               setPatientLinked(true);
               const initials = patientName.split(' ').map((w: string) => w[0]).join('.').toUpperCase();
               setLaudo((prev: any) => prev ? { 
@@ -976,7 +977,12 @@ const NovoLaudo = () => {
                 nome_completo: patientName,
               }));
               setLaudoRefreshKey(k => k + 1);
-              loadLaudo();
+              // Delay loadLaudo to let DB propagate
+              setTimeout(() => loadLaudo(), 500);
+            }}
+            onSkip={() => {
+              setShowPatientModal(false);
+              patientModalDismissedRef.current = true;
             }}
           />
         )}
