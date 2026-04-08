@@ -62,6 +62,7 @@ const NovoLaudo = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [patientLinked, setPatientLinked] = useState(false);
+  const patientModalDismissedRef = useRef(false);
   const [showFirstLaudoSuccess, setShowFirstLaudoSuccess] = useState(false);
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const [laudoRefreshKey, setLaudoRefreshKey] = useState(0);
