@@ -63,7 +63,7 @@ export const PatientLinkingModal = ({
   const [saving, setSaving] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<PatientResult | null>(null);
   
-  const debouncedSearch = useDebounce(searchName, 400);
+  const debouncedSearch = useDebounce(searchName, 200);
 
   // Auto-focus
   useEffect(() => {
