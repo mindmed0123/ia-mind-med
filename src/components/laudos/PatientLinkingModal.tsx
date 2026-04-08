@@ -287,7 +287,7 @@ export const PatientLinkingModal = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v && onSkip) onSkip(); }}>
       <DialogContent className="sm:max-w-lg" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -295,7 +295,7 @@ export const PatientLinkingModal = ({
             Vincular Paciente ao Laudo
           </DialogTitle>
           <DialogDescription>
-            Informe o nome do paciente para vincular este laudo. Campo obrigatório.
+            Informe o nome do paciente para vincular este laudo.
           </DialogDescription>
         </DialogHeader>
 
