@@ -24,9 +24,10 @@ interface ExamUploadSectionProps {
   patientId?: string | null;
   patientName?: string;
   onExamsAnalyzed?: (summary: string) => void;
+  onRegenerateWithExams?: (examSummary: string) => void;
 }
 
-export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnalyzed }: ExamUploadSectionProps) => {
+export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnalyzed, onRegenerateWithExams }: ExamUploadSectionProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -284,17 +285,42 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
               </div>
             ))}
 
-            <Button
-              onClick={handleUpdateLaudoWithExams}
-              disabled={updatingLaudo || exams.every(e => e.analyzing)}
-              className="w-full"
-            >
-              {updatingLaudo ? (
-                <><Loader2 className="w-4 h-4 animate-spin mr-2" />Atualizando laudo...</>
-              ) : (
-                <><RefreshCw className="w-4 h-4 mr-2" />Atualizar laudo com base nos exames</>
+            <div className="space-y-2">
+              <Button
+                onClick={handleUpdateLaudoWithExams}
+                disabled={updatingLaudo || exams.every(e => e.analyzing)}
+                variant="outline"
+                className="w-full"
+              >
+                {updatingLaudo ? (
+                  <><Loader2 className="w-4 h-4 animate-spin mr-2" />Atualizando laudo...</>
+                ) : (
+                  <><RefreshCw className="w-4 h-4 mr-2" />Atualizar seção de exames</>
+                )}
+              </Button>
+
+              {onRegenerateWithExams && (
+                <Button
+                  onClick={() => {
+                    const analyzedExams = exams.filter(e => e.ai_analysis);
+                    if (analyzedExams.length === 0) {
+                      toast({ title: "Sem análises", description: "Aguarde a análise dos exames antes de regenerar", variant: "destructive" });
+                      return;
+                    }
+                    const examSummary = analyzedExams.map(e => {
+                      const analysis = e.ai_analysis;
+                      return `**${e.file_name}** (${analysis.image_type || 'Exame'}):\n${analysis.findings || analysis.description || 'Sem achados'}${analysis.abnormalities ? `\nAnormalidades: ${analysis.abnormalities}` : ''}${analysis.recommendations ? `\nRecomendações: ${analysis.recommendations}` : ''}`;
+                    }).join('\n\n');
+                    onRegenerateWithExams(examSummary);
+                  }}
+                  disabled={exams.every(e => e.analyzing) || exams.filter(e => e.ai_analysis).length === 0}
+                  className="w-full bg-primary hover:bg-primary/90 gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Regenerar Laudo Completo com Exames + Áudio
+                </Button>
               )}
-            </Button>
+            </div>
           </div>
         )}
       </CardContent>
