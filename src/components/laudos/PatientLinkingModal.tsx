@@ -408,6 +408,16 @@ export const PatientLinkingModal = ({
 
           {/* Actions */}
           <div className="flex gap-2 pt-2">
+            {onSkip && (
+              <Button
+                onClick={onSkip}
+                disabled={saving}
+                variant="ghost"
+                className="text-muted-foreground"
+              >
+                Pular por agora
+              </Button>
+            )}
             {searchName.length >= 3 && (
               <Button
                 onClick={handleCreateNew}
