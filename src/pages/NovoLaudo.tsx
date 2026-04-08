@@ -869,6 +869,11 @@ const NovoLaudo = () => {
                 )}
               </CardContent>
             </Card>
+
+            {/* Template Config - only show when laudo is completed */}
+            {laudo?.status === 'completed' && (
+              <LaudoTemplateConfig onConfigChange={setLaudoTemplateSections} />
+            )}
           </div>
 
           {/* ── RIGHT CONTENT ── */}
