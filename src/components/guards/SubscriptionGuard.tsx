@@ -15,20 +15,18 @@ export function SubscriptionGuard({ children, allowEmbedded }: SubscriptionGuard
   const { isAllowed, loading } = useSubscriptionGuard();
   const [showTimeout, setShowTimeout] = useState(false);
 
-  // Skip guard in embedded mode
-  if (isEmbedded) {
-    return <>{children}</>;
-  }
-
-  // Safety: if loading takes too long, show a retry option
   useEffect(() => {
-    if (!loading) {
+    if (!loading || isEmbedded) {
       setShowTimeout(false);
       return;
     }
     const t = setTimeout(() => setShowTimeout(true), 4000);
     return () => clearTimeout(t);
-  }, [loading]);
+  }, [loading, isEmbedded]);
+
+  if (isEmbedded) {
+    return <>{children}</>;
+  }
 
   if (loading) {
     return (
