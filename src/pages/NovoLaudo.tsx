@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FirstLaudoSuccess } from "@/components/onboarding/FirstLaudoSuccess";
+import { MindChatWidget } from "@/components/chat/MindChatWidget";
 
 type PipelineStage = 'idle' | 'uploading' | 'transcribing' | 'preparing' | 'calling_ai' | 'structuring' | 'saving' | 'completed' | 'error';
 
@@ -975,6 +976,23 @@ const NovoLaudo = () => {
       onUpgrade={() => {
         setShowFirstLaudoSuccess(false);
         navigate("/precos");
+      }}
+    />
+    <MindChatWidget
+      context={{
+        patientName: patientData?.nome_completo || patientData?.iniciais,
+        patientAge: patientData?.idade,
+        patientSex: patientData?.sexo,
+        chiefComplaint: patientData?.queixa_principal || (laudo?.clinical_context as any)?.chief_complaint,
+        transcript: transcript || (laudo?.transcript as any)?.text,
+        diagnosisMain: laudo?.diagnosis_main,
+        diagnosisDiff: laudo?.diagnosis_diff,
+        hypotheses: Array.isArray(laudo?.hypotheses) ? (laudo.hypotheses as any[]).map((h: any) => typeof h === 'string' ? h : h?.text || h?.title || '') : undefined,
+        redFlags: Array.isArray(laudo?.red_flags) ? (laudo.red_flags as any[]).map((r: any) => typeof r === 'string' ? r : r?.text || r?.description || '') : undefined,
+        cid10: Array.isArray(laudo?.cid10_codes) ? (laudo.cid10_codes as any[]).map((c: any) => typeof c === 'string' ? c : `${c?.code} - ${c?.description}`) : undefined,
+        medications: patientData?.medicacoes,
+        allergies: patientData?.alergias,
+        comorbidities: patientData?.comorbidades || (patientData?.contexto_clinico ? [patientData.contexto_clinico] : undefined),
       }}
     />
     </>
