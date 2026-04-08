@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SubscriptionGuard } from "@/components/guards/SubscriptionGuard";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { lazy, Suspense } from "react";
 import { Activity } from "lucide-react";
 
@@ -52,36 +53,38 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<Auth />} />
-              <Route path="/home" element={<Home />} />
-              <Route path="/produto" element={<Produto />} />
-              <Route path="/precos" element={<Precos />} />
-              <Route path="/integracoes" element={<Integracoes />} />
-              <Route path="/contato" element={<Contato />} />
-              <Route path="/medicos/teste-gratis" element={<MedicosTrial />} />
-              <Route path="/medicos/assinatura-expirada" element={<AssinaturaExpirada />} />
-              <Route path="/convite/trial-vip-2024" element={<TrialConvite />} />
-              <Route path="/unsubscribe" element={<Unsubscribe />} />
-              <Route path="/termos" element={<Termos />} />
-              <Route path="/privacidade" element={<Privacidade />} />
-              
-              {/* Protected routes */}
-              <Route path="/dashboard" element={<SubscriptionGuard><Dashboard /></SubscriptionGuard>} />
-              <Route path="/novo-laudo" element={<SubscriptionGuard allowEmbedded><NovoLaudo /></SubscriptionGuard>} />
-              <Route path="/perfil" element={<SubscriptionGuard><Perfil /></SubscriptionGuard>} />
-              <Route path="/receituarios" element={<SubscriptionGuard><Receituarios /></SubscriptionGuard>} />
-              <Route path="/pacientes" element={<SubscriptionGuard><Pacientes /></SubscriptionGuard>} />
-              <Route path="/historico-paciente/:patientId" element={<SubscriptionGuard><HistoricoPaciente /></SubscriptionGuard>} />
-              <Route path="/evolucao/:patientId" element={<SubscriptionGuard><EvolutionReport /></SubscriptionGuard>} />
-              <Route path="/admin" element={<SubscriptionGuard><Admin /></SubscriptionGuard>} />
-              <Route path="/dav-chat" element={<SubscriptionGuard><DavChat /></SubscriptionGuard>} />
-              
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<Auth />} />
+                <Route path="/home" element={<Home />} />
+                <Route path="/produto" element={<Produto />} />
+                <Route path="/precos" element={<Precos />} />
+                <Route path="/integracoes" element={<Integracoes />} />
+                <Route path="/contato" element={<Contato />} />
+                <Route path="/medicos/teste-gratis" element={<MedicosTrial />} />
+                <Route path="/medicos/assinatura-expirada" element={<AssinaturaExpirada />} />
+                <Route path="/convite/trial-vip-2024" element={<TrialConvite />} />
+                <Route path="/unsubscribe" element={<Unsubscribe />} />
+                <Route path="/termos" element={<Termos />} />
+                <Route path="/privacidade" element={<Privacidade />} />
+                
+                {/* Protected routes */}
+                <Route path="/dashboard" element={<SubscriptionGuard><Dashboard /></SubscriptionGuard>} />
+                <Route path="/novo-laudo" element={<SubscriptionGuard allowEmbedded><NovoLaudo /></SubscriptionGuard>} />
+                <Route path="/perfil" element={<SubscriptionGuard><Perfil /></SubscriptionGuard>} />
+                <Route path="/receituarios" element={<SubscriptionGuard><Receituarios /></SubscriptionGuard>} />
+                <Route path="/pacientes" element={<SubscriptionGuard><Pacientes /></SubscriptionGuard>} />
+                <Route path="/historico-paciente/:patientId" element={<SubscriptionGuard><HistoricoPaciente /></SubscriptionGuard>} />
+                <Route path="/evolucao/:patientId" element={<SubscriptionGuard><EvolutionReport /></SubscriptionGuard>} />
+                <Route path="/admin" element={<SubscriptionGuard><Admin /></SubscriptionGuard>} />
+                <Route path="/dav-chat" element={<SubscriptionGuard><DavChat /></SubscriptionGuard>} />
+                
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
