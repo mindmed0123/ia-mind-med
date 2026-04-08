@@ -141,6 +141,13 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections }: LaudoViewe
   const reportLength = (laudo.report_markdown || '').length;
   const timeSaved = Math.max(12, Math.min(25, Math.floor(reportLength / 200) + 12));
 
+  // Section visibility helper - if no config provided, show all
+  const isSectionVisible = (key: string) => {
+    if (!visibleSections || visibleSections.length === 0) return true;
+    const section = visibleSections.find(s => s.key === key);
+    return section ? section.enabled : true;
+  };
+
   return (
     <div className="space-y-5 max-w-4xl mx-auto">
       {/* ── Status Bar ── */}
