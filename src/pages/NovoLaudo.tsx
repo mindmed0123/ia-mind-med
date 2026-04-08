@@ -900,7 +900,7 @@ const NovoLaudo = () => {
                 </TabsContent>
 
                 <TabsContent value="exams">
-                  <ExamUploadSection laudoId={laudoId} patientId={laudo?.patient_id} patientName={patientData?.iniciais || ''} onExamsAnalyzed={() => { toast({ title: "Exames integrados", description: "Seção de exames complementares atualizada" }); loadLaudo(); }} />
+                  <ExamUploadSection laudoId={laudoId} patientId={laudo?.patient_id} patientName={patientData?.iniciais || ''} onExamsAnalyzed={() => { toast({ title: "Exames integrados", description: "Seção de exames complementares atualizada" }); loadLaudo(); }} onRegenerateWithExams={handleRegenerateWithExams} />
                 </TabsContent>
 
                 <TabsContent value="prescription">
