@@ -64,6 +64,7 @@ const NovoLaudo = () => {
   const [showFirstLaudoSuccess, setShowFirstLaudoSuccess] = useState(false);
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const [laudoRefreshKey, setLaudoRefreshKey] = useState(0);
+  const [laudoTemplateSections, setLaudoTemplateSections] = useState<LaudoSectionConfig[]>([]);
   const transcriptRef = useRef(transcript);
   const patientDataRef = useRef(patientData);
 
