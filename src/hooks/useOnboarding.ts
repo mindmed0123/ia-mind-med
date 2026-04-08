@@ -76,10 +76,14 @@ export const useOnboarding = () => {
         } else {
           setNeedsWelcome(true);
           if (!data) {
-            await supabase.from("onboarding_progress").insert({
-              user_id: user.id,
-              current_step: 1,
-            }).catch(() => {});
+            try {
+              await supabase.from("onboarding_progress").insert({
+                user_id: user.id,
+                current_step: 1,
+              });
+            } catch {
+              // Ignore insert errors
+            }
           }
         }
       } catch {
