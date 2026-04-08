@@ -47,7 +47,7 @@ export const LaudoHistory = () => {
       setLaudos(data || []);
       setTotal(count || 0);
     } catch (error) {
-      console.error("Error loading laudos:", error);
+      // Error loading laudos silently
     } finally {
       setLoading(false);
     }
@@ -55,10 +55,12 @@ export const LaudoHistory = () => {
 
   const filteredLaudos = search
     ? laudos.filter((l) => {
-        const patientName = (l.patient_data as any)?.nome || "";
+        const pd = l.patient_data as any;
+        const patientName = pd?.nome_completo || pd?.iniciais || pd?.nome || "";
+        const searchLower = search.toLowerCase();
         return (
-          l.title.toLowerCase().includes(search.toLowerCase()) ||
-          patientName.toLowerCase().includes(search.toLowerCase())
+          l.title.toLowerCase().includes(searchLower) ||
+          patientName.toLowerCase().includes(searchLower)
         );
       })
     : laudos;
@@ -74,7 +76,7 @@ export const LaudoHistory = () => {
 
   const getPatientName = (patientData: any) => {
     if (!patientData) return "—";
-    return (patientData as any)?.nome || "Sem paciente";
+    return patientData?.nome_completo || patientData?.iniciais || patientData?.nome || "—";
   };
 
   if (loading && page === 0) {

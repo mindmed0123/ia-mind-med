@@ -18,56 +18,82 @@ export const useOnboarding = () => {
     }
 
     const check = async () => {
-      // 1. Check LGPD consent
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("lgpd_consent_given, full_name, crm")
-        .eq("id", user.id)
-        .single();
+      try {
+        // 1. Check LGPD consent
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("lgpd_consent_given, full_name, crm")
+          .eq("id", user.id)
+          .single();
 
-      if (!profile?.lgpd_consent_given) {
-        setNeedsLgpdConsent(true);
+        if (profileError) {
+          // Network or RLS error - allow access rather than block
+          setNeedsLgpdConsent(false);
+          setLgpdConsentLoading(false);
+          setNeedsWelcome(false);
+          setLoading(false);
+          return;
+        }
+
+        if (!profile?.lgpd_consent_given) {
+          setNeedsLgpdConsent(true);
+          setLgpdConsentLoading(false);
+          setLoading(false);
+          return;
+        }
+
+        setNeedsLgpdConsent(false);
+        setLgpdConsentLoading(false);
+
+        // 2. Check if user has ANY laudo → if yes, skip welcome
+        const { count, error: laudoError } = await supabase
+          .from("laudos")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id);
+
+        if (laudoError) {
+          // Fail open
+          setNeedsWelcome(false);
+          setLoading(false);
+          return;
+        }
+
+        if (count && count > 0) {
+          setNeedsWelcome(false);
+          setLoading(false);
+          return;
+        }
+
+        // 3. Check onboarding_progress
+        const { data } = await supabase
+          .from("onboarding_progress")
+          .select("*")
+          .eq("user_id", user.id)
+          .single();
+
+        if (data && data.completed) {
+          setNeedsWelcome(false);
+        } else {
+          setNeedsWelcome(true);
+          if (!data) {
+            try {
+              await supabase.from("onboarding_progress").insert({
+                user_id: user.id,
+                current_step: 1,
+              });
+            } catch {
+              // Ignore insert errors
+            }
+          }
+        }
+      } catch {
+        // Any unexpected error - fail open to not block the user
+        setNeedsLgpdConsent(false);
+        setNeedsWelcome(false);
+      } finally {
         setLgpdConsentLoading(false);
         setLoading(false);
-        return;
       }
-
-      setNeedsLgpdConsent(false);
-      setLgpdConsentLoading(false);
-
-      // 2. Check if user has ANY laudo → if yes, skip welcome
-      const { count } = await supabase
-        .from("laudos")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id);
-
-      if (count && count > 0) {
-        // User already has laudos, no onboarding needed
-        setNeedsWelcome(false);
-        setLoading(false);
-        return;
-      }
-
-      // 3. Check onboarding_progress
-      const { data } = await supabase
-        .from("onboarding_progress")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-
-      if (data && data.completed) {
-        setNeedsWelcome(false);
-      } else {
-        // New user or incomplete onboarding → show welcome
-        setNeedsWelcome(true);
-        if (!data) {
-          await supabase.from("onboarding_progress").insert({
-            user_id: user.id,
-            current_step: 1,
-          });
-        }
-      }
-      setLoading(false);
     };
 
     check();
