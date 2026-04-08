@@ -256,9 +256,10 @@ const NovoLaudo = () => {
   const startPolling = useCallback((id: string) => {
     stopPolling();
     pollCountRef.current = 0;
-    pollingRef.current = setInterval(async () => {
+    
+    const poll = () => {
       pollCountRef.current++;
-      // Timeout after 3 minutes (90 polls × 2s)
+      // Timeout after 3 minutes
       if (pollCountRef.current > 90) {
         stopPolling();
         setPipelineStage('error');
@@ -266,16 +267,26 @@ const NovoLaudo = () => {
         toast({ title: 'Tempo esgotado', description: 'O processamento demorou demais. Tente novamente.', variant: 'destructive' });
         return;
       }
-      try {
-        const { data: updated } = await supabase
-          .from('laudos')
-          .select('*')
-          .eq('id', id)
-          .single();
-        if (updated) handleLaudoUpdate(updated);
-      } catch (err) {
-      }
-    }, pollCountRef.current < 15 ? 1500 : 2500); // Faster polling in first 30s, then slower
+      
+      supabase
+        .from('laudos')
+        .select('*')
+        .eq('id', id)
+        .single()
+        .then(({ data: updated }) => {
+          if (updated) handleLaudoUpdate(updated);
+          // Schedule next poll with adaptive interval
+          const delay = pollCountRef.current < 15 ? 1500 : 2500;
+          pollingRef.current = setTimeout(poll, delay) as any;
+        })
+        .catch(() => {
+          const delay = pollCountRef.current < 15 ? 1500 : 2500;
+          pollingRef.current = setTimeout(poll, delay) as any;
+        });
+    };
+    
+    // Start first poll
+    pollingRef.current = setTimeout(poll, 1000) as any;
   }, [stopPolling, handleLaudoUpdate, toast]);
 
   useEffect(() => {
