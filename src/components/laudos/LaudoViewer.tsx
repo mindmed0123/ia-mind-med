@@ -264,7 +264,7 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections }: LaudoViewe
           )}
 
           {/* Anamnese */}
-          {(sections.queixa || sections.hda || laudo.summary?.resumo_clinico) && (
+          {isSectionVisible('anamnese') && (sections.queixa || sections.hda || laudo.summary?.resumo_clinico) && (
             <SectionBlock num={nextNum()} icon={Stethoscope} title="Anamnese" delay={100}>
               <div className="space-y-4">
                 {sections.queixa && (
@@ -284,7 +284,7 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections }: LaudoViewe
           )}
 
           {/* Hipótese Diagnóstica — PREMIUM BLOCK */}
-          {(sections.hipoteses?.principal || hypotheses?.mais_provavel || laudo.diagnosis_main) && (
+          {isSectionVisible('hipotese') && (sections.hipoteses?.principal || hypotheses?.mais_provavel || laudo.diagnosis_main) && (
             <SectionBlock num={nextNum()} icon={Activity} title="Hipótese Diagnóstica" variant="highlight" delay={200}>
               <div className="space-y-3">
                 {/* Principal */}
@@ -304,7 +304,7 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections }: LaudoViewe
                 </div>
 
                 {/* Diferencial */}
-                {(sections.hipoteses?.diferencial || hypotheses?.menos_provavel) && (
+                {isSectionVisible('diferencial') && (sections.hipoteses?.diferencial || hypotheses?.menos_provavel) && (
                   <div className="rounded-xl border border-border/60 overflow-hidden bg-muted/20">
                     <div className="bg-muted/40 px-4 py-2">
                       <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Diagnóstico Diferencial</span>
@@ -321,7 +321,7 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections }: LaudoViewe
           )}
 
           {/* CID-10 */}
-          {laudo.cid10_codes && laudo.cid10_codes.length > 0 && (
+          {isSectionVisible('cid10') && laudo.cid10_codes && laudo.cid10_codes.length > 0 && (
             <SectionBlock icon={ClipboardList} title="Classificação CID-10" delay={250}>
               <div className="flex flex-wrap gap-2">
                 {laudo.cid10_codes.map((cid: string, idx: number) => (
@@ -332,7 +332,7 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections }: LaudoViewe
           )}
 
           {/* Red Flags */}
-          {laudo.red_flags && laudo.red_flags.length > 0 && (
+          {isSectionVisible('red_flags') && laudo.red_flags && laudo.red_flags.length > 0 && (
             <SectionBlock icon={ShieldAlert} title="Sinais de Alerta" variant="alert" delay={300}>
               <ul className="space-y-2.5">
                 {laudo.red_flags.map((flag: string, idx: number) => (
@@ -346,7 +346,7 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections }: LaudoViewe
           )}
 
           {/* Exames Complementares */}
-          {laudo.complementary_exams && laudo.complementary_exams.length > 0 && (
+          {isSectionVisible('exames') && laudo.complementary_exams && laudo.complementary_exams.length > 0 && (
             <SectionBlock num={nextNum()} icon={FlaskConical} title="Exames Complementares" delay={350}>
               <ul className="space-y-2">
                 {laudo.complementary_exams.map((exame: string, idx: number) => (
@@ -360,7 +360,7 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections }: LaudoViewe
           )}
 
           {/* Conduta */}
-          {(laudo.conducts?.length > 0 || sections.conduta) && (
+          {isSectionVisible('conduta') && (laudo.conducts?.length > 0 || sections.conduta) && (
             <SectionBlock num={nextNum()} icon={ClipboardList} title="Conduta" variant="highlight" delay={400}>
               {sections.conduta ? (
                 <p className="text-sm text-foreground leading-relaxed font-medium whitespace-pre-wrap">{sections.conduta}</p>
