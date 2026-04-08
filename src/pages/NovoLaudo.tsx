@@ -330,7 +330,7 @@ const NovoLaudo = () => {
         setPipelineStage('completed');
         hasShownSuccessToast.current = true;
         setPatientLinked(!!data.patient_id);
-        if (!data.patient_id) {
+        if (!data.patient_id && !patientModalDismissedRef.current) {
           setShowPatientModal(true);
         }
       } else if (data.status === 'generating') {
