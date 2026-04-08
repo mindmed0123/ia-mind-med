@@ -59,7 +59,7 @@ const SectionBlock = ({ num, icon: Icon, title, children, variant = 'default', d
   </div>
 );
 
-export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
+export const LaudoViewer = ({ laudoId, refreshKey, visibleSections }: LaudoViewerProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { subscription } = useSubscription();
