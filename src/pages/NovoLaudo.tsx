@@ -268,14 +268,14 @@ const NovoLaudo = () => {
         return;
       }
       
-      supabase
-        .from('laudos')
-        .select('*')
-        .eq('id', id)
-        .single()
-        .then(({ data: updated }) => {
+      Promise.resolve(
+        supabase
+          .from('laudos')
+          .select('*')
+          .eq('id', id)
+          .single()
+      ).then(({ data: updated }) => {
           if (updated) handleLaudoUpdate(updated);
-          // Schedule next poll with adaptive interval
           const delay = pollCountRef.current < 15 ? 1500 : 2500;
           pollingRef.current = setTimeout(poll, delay) as any;
         })
