@@ -897,7 +897,7 @@ const NovoLaudo = () => {
                 </TabsList>
                 
                 <TabsContent value="viewer">
-                  <LaudoViewer laudoId={laudoId} refreshKey={laudoRefreshKey} />
+                  <LaudoViewer laudoId={laudoId} refreshKey={laudoRefreshKey} visibleSections={laudoTemplateSections} />
                 </TabsContent>
                 
                 <TabsContent value="editor">
