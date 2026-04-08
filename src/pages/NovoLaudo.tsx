@@ -820,7 +820,7 @@ const NovoLaudo = () => {
               </>
             )}
             {!isEmbedded && laudo?.status === 'completed' && (
-              <Button size="sm" onClick={() => { setLaudoId(null); setLaudo(null); setTranscript(''); setPipelineStage('idle'); setIsSubmitting(false); hasShownSuccessToast.current = false; hasTriggeredGeneration.current = false; navigate('/novo-laudo'); }} className="gap-1.5">
+              <Button size="sm" onClick={() => { stopPolling(); setLaudoId(null); setLaudo(null); setTranscript(''); setPatientData(null); setPipelineStage('idle'); setIsSubmitting(false); setPatientLinked(false); hasShownSuccessToast.current = false; hasTriggeredGeneration.current = false; patientModalDismissedRef.current = false; navigate('/novo-laudo'); }} className="gap-1.5">
                 <Mic className="w-4 h-4" /> Nova Consulta
               </Button>
             )}
