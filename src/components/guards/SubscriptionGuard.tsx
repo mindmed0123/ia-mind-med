@@ -1,6 +1,7 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
+import { Activity } from 'lucide-react';
 
 interface SubscriptionGuardProps {
   children: ReactNode;
@@ -12,8 +13,17 @@ export function SubscriptionGuard({ children, allowEmbedded }: SubscriptionGuard
   const hasBridge = !!searchParams.get('bridge');
   const isEmbedded = allowEmbedded && (searchParams.get('embedded') === 'true' || hasBridge);
   const { isAllowed, loading } = useSubscriptionGuard();
+  const [showTimeout, setShowTimeout] = useState(false);
 
-  // Skip guard in embedded mode (auth handled by bridge token)
+  useEffect(() => {
+    if (!loading || isEmbedded) {
+      setShowTimeout(false);
+      return;
+    }
+    const t = setTimeout(() => setShowTimeout(true), 4000);
+    return () => clearTimeout(t);
+  }, [loading, isEmbedded]);
+
   if (isEmbedded) {
     return <>{children}</>;
   }
@@ -21,9 +31,17 @@ export function SubscriptionGuard({ children, allowEmbedded }: SubscriptionGuard
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
-          <p className="text-muted-foreground">Verificando assinatura...</p>
+        <div className="flex flex-col items-center gap-3">
+          <Activity className="w-8 h-8 text-primary animate-spin" />
+          <p className="text-sm text-muted-foreground">Verificando acesso...</p>
+          {showTimeout && (
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-2 text-xs text-primary underline hover:opacity-80"
+            >
+              Recarregar página
+            </button>
+          )}
         </div>
       </div>
     );
@@ -32,9 +50,9 @@ export function SubscriptionGuard({ children, allowEmbedded }: SubscriptionGuard
   if (!isAllowed) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
-          <p className="text-muted-foreground">Redirecionando...</p>
+        <div className="flex flex-col items-center gap-3">
+          <Activity className="w-8 h-8 text-primary animate-spin" />
+          <p className="text-sm text-muted-foreground">Redirecionando...</p>
         </div>
       </div>
     );
