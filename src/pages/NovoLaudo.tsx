@@ -10,6 +10,7 @@ import { LaudoEditor } from "@/components/laudos/LaudoEditor";
 import { TextInputMode } from "@/components/laudos/TextInputMode";
 import { PrescriptionTab } from "@/components/laudos/PrescriptionTab";
 import { ExamUploadSection } from "@/components/laudos/ExamUploadSection";
+import { LaudoTemplateConfig, type LaudoSectionConfig } from "@/components/laudos/LaudoTemplateConfig";
 import { PatientLinkingModal } from "@/components/laudos/PatientLinkingModal";
 import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
@@ -63,6 +64,7 @@ const NovoLaudo = () => {
   const [showFirstLaudoSuccess, setShowFirstLaudoSuccess] = useState(false);
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const [laudoRefreshKey, setLaudoRefreshKey] = useState(0);
+  const [laudoTemplateSections, setLaudoTemplateSections] = useState<LaudoSectionConfig[]>([]);
   const transcriptRef = useRef(transcript);
   const patientDataRef = useRef(patientData);
 
@@ -575,6 +577,63 @@ const NovoLaudo = () => {
     }
   };
 
+  // Regenerate laudo incorporating exam findings + original transcript
+  const handleRegenerateWithExams = async (examSummary: string) => {
+    if (!laudoId || isSubmitting) return;
+    
+    const textToUse = transcript || (laudo?.transcript as any)?.text || '';
+    if (!textToUse) {
+      toast({ title: 'Sem transcrição', description: 'Não há transcrição disponível para regenerar o laudo', variant: 'destructive' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setPipelineStage('preparing');
+    hasShownSuccessToast.current = false;
+    hasTriggeredGeneration.current = true;
+
+    try {
+      // Reset laudo status so generate-laudo can claim it
+      await supabase
+        .from('laudos')
+        .update({ status: 'draft', updated_at: new Date().toISOString() })
+        .eq('id', laudoId);
+
+      setPipelineStage('calling_ai');
+      
+      const { error } = await supabase.functions.invoke('generate-laudo', {
+        body: {
+          patient: {
+            iniciais: patientData?.iniciais || 'N/I',
+            sexo: patientData?.sexo || 'Não informado',
+            idade: parseInt(patientData?.idade) || 0,
+          },
+          specialty: patientData?.especialidade || 'Não especificada',
+          chief_complaint: patientData?.queixa_principal || 'Não informada',
+          transcript: textToUse,
+          vitals: patientData?.sinais_vitais || {},
+          meds: patientData?.medicacoes || [],
+          allergies: patientData?.alergias || [],
+          exam_findings: examSummary,
+          contexto_clinico: patientData?.contexto_clinico || '',
+          historico: patientData?.historico || '',
+          laudo_id: laudoId,
+          mode: 'complete',
+          template_specialty: selectedSpecialty || undefined,
+        },
+      });
+
+      if (error) throw error;
+      
+      startPolling(laudoId);
+      toast({ title: 'Regenerando laudo...', description: 'A IA está analisando os exames junto com a consulta original' });
+    } catch (error: any) {
+      setPipelineStage('error');
+      setIsSubmitting(false);
+      toast({ title: 'Erro', description: error.message || 'Erro ao regenerar laudo', variant: 'destructive' });
+    }
+  };
+
   // Map pipeline stage to SmartProgress stage
   const getSmartStage = (): SmartStage => {
     switch (pipelineStage) {
@@ -810,6 +869,11 @@ const NovoLaudo = () => {
                 )}
               </CardContent>
             </Card>
+
+            {/* Template Config - only show when laudo is completed */}
+            {laudo?.status === 'completed' && (
+              <LaudoTemplateConfig onConfigChange={setLaudoTemplateSections} />
+            )}
           </div>
 
           {/* ── RIGHT CONTENT ── */}
@@ -833,7 +897,7 @@ const NovoLaudo = () => {
                 </TabsList>
                 
                 <TabsContent value="viewer">
-                  <LaudoViewer laudoId={laudoId} refreshKey={laudoRefreshKey} />
+                  <LaudoViewer laudoId={laudoId} refreshKey={laudoRefreshKey} visibleSections={laudoTemplateSections} />
                 </TabsContent>
                 
                 <TabsContent value="editor">
@@ -841,7 +905,7 @@ const NovoLaudo = () => {
                 </TabsContent>
 
                 <TabsContent value="exams">
-                  <ExamUploadSection laudoId={laudoId} patientId={laudo?.patient_id} patientName={patientData?.iniciais || ''} onExamsAnalyzed={() => { toast({ title: "Exames integrados", description: "Seção de exames complementares atualizada" }); loadLaudo(); }} />
+                  <ExamUploadSection laudoId={laudoId} patientId={laudo?.patient_id} patientName={patientData?.iniciais || ''} onExamsAnalyzed={() => { toast({ title: "Exames integrados", description: "Seção de exames complementares atualizada" }); loadLaudo(); }} onRegenerateWithExams={handleRegenerateWithExams} />
                 </TabsContent>
 
                 <TabsContent value="prescription">

@@ -11,9 +11,16 @@ import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 import { useSubscription } from "@/hooks/useSubscription";
 
+interface LaudoSectionConfig {
+  key: string;
+  label: string;
+  enabled: boolean;
+}
+
 interface LaudoViewerProps {
   laudoId: string;
   refreshKey?: number;
+  visibleSections?: LaudoSectionConfig[];
 }
 
 /* ── Reusable Section Block with entrance animation ── */
@@ -52,7 +59,7 @@ const SectionBlock = ({ num, icon: Icon, title, children, variant = 'default', d
   </div>
 );
 
-export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
+export const LaudoViewer = ({ laudoId, refreshKey, visibleSections }: LaudoViewerProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { subscription } = useSubscription();
@@ -134,6 +141,13 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
   const reportLength = (laudo.report_markdown || '').length;
   const timeSaved = Math.max(12, Math.min(25, Math.floor(reportLength / 200) + 12));
 
+  // Section visibility helper - if no config provided, show all
+  const isSectionVisible = (key: string) => {
+    if (!visibleSections || visibleSections.length === 0) return true;
+    const section = visibleSections.find(s => s.key === key);
+    return section ? section.enabled : true;
+  };
+
   return (
     <div className="space-y-5 max-w-4xl mx-auto">
       {/* ── Status Bar ── */}
@@ -179,7 +193,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
       </div>
 
       {/* ── Patient ID Card ── */}
-      {patientData && (
+      {patientData && isSectionVisible('patient_card') && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-xl border border-border/60 bg-muted/20 p-4">
           <div>
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-0.5">Paciente</p>
@@ -250,7 +264,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
           )}
 
           {/* Anamnese */}
-          {(sections.queixa || sections.hda || laudo.summary?.resumo_clinico) && (
+          {isSectionVisible('anamnese') && (sections.queixa || sections.hda || laudo.summary?.resumo_clinico) && (
             <SectionBlock num={nextNum()} icon={Stethoscope} title="Anamnese" delay={100}>
               <div className="space-y-4">
                 {sections.queixa && (
@@ -270,7 +284,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
           )}
 
           {/* Hipótese Diagnóstica — PREMIUM BLOCK */}
-          {(sections.hipoteses?.principal || hypotheses?.mais_provavel || laudo.diagnosis_main) && (
+          {isSectionVisible('hipotese') && (sections.hipoteses?.principal || hypotheses?.mais_provavel || laudo.diagnosis_main) && (
             <SectionBlock num={nextNum()} icon={Activity} title="Hipótese Diagnóstica" variant="highlight" delay={200}>
               <div className="space-y-3">
                 {/* Principal */}
@@ -290,7 +304,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
                 </div>
 
                 {/* Diferencial */}
-                {(sections.hipoteses?.diferencial || hypotheses?.menos_provavel) && (
+                {isSectionVisible('diferencial') && (sections.hipoteses?.diferencial || hypotheses?.menos_provavel) && (
                   <div className="rounded-xl border border-border/60 overflow-hidden bg-muted/20">
                     <div className="bg-muted/40 px-4 py-2">
                       <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Diagnóstico Diferencial</span>
@@ -307,7 +321,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
           )}
 
           {/* CID-10 */}
-          {laudo.cid10_codes && laudo.cid10_codes.length > 0 && (
+          {isSectionVisible('cid10') && laudo.cid10_codes && laudo.cid10_codes.length > 0 && (
             <SectionBlock icon={ClipboardList} title="Classificação CID-10" delay={250}>
               <div className="flex flex-wrap gap-2">
                 {laudo.cid10_codes.map((cid: string, idx: number) => (
@@ -318,7 +332,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
           )}
 
           {/* Red Flags */}
-          {laudo.red_flags && laudo.red_flags.length > 0 && (
+          {isSectionVisible('red_flags') && laudo.red_flags && laudo.red_flags.length > 0 && (
             <SectionBlock icon={ShieldAlert} title="Sinais de Alerta" variant="alert" delay={300}>
               <ul className="space-y-2.5">
                 {laudo.red_flags.map((flag: string, idx: number) => (
@@ -332,7 +346,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
           )}
 
           {/* Exames Complementares */}
-          {laudo.complementary_exams && laudo.complementary_exams.length > 0 && (
+          {isSectionVisible('exames') && laudo.complementary_exams && laudo.complementary_exams.length > 0 && (
             <SectionBlock num={nextNum()} icon={FlaskConical} title="Exames Complementares" delay={350}>
               <ul className="space-y-2">
                 {laudo.complementary_exams.map((exame: string, idx: number) => (
@@ -346,7 +360,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
           )}
 
           {/* Conduta */}
-          {(laudo.conducts?.length > 0 || sections.conduta) && (
+          {isSectionVisible('conduta') && (laudo.conducts?.length > 0 || sections.conduta) && (
             <SectionBlock num={nextNum()} icon={ClipboardList} title="Conduta" variant="highlight" delay={400}>
               {sections.conduta ? (
                 <p className="text-sm text-foreground leading-relaxed font-medium whitespace-pre-wrap">{sections.conduta}</p>
@@ -384,7 +398,7 @@ export const LaudoViewer = ({ laudoId, refreshKey }: LaudoViewerProps) => {
               <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-primary prose-strong:text-foreground">
                 <ReactMarkdown>{laudo.report_markdown || 'Laudo não disponível'}</ReactMarkdown>
               </div>
-              {laudo.legal_disclaimer && (
+              {isSectionVisible('disclaimer') && laudo.legal_disclaimer && (
                 <>
                   <Separator className="my-4" />
                   <p className="text-xs text-muted-foreground italic">{laudo.legal_disclaimer}</p>
