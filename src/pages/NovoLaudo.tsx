@@ -910,19 +910,19 @@ const NovoLaudo = () => {
                   </TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="viewer">
-                  <LaudoViewer laudoId={laudoId} refreshKey={laudoRefreshKey} visibleSections={laudoTemplateSections} />
+                <TabsContent value="viewer" forceMount className="data-[state=inactive]:hidden">
+                  <LaudoViewer laudoId={laudoId} refreshKey={laudoRefreshKey} visibleSections={laudoTemplateSections} laudoData={laudo} />
                 </TabsContent>
                 
-                <TabsContent value="editor">
+                <TabsContent value="editor" forceMount className="data-[state=inactive]:hidden">
                   <LaudoEditor laudoId={laudoId} initialData={laudo} onStatusChange={(newStatus) => { setLaudo({ ...laudo, status: newStatus }); }} />
                 </TabsContent>
 
-                <TabsContent value="exams">
+                <TabsContent value="exams" forceMount className="data-[state=inactive]:hidden">
                   <ExamUploadSection laudoId={laudoId} patientId={laudo?.patient_id} patientName={patientData?.iniciais || ''} onExamsAnalyzed={() => { toast({ title: "Exames integrados", description: "Seção de exames complementares atualizada" }); loadLaudo(); }} onRegenerateWithExams={handleRegenerateWithExams} />
                 </TabsContent>
 
-                <TabsContent value="prescription">
+                <TabsContent value="prescription" forceMount className="data-[state=inactive]:hidden">
                   <PrescriptionTab laudoData={laudo} patientData={patientData} />
                 </TabsContent>
               </Tabs>

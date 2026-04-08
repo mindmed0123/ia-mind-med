@@ -21,6 +21,7 @@ interface LaudoViewerProps {
   laudoId: string;
   refreshKey?: number;
   visibleSections?: LaudoSectionConfig[];
+  laudoData?: any;
 }
 
 /* ── Reusable Section Block with entrance animation ── */
@@ -59,17 +60,24 @@ const SectionBlock = ({ num, icon: Icon, title, children, variant = 'default', d
   </div>
 );
 
-export const LaudoViewer = ({ laudoId, refreshKey, visibleSections }: LaudoViewerProps) => {
+export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }: LaudoViewerProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { subscription } = useSubscription();
-  const [laudo, setLaudo] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [laudo, setLaudo] = useState<any>(laudoData || null);
+  const [loading, setLoading] = useState(!laudoData);
 
-  useEffect(() => { loadLaudo(); }, [laudoId, refreshKey]);
+  // If parent passes laudoData, use it directly (no DB fetch needed)
+  useEffect(() => {
+    if (laudoData) {
+      setLaudo(laudoData);
+      setLoading(false);
+      return;
+    }
+    loadLaudo();
+  }, [laudoId, refreshKey, laudoData]);
 
   const loadLaudo = async () => {
-    // Only show full loading spinner on initial load, not on refreshKey updates
     if (!laudo) setLoading(true);
     try {
       const { data, error } = await supabase.from('laudos').select('*').eq('id', laudoId).single();
