@@ -50,6 +50,7 @@ export const PatientLinkingModal = ({
   laudoId,
   extractedData,
   onPatientLinked,
+  onSkip,
 }: PatientLinkingModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
