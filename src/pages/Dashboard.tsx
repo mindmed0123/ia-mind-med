@@ -110,12 +110,25 @@ const Dashboard = () => {
     navigate("/home");
   };
 
-  if (loading || onboardingChecking || lgpdConsentLoading) {
+  // Safety timeout for Dashboard loading
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  useEffect(() => {
+    if (!loading && !onboardingChecking && !lgpdConsentLoading) {
+      setLoadingTimeout(false);
+      return;
+    }
+    const t = setTimeout(() => setLoadingTimeout(true), 5000);
+    return () => clearTimeout(t);
+  }, [loading, onboardingChecking, lgpdConsentLoading]);
+
+  const isLoading = (loading || onboardingChecking || lgpdConsentLoading) && !loadingTimeout;
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <Activity className="w-12 h-12 text-primary mx-auto mb-4 animate-spin" />
-          <p className="text-muted-foreground">Carregando...</p>
+          <Activity className="w-10 h-10 text-primary mx-auto mb-3 animate-spin" />
+          <p className="text-sm text-muted-foreground">Carregando dashboard...</p>
         </div>
       </div>
     );
