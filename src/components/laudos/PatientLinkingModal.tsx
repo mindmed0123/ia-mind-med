@@ -35,6 +35,7 @@ interface PatientLinkingModalProps {
   laudoId: string;
   extractedData?: ExtractedClinicalData;
   onPatientLinked: (patientId: string, patientName: string) => void;
+  onSkip?: () => void;
 }
 
 interface PatientResult {
@@ -49,6 +50,7 @@ export const PatientLinkingModal = ({
   laudoId,
   extractedData,
   onPatientLinked,
+  onSkip,
 }: PatientLinkingModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -285,7 +287,7 @@ export const PatientLinkingModal = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v && onSkip) onSkip(); }}>
       <DialogContent className="sm:max-w-lg" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -293,7 +295,7 @@ export const PatientLinkingModal = ({
             Vincular Paciente ao Laudo
           </DialogTitle>
           <DialogDescription>
-            Informe o nome do paciente para vincular este laudo. Campo obrigatório.
+            Informe o nome do paciente para vincular este laudo.
           </DialogDescription>
         </DialogHeader>
 
@@ -406,6 +408,16 @@ export const PatientLinkingModal = ({
 
           {/* Actions */}
           <div className="flex gap-2 pt-2">
+            {onSkip && (
+              <Button
+                onClick={onSkip}
+                disabled={saving}
+                variant="ghost"
+                className="text-muted-foreground"
+              >
+                Pular por agora
+              </Button>
+            )}
             {searchName.length >= 3 && (
               <Button
                 onClick={handleCreateNew}

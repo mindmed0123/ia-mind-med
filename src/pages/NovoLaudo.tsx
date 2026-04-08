@@ -62,6 +62,7 @@ const NovoLaudo = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [patientLinked, setPatientLinked] = useState(false);
+  const patientModalDismissedRef = useRef(false);
   const [showFirstLaudoSuccess, setShowFirstLaudoSuccess] = useState(false);
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const [laudoRefreshKey, setLaudoRefreshKey] = useState(0);
@@ -152,7 +153,7 @@ const NovoLaudo = () => {
 
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
-      clearInterval(pollingRef.current);
+      clearTimeout(pollingRef.current);
       pollingRef.current = null;
     }
     pollCountRef.current = 0;
@@ -192,7 +193,7 @@ const NovoLaudo = () => {
       if (!hasShownSuccessToast.current) {
         hasShownSuccessToast.current = true;
         toast({ title: 'Laudo gerado!', description: 'O laudo foi gerado com sucesso' });
-        if (!updated.patient_id) {
+        if (!updated.patient_id && !patientModalDismissedRef.current) {
           setShowPatientModal(true);
         } else {
           setPatientLinked(true);
@@ -255,9 +256,10 @@ const NovoLaudo = () => {
   const startPolling = useCallback((id: string) => {
     stopPolling();
     pollCountRef.current = 0;
-    pollingRef.current = setInterval(async () => {
+    
+    const poll = () => {
       pollCountRef.current++;
-      // Timeout after 3 minutes (90 polls × 2s)
+      // Timeout after 3 minutes
       if (pollCountRef.current > 90) {
         stopPolling();
         setPipelineStage('error');
@@ -265,16 +267,26 @@ const NovoLaudo = () => {
         toast({ title: 'Tempo esgotado', description: 'O processamento demorou demais. Tente novamente.', variant: 'destructive' });
         return;
       }
-      try {
-        const { data: updated } = await supabase
+      
+      Promise.resolve(
+        supabase
           .from('laudos')
           .select('*')
           .eq('id', id)
-          .single();
-        if (updated) handleLaudoUpdate(updated);
-      } catch (err) {
-      }
-    }, pollCountRef.current < 15 ? 1500 : 2500); // Faster polling in first 30s, then slower
+          .single()
+      ).then(({ data: updated }) => {
+          if (updated) handleLaudoUpdate(updated);
+          const delay = pollCountRef.current < 15 ? 1500 : 2500;
+          pollingRef.current = setTimeout(poll, delay) as any;
+        })
+        .catch(() => {
+          const delay = pollCountRef.current < 15 ? 1500 : 2500;
+          pollingRef.current = setTimeout(poll, delay) as any;
+        });
+    };
+    
+    // Start first poll
+    pollingRef.current = setTimeout(poll, 1000) as any;
   }, [stopPolling, handleLaudoUpdate, toast]);
 
   useEffect(() => {
@@ -283,6 +295,7 @@ const NovoLaudo = () => {
     // Reset flags for new laudo
     hasShownSuccessToast.current = false;
     hasTriggeredGeneration.current = false;
+    patientModalDismissedRef.current = false;
     
     // Initial load
     loadLaudo();
@@ -318,7 +331,7 @@ const NovoLaudo = () => {
         setPipelineStage('completed');
         hasShownSuccessToast.current = true;
         setPatientLinked(!!data.patient_id);
-        if (!data.patient_id) {
+        if (!data.patient_id && !patientModalDismissedRef.current) {
           setShowPatientModal(true);
         }
       } else if (data.status === 'generating') {
@@ -947,6 +960,7 @@ const NovoLaudo = () => {
             } : undefined}
             onPatientLinked={(patientId, patientName) => {
               setShowPatientModal(false);
+              patientModalDismissedRef.current = true;
               setPatientLinked(true);
               const initials = patientName.split(' ').map((w: string) => w[0]).join('.').toUpperCase();
               setLaudo((prev: any) => prev ? { 
@@ -964,7 +978,12 @@ const NovoLaudo = () => {
                 nome_completo: patientName,
               }));
               setLaudoRefreshKey(k => k + 1);
-              loadLaudo();
+              // Delay loadLaudo to let DB propagate
+              setTimeout(() => loadLaudo(), 500);
+            }}
+            onSkip={() => {
+              setShowPatientModal(false);
+              patientModalDismissedRef.current = true;
             }}
           />
         )}
