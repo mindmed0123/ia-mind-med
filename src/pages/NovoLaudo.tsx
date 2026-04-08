@@ -193,7 +193,7 @@ const NovoLaudo = () => {
       if (!hasShownSuccessToast.current) {
         hasShownSuccessToast.current = true;
         toast({ title: 'Laudo gerado!', description: 'O laudo foi gerado com sucesso' });
-        if (!updated.patient_id) {
+        if (!updated.patient_id && !patientModalDismissedRef.current) {
           setShowPatientModal(true);
         } else {
           setPatientLinked(true);
