@@ -153,7 +153,7 @@ const NovoLaudo = () => {
 
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
-      clearInterval(pollingRef.current);
+      clearTimeout(pollingRef.current);
       pollingRef.current = null;
     }
     pollCountRef.current = 0;
