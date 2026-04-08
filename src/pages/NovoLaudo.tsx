@@ -577,6 +577,63 @@ const NovoLaudo = () => {
     }
   };
 
+  // Regenerate laudo incorporating exam findings + original transcript
+  const handleRegenerateWithExams = async (examSummary: string) => {
+    if (!laudoId || isSubmitting) return;
+    
+    const textToUse = transcript || (laudo?.transcript as any)?.text || '';
+    if (!textToUse) {
+      toast({ title: 'Sem transcrição', description: 'Não há transcrição disponível para regenerar o laudo', variant: 'destructive' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setPipelineStage('preparing');
+    hasShownSuccessToast.current = false;
+    hasTriggeredGeneration.current = true;
+
+    try {
+      // Reset laudo status so generate-laudo can claim it
+      await supabase
+        .from('laudos')
+        .update({ status: 'draft', updated_at: new Date().toISOString() })
+        .eq('id', laudoId);
+
+      setPipelineStage('calling_ai');
+      
+      const { error } = await supabase.functions.invoke('generate-laudo', {
+        body: {
+          patient: {
+            iniciais: patientData?.iniciais || 'N/I',
+            sexo: patientData?.sexo || 'Não informado',
+            idade: parseInt(patientData?.idade) || 0,
+          },
+          specialty: patientData?.especialidade || 'Não especificada',
+          chief_complaint: patientData?.queixa_principal || 'Não informada',
+          transcript: textToUse,
+          vitals: patientData?.sinais_vitais || {},
+          meds: patientData?.medicacoes || [],
+          allergies: patientData?.alergias || [],
+          exam_findings: examSummary,
+          contexto_clinico: patientData?.contexto_clinico || '',
+          historico: patientData?.historico || '',
+          laudo_id: laudoId,
+          mode: 'complete',
+          template_specialty: selectedSpecialty || undefined,
+        },
+      });
+
+      if (error) throw error;
+      
+      startPolling(laudoId);
+      toast({ title: 'Regenerando laudo...', description: 'A IA está analisando os exames junto com a consulta original' });
+    } catch (error: any) {
+      setPipelineStage('error');
+      setIsSubmitting(false);
+      toast({ title: 'Erro', description: error.message || 'Erro ao regenerar laudo', variant: 'destructive' });
+    }
+  };
+
   // Map pipeline stage to SmartProgress stage
   const getSmartStage = (): SmartStage => {
     switch (pipelineStage) {
