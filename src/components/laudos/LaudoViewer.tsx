@@ -193,7 +193,7 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections }: LaudoViewe
       </div>
 
       {/* ── Patient ID Card ── */}
-      {patientData && (
+      {patientData && isSectionVisible('patient_card') && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-xl border border-border/60 bg-muted/20 p-4">
           <div>
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-0.5">Paciente</p>
