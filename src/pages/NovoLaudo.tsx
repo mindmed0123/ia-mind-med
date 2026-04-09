@@ -481,12 +481,13 @@ const NovoLaudo = () => {
     hasTriggeredGeneration.current = false;
     patientModalDismissedRef.current = false;
 
-    void loadLaudo();
+    // Use ref to avoid loadLaudo in deps (prevents circular re-renders)
+    loadLaudoRef.current?.(false);
 
     return () => {
       stopPolling();
     };
-  }, [laudoId, loadLaudo, stopPolling]);
+  }, [laudoId, stopPolling]);
 
   // Recovery watchdog — only fires when polling isn't active (safety net)
   useEffect(() => {
