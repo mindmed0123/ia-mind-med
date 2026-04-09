@@ -418,7 +418,7 @@ const NovoLaudo = () => {
   };
 
   const handleGenerateLaudo = useCallback(async (transcriptText?: string) => {
-    if (!laudoId || (isSubmitting && pipelineStage !== 'transcribing')) return;
+    if (!laudoId) return;
     
     const textToUse = transcriptText || transcript;
     if (!textToUse) {
@@ -427,48 +427,14 @@ const NovoLaudo = () => {
     }
 
     setIsSubmitting(true);
-    setPipelineStage('preparing');
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Não autenticado');
-
-      setPipelineStage('calling_ai');
-      
-      const { error } = await supabase.functions.invoke('generate-laudo', {
-        body: {
-          patient: {
-            iniciais: patientData?.iniciais || 'N/I',
-            sexo: patientData?.sexo || 'Não informado',
-            idade: parseInt(patientData?.idade) || 0,
-          },
-          specialty: patientData?.especialidade || 'Não especificada',
-          chief_complaint: patientData?.queixa_principal || 'Não informada',
-          transcript: textToUse,
-          vitals: patientData?.sinais_vitais || {},
-          meds: patientData?.medicacoes || [],
-          allergies: patientData?.alergias || [],
-          exam_findings: '',
-          contexto_clinico: patientData?.contexto_clinico || '',
-          historico: patientData?.historico || '',
-          laudo_id: laudoId,
-          mode: 'fast',
-          template_specialty: selectedSpecialty || undefined,
-        },
-      });
-
-      if (error) throw error;
-      
-      // Polling is already running from startPolling - it will detect completion
-      startPolling(laudoId);
-    } catch (error: any) {
-      setPipelineStage('error');
-      setIsSubmitting(false);
-      toast({ title: 'Erro', description: error.message || 'Erro ao gerar laudo', variant: 'destructive' });
-    }
-  }, [laudoId, isSubmitting, pipelineStage, transcript, patientData, toast, startPolling, selectedSpecialty]);
+    generationRetryCount.current = 0;
+    hasTriggeredGeneration.current = true;
+    
+    await invokeGenerateLaudo(textToUse, laudoId);
+    startPolling(laudoId);
+  }, [laudoId, transcript, toast, startPolling, invokeGenerateLaudo]);
   
-  // Keep ref in sync for Realtime callback
+  // Keep ref in sync
   useEffect(() => { handleGenerateLaudoRef.current = handleGenerateLaudo; }, [handleGenerateLaudo]);
 
   const handleTextGenerate = async (text: string) => {
