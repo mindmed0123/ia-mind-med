@@ -306,6 +306,21 @@ describe("Draft generation recovery", () => {
     expect(getPollingDelayMs(1)).toBe(1500);
     expect(getPollingDelayMs(15)).toBe(2500);
   });
+
+  it("maps backend generation sub-stages to real UI states", () => {
+    const mapStage = (snapshot: Record<string, any>) => {
+      if (snapshot.status === "generating" && snapshot.last_update_type === "preparing") return "preparing";
+      if (snapshot.status === "generating" && snapshot.last_update_type === "structuring") return "structuring";
+      if (snapshot.status === "generating") return "calling_ai";
+      if (snapshot.transcript_status === "processing") return "transcribing";
+      if (snapshot.status === "completed") return "completed";
+      return "idle";
+    };
+
+    expect(mapStage({ status: "generating", last_update_type: "preparing" })).toBe("preparing");
+    expect(mapStage({ status: "generating", last_update_type: "calling_ai" })).toBe("calling_ai");
+    expect(mapStage({ status: "generating", last_update_type: "structuring" })).toBe("structuring");
+  });
 });
 
 // ===== PHI Sanitization Tests =====

@@ -62,8 +62,21 @@ export const StepGuidedLaudo = ({ onLaudoCreated, onSkip, onBack }: StepGuidedLa
 
       const { error: fnError } = await supabase.functions.invoke("generate-laudo", {
         body: {
+          patient: {
+            iniciais: "N/I",
+            sexo: "Não informado",
+            idade: 0,
+          },
+          specialty: "Não especificada",
+          chief_complaint: "Não informada",
+          transcript: text.trim(),
+          vitals: {},
+          meds: [],
+          allergies: [],
+          exam_findings: "",
+          contexto_clinico: "",
+          historico: "",
           laudo_id: laudo.id,
-          transcript_text: text.trim(),
           mode: "complete",
         },
         headers: {
