@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { FileText, Calendar, Eye, Pencil, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { useDebounce } from "@/hooks/use-debounce";
 
 interface Laudo {
   id: string;
