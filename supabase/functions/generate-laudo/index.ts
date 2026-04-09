@@ -100,13 +100,13 @@ const LAUDO_TOOL = {
   },
 };
 
-// Models by mode
+// Models by mode — fast uses the lightest model for speed
 const MODELS = {
-  fast: 'google/gemini-3-flash-preview',
+  fast: 'google/gemini-2.5-flash-lite',
   complete: 'google/gemini-2.5-flash',
 };
 
-const MAX_TOKENS = { fast: 3000, complete: 5000 };
+const MAX_TOKENS = { fast: 2500, complete: 4000 };
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
