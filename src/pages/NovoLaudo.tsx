@@ -662,15 +662,20 @@ const NovoLaudo = () => {
     }
   };
 
-  const handlePatientDataChange = async (data: any) => {
-    // Preserve nome_completo from linked patient if form doesn't have it
+  const lastSavedPatientJson = useRef('');
+  const handlePatientDataChange = useCallback(async (data: any) => {
     const merged = {
       ...data,
-      nome_completo: data.nome_completo || patientData?.nome_completo || laudo?.patient_data?.nome_completo || '',
+      nome_completo: data.nome_completo || patientDataRef.current?.nome_completo || '',
     };
+    
+    // Skip if data hasn't actually changed (prevents save loops)
+    const json = JSON.stringify(merged);
+    if (json === lastSavedPatientJson.current) return;
+    lastSavedPatientJson.current = json;
+    
     setPatientData(merged);
     
-    // Persist patient data to the laudo record so PDF export and LaudoViewer pick it up
     if (laudoId) {
       try {
         await supabase
@@ -678,13 +683,11 @@ const NovoLaudo = () => {
           .update({ patient_data: merged })
           .eq('id', laudoId);
         
-        // Update local laudo state so LaudoViewer reflects changes immediately
         setLaudo((prev: any) => prev ? { ...prev, patient_data: merged } : prev);
-        setLaudoRefreshKey(k => k + 1);
       } catch (err) {
       }
     }
-  };
+  }, [laudoId]);
 
   // Regenerate laudo incorporating exam findings + original transcript
   const handleRegenerateWithExams = async (examSummary: string) => {

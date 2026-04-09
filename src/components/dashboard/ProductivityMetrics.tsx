@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +19,7 @@ interface Metrics {
 
 export const ProductivityMetrics = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -152,7 +154,7 @@ export const ProductivityMetrics = () => {
             </h3>
             <div className="space-y-2">
               {metrics.recentLaudos.map((laudo) => (
-                <div key={laudo.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                <div key={laudo.id} onClick={() => navigate(`/novo-laudo?id=${laudo.id}`)} className="flex items-center justify-between py-2 border-b border-border last:border-0 cursor-pointer hover:bg-muted/50 rounded px-2 transition-colors">
                   <div className="flex items-center gap-2 min-w-0">
                     <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
                     <span className="text-sm truncate">{laudo.title}</span>

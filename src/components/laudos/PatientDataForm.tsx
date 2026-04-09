@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -94,12 +94,16 @@ export const PatientDataForm = ({
 
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const debouncedData = useDebounce(data, 800);
+  const debouncedData = useDebounce(data, 2000);
+  const lastEmittedJson = useRef('');
 
   useEffect(() => {
     if (autoSave && onDataChange && debouncedData) {
+      const json = JSON.stringify(debouncedData);
+      if (json === lastEmittedJson.current) return;
       const result = patientDataSchema.safeParse(debouncedData);
       if (result.success) {
+        lastEmittedJson.current = json;
         onDataChange(debouncedData);
         setLastSaved(new Date());
         setValidationErrors([]);
