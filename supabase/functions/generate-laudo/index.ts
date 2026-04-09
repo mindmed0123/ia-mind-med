@@ -298,7 +298,7 @@ serve(async (req) => {
     const t4 = now();
     await updateStage('calling_ai');
     const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 45000);
+    const timeout = setTimeout(() => ctrl.abort(), 30000);
 
     let response;
     try {
@@ -317,7 +317,7 @@ serve(async (req) => {
           tools: [LAUDO_TOOL],
           tool_choice: { type: "function", function: { name: "generate_laudo" } },
           max_tokens: maxTokens,
-          temperature: 0.25,
+          temperature: 0.15,
         }),
         signal: ctrl.signal,
       });
