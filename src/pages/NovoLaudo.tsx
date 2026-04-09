@@ -364,7 +364,6 @@ const NovoLaudo = () => {
     
     const poll = () => {
       pollCountRef.current++;
-      // Timeout after 3 minutes
       if (pollCountRef.current > 90) {
         stopPolling();
         setPipelineStage('error');
@@ -372,7 +371,7 @@ const NovoLaudo = () => {
         toast({ title: 'Tempo esgotado', description: 'O processamento demorou demais. Tente novamente.', variant: 'destructive' });
         return;
       }
-      
+
       Promise.resolve(
         supabase
           .from('laudos')
@@ -386,21 +385,17 @@ const NovoLaudo = () => {
               return;
             }
           }
-          if (pollingRef.current === null) {
-            return;
-          }
+          if (pollingRef.current === null) return;
           pollingRef.current = setTimeout(poll, getPollingDelayMs(pollCountRef.current)) as any;
         })
         .catch(() => {
-          if (pollingRef.current === null) {
-            return;
-          }
+          if (pollingRef.current === null) return;
           pollingRef.current = setTimeout(poll, getPollingDelayMs(pollCountRef.current)) as any;
         });
     };
     
-    // Start first poll
-    pollingRef.current = setTimeout(poll, 1000) as any;
+    // Start first poll faster (500ms instead of 1000ms)
+    pollingRef.current = setTimeout(poll, 500) as any;
   }, [stopPolling, handleLaudoUpdate, toast]);
 
   const loadLaudo = useCallback(async (silent = false) => {
@@ -488,12 +483,15 @@ const NovoLaudo = () => {
     };
   }, [laudoId, loadLaudo, stopPolling]);
 
+  // Recovery watchdog — only fires when polling isn't active (safety net)
   useEffect(() => {
     if (!laudoId || ['idle', 'completed'].includes(pipelineStage) || laudo?.status === 'completed') return;
+    // If polling is active, it handles everything — skip watchdog
+    if (pollingRef.current) return;
 
     const recoveryInterval = window.setInterval(() => {
       void loadLaudo(true);
-    }, 4000);
+    }, 5000);
 
     return () => {
       window.clearInterval(recoveryInterval);

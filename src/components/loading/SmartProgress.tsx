@@ -59,27 +59,33 @@ export const SmartProgress = ({ stage, onRetry, onEmailFallback, isRetrying, cla
   const animFrameRef = useRef<number>();
   const messageIndexRef = useRef(0);
 
-  // Non-linear progress animation
+  // Track previous target to animate from actual position
+  const prevTargetRef = useRef(0);
+
+  // Non-linear progress animation — fast burst on stage change
   useEffect(() => {
     if (stage === 'error') {
       setDisplayPercent(0);
+      prevTargetRef.current = 0;
       return;
     }
     if (stage === 'completed') {
       setDisplayPercent(100);
+      prevTargetRef.current = 100;
       return;
     }
 
     const target = STAGES[stage].targetPercent;
-    const start = displayPercent;
-    const startTime = Date.now();
-    const duration = 800; // ms for initial burst
+    const start = prevTargetRef.current;
+    prevTargetRef.current = target;
+    const startTime = performance.now();
+    const duration = 500; // faster burst
 
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
+    const animate = (now: number) => {
+      const elapsed = now - startTime;
       const t = Math.min(elapsed / duration, 1);
-      // Ease-out cubic for fast start, slow end
-      const eased = 1 - Math.pow(1 - t, 3);
+      // Ease-out quad — snappier than cubic
+      const eased = 1 - (1 - t) * (1 - t);
       const current = start + (target - start) * eased;
       setDisplayPercent(Math.round(current));
 

@@ -41,7 +41,9 @@ export function isTerminalLaudoState(snapshot?: LaudoPipelineSnapshot | null) {
 }
 
 export function getPollingDelayMs(pollCount: number) {
-  return pollCount < 15 ? 1500 : 2500;
+  if (pollCount < 5) return 1000;   // First 5s: aggressive
+  if (pollCount < 20) return 1500;  // Next 22s: normal
+  return 2500;                       // After: relaxed
 }
 
 export function shouldRetryDraftGeneration(
