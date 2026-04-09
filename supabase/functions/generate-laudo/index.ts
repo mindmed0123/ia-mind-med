@@ -154,7 +154,7 @@ serve(async (req) => {
     currentLaudoId = laudo_id;
 
     const updateStage = async (stage: string) => {
-      const { error } = await supabase
+      await supabase
         .from('laudos')
         .update({
           status: 'generating',
@@ -163,111 +163,85 @@ serve(async (req) => {
         })
         .eq('id', laudo_id)
         .eq('user_id', user.id);
-
-      if (error) {
-        log(cid, 'stage_update_error', { stage, error: error.message });
-      }
     };
 
-    // ===== IDEMPOTENCY (atomic claim) =====
-    const { data: existingLaudo, error: existingLaudoError } = await supabase
-      .from('laudos')
-      .select('id, status')
-      .eq('id', laudo_id)
-      .eq('user_id', user.id)
-      .maybeSingle();
+    // ===== PARALLEL: claim + rate limit + template fetch =====
+    const resolvedSpecialty = template_specialty || 
+      (await supabase.from('profiles').select('specialty').eq('id', user.id).single()).data?.specialty || 
+      null;
 
-    if (existingLaudoError) {
-      throw new Error(`Falha ao carregar laudo: ${existingLaudoError.message}`);
-    }
+    const [claimResult, rateLimitResult, templateResult, defaultTemplateResult] = await Promise.all([
+      // Atomic claim
+      supabase
+        .from('laudos')
+        .update({ status: 'generating', last_update_type: 'preparing', updated_at: new Date().toISOString() })
+        .eq('id', laudo_id)
+        .eq('user_id', user.id)
+        .in('status', ['draft', 'error'])
+        .select('id, status')
+        .maybeSingle(),
+      // Rate limit check
+      supabase
+        .from('laudos')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('status', 'completed')
+        .gte('updated_at', new Date(Date.now() - 60000).toISOString()),
+      // Template by specialty
+      resolvedSpecialty
+        ? supabase
+            .from('specialty_templates')
+            .select('system_prompt, sections, specialty, display_name')
+            .eq('specialty', resolvedSpecialty)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      // Default template fallback
+      supabase
+        .from('specialty_templates')
+        .select('system_prompt, sections, specialty, display_name')
+        .eq('is_default', true)
+        .maybeSingle(),
+    ]);
 
-    if (!existingLaudo) {
-      return new Response(JSON.stringify({ error: 'Laudo não encontrado' }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (existingLaudo.status === 'completed' || existingLaudo.status === 'generating') {
-      log(cid, 'idempotent_skip', { laudo_id, status: existingLaudo.status });
-      return new Response(JSON.stringify({ success: true, idempotent: true, status: existingLaudo.status }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const { data: claimed, error: claimError } = await supabase
-      .from('laudos')
-      .update({ status: 'generating', last_update_type: 'preparing', updated_at: new Date().toISOString() })
-      .eq('id', laudo_id)
-      .eq('user_id', user.id)
-      .in('status', ['draft', 'error'])
-      .select('id')
-      .maybeSingle();
-
-    if (claimError) {
-      throw new Error(`Falha ao iniciar geração: ${claimError.message}`);
-    }
-
-    if (!claimed && !claimError) {
+    // Check idempotency — if claim missed, check if already completed/generating
+    if (!claimResult.data && !claimResult.error) {
+      const { data: existing } = await supabase
+        .from('laudos')
+        .select('status')
+        .eq('id', laudo_id)
+        .eq('user_id', user.id)
+        .single();
+      
+      if (existing?.status === 'completed' || existing?.status === 'generating') {
+        log(cid, 'idempotent_skip', { laudo_id, status: existing.status });
+        return new Response(JSON.stringify({ success: true, idempotent: true, status: existing.status }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       log(cid, 'idempotent_skip', { laudo_id, reason: 'claim_missed' });
       return new Response(JSON.stringify({ success: true, idempotent: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // ===== RATE LIMIT =====
-    const oneMinAgo = new Date(Date.now() - 60000).toISOString();
-    const { count } = await supabase
-      .from('laudos').select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id).eq('status', 'completed').gte('updated_at', oneMinAgo);
-    if (count !== null && count >= 5) {
+    if (claimResult.error) {
+      throw new Error(`Falha ao iniciar geração: ${claimResult.error.message}`);
+    }
+
+    // Rate limit
+    if (rateLimitResult.count !== null && rateLimitResult.count >= 5) {
       log(cid, 'rate_limited');
       await supabase.from('laudos').update({ status: 'draft' }).eq('id', laudo_id);
       return new Response(JSON.stringify({ error: 'Limite atingido. Aguarde 1 minuto.', retry_after: 60 }), {
         status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' },
       });
     }
+
+    // Template resolution
+    let templateData = templateResult.data || defaultTemplateResult.data || null;
+
     const t2 = now();
-    log(cid, 'checks_ok', { ms: t2 - t0 });
-
-    // ===== FETCH SPECIALTY TEMPLATE =====
-    let templateData: any = null;
-    let resolvedSpecialty = template_specialty || null;
-
-    // If no template_specialty provided, fetch from doctor's profile
-    if (!resolvedSpecialty) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('specialty')
-        .eq('id', user.id)
-        .single();
-      resolvedSpecialty = profile?.specialty || null;
-    }
-
-    // Fetch template by specialty
-    if (resolvedSpecialty) {
-      const { data: tmpl } = await supabase
-        .from('specialty_templates')
-        .select('system_prompt, sections, specialty, display_name')
-        .eq('specialty', resolvedSpecialty)
-        .maybeSingle();
-      if (tmpl) templateData = tmpl;
-    }
-
-    // Fallback to default template
-    if (!templateData) {
-      const { data: defaultTmpl } = await supabase
-        .from('specialty_templates')
-        .select('system_prompt, sections, specialty, display_name')
-        .eq('is_default', true)
-        .maybeSingle();
-      if (defaultTmpl) templateData = defaultTmpl;
-    }
-
-    const t2b = now();
-    log(cid, 'template_fetched', { 
-      specialty: templateData?.specialty || 'fallback', 
-      ms: t2b - t2 
-    });
+    log(cid, 'checks_ok', { ms: t2 - t0, template: templateData?.specialty || 'default' });
 
     // ===== TRUNCATE TRANSCRIPT =====
     const transcriptText = typeof transcript === 'string' ? transcript : transcript?.text || transcript_text || '';
