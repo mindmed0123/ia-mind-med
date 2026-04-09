@@ -369,25 +369,9 @@ const NovoLaudo = () => {
     pollingRef.current = setTimeout(poll, 1000) as any;
   }, [stopPolling, handleLaudoUpdate, toast]);
 
-  useEffect(() => {
-    if (!laudoId) return;
-    
-    // Reset flags for new laudo
-    hasShownSuccessToast.current = false;
-    hasTriggeredGeneration.current = false;
-    patientModalDismissedRef.current = false;
-    
-    // Initial load
-    loadLaudo();
+  const loadLaudo = useCallback(async (silent = false) => {
+    if (!laudoId) return null;
 
-    return () => {
-      stopPolling();
-    };
-  }, [laudoId]);
-
-  const loadLaudo = async () => {
-    if (!laudoId) return;
-    
     try {
       const { data, error } = await supabase
         .from('laudos')
@@ -396,7 +380,7 @@ const NovoLaudo = () => {
         .single();
 
       if (error) throw error;
-      
+
       setLaudo(data);
       const transcriptData = data.transcript as any;
       if (transcriptData?.text) {
@@ -406,9 +390,10 @@ const NovoLaudo = () => {
         setPatientData(data.patient_data);
       }
 
-      // Set initial pipeline stage and start polling if needed
       if (data.status === 'completed') {
+        stopPolling();
         setPipelineStage('completed');
+        setIsSubmitting(false);
         hasShownSuccessToast.current = true;
         setPatientLinked(!!data.patient_id);
         if (!data.patient_id && !patientModalDismissedRef.current) {
@@ -416,11 +401,15 @@ const NovoLaudo = () => {
         }
       } else if (data.status === 'generating') {
         setPipelineStage('calling_ai');
-        startPolling(laudoId);
+        if (!pollingRef.current) {
+          startPolling(laudoId);
+        }
       } else if (isReadyToGenerate(data)) {
         setPipelineStage('preparing');
-        startPolling(laudoId);
-        if (!hasTriggeredGeneration.current) {
+        if (!pollingRef.current) {
+          startPolling(laudoId);
+        }
+        if (!hasTriggeredGeneration.current && transcriptData?.text) {
           hasTriggeredGeneration.current = true;
           generationRetryCount.current = 0;
           lastGenerationAttemptAt.current = Date.now();
@@ -431,15 +420,50 @@ const NovoLaudo = () => {
           });
         }
       } else if (data.status === 'error' || data.transcript_status === 'error') {
+        stopPolling();
         setPipelineStage('error');
+        setIsSubmitting(false);
       } else if (data.transcript_status === 'processing' || data.audio_processing_status === 'processing') {
         setPipelineStage('transcribing');
-        startPolling(laudoId);
+        if (!pollingRef.current) {
+          startPolling(laudoId);
+        }
       }
+
+      return data;
     } catch (error: any) {
-      toast({ title: 'Erro', description: 'Não foi possível carregar o laudo', variant: 'destructive' });
+      if (!silent) {
+        toast({ title: 'Erro', description: 'Não foi possível carregar o laudo', variant: 'destructive' });
+      }
+      return null;
     }
-  };
+  }, [invokeGenerateLaudo, laudoId, startPolling, stopPolling, toast]);
+
+  useEffect(() => {
+    if (!laudoId) return;
+
+    hasShownSuccessToast.current = false;
+    hasTriggeredGeneration.current = false;
+    patientModalDismissedRef.current = false;
+
+    void loadLaudo();
+
+    return () => {
+      stopPolling();
+    };
+  }, [laudoId, loadLaudo, stopPolling]);
+
+  useEffect(() => {
+    if (!laudoId || ['idle', 'completed'].includes(pipelineStage) || laudo?.status === 'completed') return;
+
+    const recoveryInterval = window.setInterval(() => {
+      void loadLaudo(true);
+    }, 4000);
+
+    return () => {
+      window.clearInterval(recoveryInterval);
+    };
+  }, [pipelineStage, laudo?.status, laudoId, loadLaudo]);
 
   const handleGenerateLaudo = useCallback(async (transcriptText?: string) => {
     if (!laudoId) return;
@@ -455,8 +479,8 @@ const NovoLaudo = () => {
     hasTriggeredGeneration.current = true;
     lastGenerationAttemptAt.current = Date.now();
     
-    await invokeGenerateLaudo(textToUse, laudoId);
     startPolling(laudoId);
+    await invokeGenerateLaudo(textToUse, laudoId);
   }, [laudoId, transcript, toast, startPolling, invokeGenerateLaudo]);
 
   const handleTextGenerate = async (text: string) => {
@@ -486,6 +510,8 @@ const NovoLaudo = () => {
 
       const headers = await getCloudFunctionHeaders(session?.access_token);
 
+      startPolling(newLaudo.id);
+
       const { error } = await supabase.functions.invoke('generate-laudo', {
         body: {
           patient: {
@@ -510,9 +536,6 @@ const NovoLaudo = () => {
       });
 
       if (error) throw error;
-
-      // Start centralized polling
-      startPolling(newLaudo.id);
 
       navigate(`/novo-laudo?id=${newLaudo.id}`, { replace: true });
     } catch (error: any) {
@@ -657,6 +680,8 @@ const NovoLaudo = () => {
       
       const headers = await getCloudFunctionHeaders(session?.access_token);
 
+      startPolling(laudoId);
+
       const { error } = await supabase.functions.invoke('generate-laudo', {
         body: {
           patient: {
@@ -682,7 +707,6 @@ const NovoLaudo = () => {
 
       if (error) throw error;
       
-      startPolling(laudoId);
       toast({ title: 'Regenerando laudo...', description: 'A IA está analisando os exames junto com a consulta original' });
     } catch (error: any) {
       setPipelineStage('error');
