@@ -402,7 +402,9 @@ const NovoLaudo = () => {
         setPipelineStage('preparing');
         if (!hasTriggeredGeneration.current) {
           hasTriggeredGeneration.current = true;
-          Promise.resolve().then(() => handleGenerateLaudoRef.current?.(transcriptData.text));
+          generationRetryCount.current = 0;
+          invokeGenerateLaudo(transcriptData.text, laudoId);
+          startPolling(laudoId);
         }
       } else if (data.status === 'error' || data.transcript_status === 'error') {
         setPipelineStage('error');
