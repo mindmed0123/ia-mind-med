@@ -30,7 +30,7 @@ export const LaudoHistory = () => {
 
   useEffect(() => {
     if (user) loadLaudos();
-  }, [user, page]);
+  }, [user, page, search]);
 
   const loadLaudos = async () => {
     setLoading(true);
@@ -39,8 +39,13 @@ export const LaudoHistory = () => {
         .from("laudos")
         .select("id, title, created_at, status, patient_data, specialty", { count: "exact" })
         .eq("user_id", user!.id)
-        .order("created_at", { ascending: false })
-        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+        .order("created_at", { ascending: false });
+
+      if (search.trim().length >= 2) {
+        query = query.ilike("title", `%${search.trim()}%`);
+      }
+
+      query = query.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
       const { data, count, error } = await query;
       if (error) throw error;
