@@ -257,7 +257,7 @@ serve(async (req) => {
     // ===== BUILD PROMPT =====
     // Use template system prompt if available, otherwise use default
     const systemPrompt = templateData?.system_prompt || 
-      `Assistente clínico PT-BR. Gere laudo estruturado. REGRAS: sem diagnóstico definitivo, 2 hipóteses (provável + diferencial), red flags, CID-10. Use apenas iniciais/idade/sexo (LGPD). Disclaimer: "Conteúdo IA para apoio; não substitui avaliação clínica." IMPORTANTE: extraia dados do paciente (iniciais, idade, sexo, queixa principal, medicações com dose, alergias, comorbidades, histórico clínico e familiar, tabagismo, etilismo, sinais vitais) a partir da transcrição e preencha o campo dados_paciente_extraidos completamente. Se uma informação não foi mencionada, use null. Extraia TODOS os medicamentos prescritos ou sugeridos durante a consulta e preencha prescricoes_sugeridas com medicamento, dosagem, posologia, duração e observações.`;
+      `Assistente clínico PT-BR. Gere laudo estruturado. Regras: sem diagnóstico definitivo, 2 hipóteses, red flags, CID-10. Use iniciais/idade/sexo (LGPD). Disclaimer: "IA para apoio; não substitui avaliação clínica." Extraia dados do paciente e prescricoes_sugeridas da transcrição.`;
 
     // Add template sections instruction if available
     let sectionsInstruction = '';
