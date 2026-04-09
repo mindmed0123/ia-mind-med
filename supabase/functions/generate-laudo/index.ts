@@ -147,24 +147,68 @@ serve(async (req) => {
 
     // ===== PARSE BODY =====
     const {
-      patient, specialty, chief_complaint, transcript, vitals, meds, allergies,
+      patient, specialty, chief_complaint, transcript, transcript_text, vitals, meds, allergies,
       exam_findings, contexto_clinico, historico, laudo_id, mode = 'fast',
       template_specialty,
     } = await req.json();
     currentLaudoId = laudo_id;
 
+    const updateStage = async (stage: string) => {
+      const { error } = await supabase
+        .from('laudos')
+        .update({
+          status: 'generating',
+          last_update_type: stage,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', laudo_id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        log(cid, 'stage_update_error', { stage, error: error.message });
+      }
+    };
+
     // ===== IDEMPOTENCY (atomic claim) =====
-    const { data: claimed, error: claimError } = await supabase
+    const { data: existingLaudo, error: existingLaudoError } = await supabase
       .from('laudos')
-      .update({ status: 'generating', updated_at: new Date().toISOString() })
+      .select('id, status')
       .eq('id', laudo_id)
       .eq('user_id', user.id)
-      .not('status', 'in', '("generating","completed")')
+      .maybeSingle();
+
+    if (existingLaudoError) {
+      throw new Error(`Falha ao carregar laudo: ${existingLaudoError.message}`);
+    }
+
+    if (!existingLaudo) {
+      return new Response(JSON.stringify({ error: 'Laudo não encontrado' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (existingLaudo.status === 'completed' || existingLaudo.status === 'generating') {
+      log(cid, 'idempotent_skip', { laudo_id, status: existingLaudo.status });
+      return new Response(JSON.stringify({ success: true, idempotent: true, status: existingLaudo.status }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: claimed, error: claimError } = await supabase
+      .from('laudos')
+      .update({ status: 'generating', last_update_type: 'preparing', updated_at: new Date().toISOString() })
+      .eq('id', laudo_id)
+      .eq('user_id', user.id)
+      .in('status', ['draft', 'error'])
       .select('id')
       .maybeSingle();
 
+    if (claimError) {
+      throw new Error(`Falha ao iniciar geração: ${claimError.message}`);
+    }
+
     if (!claimed && !claimError) {
-      log(cid, 'idempotent_skip', { laudo_id });
+      log(cid, 'idempotent_skip', { laudo_id, reason: 'claim_missed' });
       return new Response(JSON.stringify({ success: true, idempotent: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -226,11 +270,15 @@ serve(async (req) => {
     });
 
     // ===== TRUNCATE TRANSCRIPT =====
-    const transcriptText = typeof transcript === 'string' ? transcript : transcript?.text || '';
+    const transcriptText = typeof transcript === 'string' ? transcript : transcript?.text || transcript_text || '';
     const MAX_CHARS = mode === 'fast' ? 3000 : 5000;
     const truncated = transcriptText.length > MAX_CHARS
       ? transcriptText.substring(0, MAX_CHARS) + '\n[...truncado]'
       : transcriptText;
+
+    if (!transcriptText.trim()) {
+      throw new Error('Transcrição ausente para gerar o laudo.');
+    }
 
     // ===== BUILD PROMPT =====
     // Use template system prompt if available, otherwise use default
@@ -274,6 +322,7 @@ serve(async (req) => {
     if (!lovableKey) throw new Error('AI não configurada');
 
     const t4 = now();
+    await updateStage('calling_ai');
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), 45000);
 
@@ -390,6 +439,8 @@ serve(async (req) => {
       }
     }
 
+    await updateStage('structuring');
+
     // ===== NORMALIZE =====
     const hipoteses = laudoData.hipoteses || {
       mais_provavel: laudoData.hipotese_principal || {},
@@ -477,7 +528,7 @@ serve(async (req) => {
         const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
           global: { headers: { Authorization: authHeader } }
         });
-        await sb.from('laudos').update({ status: 'error', updated_at: new Date().toISOString() }).eq('id', currentLaudoId);
+        await sb.from('laudos').update({ status: 'error', last_update_type: 'error', updated_at: new Date().toISOString() }).eq('id', currentLaudoId);
       }
     } catch { /* best effort */ }
 

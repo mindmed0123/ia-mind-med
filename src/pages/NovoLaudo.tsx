@@ -162,6 +162,44 @@ const NovoLaudo = () => {
     pollCountRef.current = 0;
   }, []);
 
+  const syncPipelineStageFromLaudo = useCallback((snapshot: any) => {
+    if (!snapshot) return;
+
+    if (snapshot.transcript_status === 'error' || snapshot.audio_processing_status === 'error' || snapshot.status === 'error') {
+      setPipelineStage('error');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (snapshot.status === 'completed') {
+      setPipelineStage('completed');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (snapshot.transcript_status === 'processing' || snapshot.audio_processing_status === 'processing') {
+      setPipelineStage('transcribing');
+      return;
+    }
+
+    if (snapshot.status === 'generating') {
+      if (snapshot.last_update_type === 'structuring') {
+        setPipelineStage('structuring');
+        return;
+      }
+      if (snapshot.last_update_type === 'preparing') {
+        setPipelineStage('preparing');
+        return;
+      }
+      setPipelineStage('calling_ai');
+      return;
+    }
+
+    if (isReadyToGenerate(snapshot)) {
+      setPipelineStage('preparing');
+    }
+  }, []);
+
   // Direct generation call that bypasses state guards - used for auto-trigger
   const invokeGenerateLaudo = useCallback(async (transcriptText: string, currentLaudoId: string): Promise<boolean> => {
     try {
@@ -251,13 +289,11 @@ const NovoLaudo = () => {
       }));
     }
 
-    // Update pipeline stage based on status
-    if (updated.transcript_status === 'error' || updated.audio_processing_status === 'error' || updated.status === 'error') {
-      setPipelineStage('error');
+    syncPipelineStageFromLaudo(updated);
+
+    if (updated.status === 'completed') {
       stopPolling();
-    } else if (updated.status === 'completed') {
       setPipelineStage('completed');
-      stopPolling();
       if (!hasShownSuccessToast.current) {
         hasShownSuccessToast.current = true;
         toast({ title: 'Laudo gerado!', description: 'O laudo foi gerado com sucesso' });
@@ -301,10 +337,8 @@ const NovoLaudo = () => {
         })();
       }
       setIsSubmitting(false);
-    } else if (updated.status === 'generating') {
-      setPipelineStage('calling_ai');
-    } else if (updated.transcript_status === 'processing' || updated.audio_processing_status === 'processing') {
-      setPipelineStage('transcribing');
+    } else if (updated.transcript_status === 'error' || updated.audio_processing_status === 'error' || updated.status === 'error') {
+      stopPolling();
     }
 
     // Auto-trigger generation when transcription completes
@@ -322,7 +356,7 @@ const NovoLaudo = () => {
         });
       }
     }
-  }, [toast, stopPolling, laudoId, invokeGenerateLaudo]);
+  }, [toast, stopPolling, laudoId, invokeGenerateLaudo, syncPipelineStageFromLaudo]);
 
   const startPolling = useCallback((id: string) => {
     stopPolling();
@@ -390,6 +424,8 @@ const NovoLaudo = () => {
         setPatientData(data.patient_data);
       }
 
+      syncPipelineStageFromLaudo(data);
+
       if (data.status === 'completed') {
         stopPolling();
         setPipelineStage('completed');
@@ -398,11 +434,6 @@ const NovoLaudo = () => {
         setPatientLinked(!!data.patient_id);
         if (!data.patient_id && !patientModalDismissedRef.current) {
           setShowPatientModal(true);
-        }
-      } else if (data.status === 'generating') {
-        setPipelineStage('calling_ai');
-        if (!pollingRef.current) {
-          startPolling(laudoId);
         }
       } else if (isReadyToGenerate(data)) {
         setPipelineStage('preparing');
@@ -418,6 +449,10 @@ const NovoLaudo = () => {
               hasTriggeredGeneration.current = false;
             }
           });
+        }
+      } else if (data.status === 'generating') {
+        if (!pollingRef.current) {
+          startPolling(laudoId);
         }
       } else if (data.status === 'error' || data.transcript_status === 'error') {
         stopPolling();
@@ -437,7 +472,7 @@ const NovoLaudo = () => {
       }
       return null;
     }
-  }, [invokeGenerateLaudo, laudoId, startPolling, stopPolling, toast]);
+  }, [invokeGenerateLaudo, laudoId, startPolling, stopPolling, toast, syncPipelineStageFromLaudo]);
 
   useEffect(() => {
     if (!laudoId) return;

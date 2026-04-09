@@ -13,6 +13,14 @@ function log(correlationId: string, step: string, data?: Record<string, unknown>
   console.log(JSON.stringify(entry));
 }
 
+function asArray(value: unknown) {
+  return Array.isArray(value) ? value : [];
+}
+
+function asObject(value: unknown) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -76,7 +84,7 @@ serve(async (req) => {
     // ===== IDEMPOTENCY CHECK =====
     const { data: existingLaudo } = await supabase
       .from('laudos')
-      .select('transcript_status')
+      .select('transcript_status, patient_data, clinical_context, specialty, generation_mode')
       .eq('id', laudo_id)
       .eq('user_id', user.id)
       .single();
@@ -283,6 +291,76 @@ serve(async (req) => {
       throw new Error('Erro ao salvar transcrição');
     }
 
+    const patientData = asObject(existingLaudo?.patient_data);
+    const clinicalContext = asObject(existingLaudo?.clinical_context);
+    const generationMode = typeof existingLaudo?.generation_mode === 'string' ? existingLaudo.generation_mode : mode;
+
+    const generatePayload = {
+      patient: {
+        iniciais: typeof patientData.iniciais === 'string' ? patientData.iniciais : 'N/I',
+        sexo: typeof patientData.sexo === 'string' ? patientData.sexo : 'Não informado',
+        idade: Number(patientData.idade) || 0,
+      },
+      specialty:
+        (typeof clinicalContext.specialty === 'string' && clinicalContext.specialty) ||
+        (typeof patientData.especialidade === 'string' && patientData.especialidade) ||
+        (typeof existingLaudo?.specialty === 'string' && existingLaudo.specialty) ||
+        'Não especificada',
+      chief_complaint:
+        (typeof patientData.queixa_principal === 'string' && patientData.queixa_principal) ||
+        (typeof clinicalContext.chief_complaint === 'string' && clinicalContext.chief_complaint) ||
+        'Não informada',
+      transcript: transcriptText,
+      vitals: asObject(patientData.sinais_vitais).PA || Object.keys(asObject(clinicalContext.vitals)).length
+        ? { ...asObject(clinicalContext.vitals), ...asObject(patientData.sinais_vitais) }
+        : {},
+      meds: asArray(patientData.medicacoes).length ? asArray(patientData.medicacoes) : asArray(clinicalContext.meds),
+      allergies: asArray(patientData.alergias).length ? asArray(patientData.alergias) : asArray(clinicalContext.allergies),
+      exam_findings: typeof clinicalContext.exam_findings === 'string' ? clinicalContext.exam_findings : '',
+      contexto_clinico:
+        (typeof patientData.contexto_clinico === 'string' && patientData.contexto_clinico) ||
+        (typeof clinicalContext.contexto_clinico === 'string' && clinicalContext.contexto_clinico) ||
+        '',
+      historico:
+        (typeof patientData.historico === 'string' && patientData.historico) ||
+        (typeof clinicalContext.historico === 'string' && clinicalContext.historico) ||
+        '',
+      laudo_id,
+      mode: generationMode,
+      template_specialty: typeof existingLaudo?.specialty === 'string' ? existingLaudo.specialty : undefined,
+    };
+
+    const generateUrl = `${supabaseUrl}/functions/v1/generate-laudo`;
+    const generatePromise = fetch(generateUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader,
+        'apikey': supabaseKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(generatePayload),
+    })
+      .then(async (response) => {
+        const body = await response.text();
+        log(correlationId, 'generate_dispatch_response', {
+          laudo_id,
+          status: response.status,
+          ok: response.ok,
+          body_preview: body.slice(0, 180),
+        });
+      })
+      .catch((dispatchError) => {
+        log(correlationId, 'generate_dispatch_error', {
+          laudo_id,
+          message: dispatchError instanceof Error ? dispatchError.message : 'unknown',
+        });
+      });
+
+    const waitUntil = (globalThis as { EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void } }).EdgeRuntime?.waitUntil;
+    if (waitUntil) {
+      waitUntil(generatePromise);
+    }
+
     log(correlationId, 'complete', {
       laudo_id,
       duration: transcriptionData.duration,
@@ -298,6 +376,7 @@ serve(async (req) => {
         segments: segments.length,
         latency_ms: latencyMs,
         correlation_id: correlationId,
+          generation_dispatched: true,
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
