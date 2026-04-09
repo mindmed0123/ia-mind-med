@@ -60,18 +60,7 @@ export const LaudoHistory = () => {
     }
   };
 
-  const filteredLaudos = search
-    ? laudos.filter((l) => {
-        const pd = l.patient_data as any;
-        const patientName = pd?.nome_completo || pd?.iniciais || pd?.nome || "";
-        const searchLower = search.toLowerCase();
-        return (
-          l.title.toLowerCase().includes(searchLower) ||
-          patientName.toLowerCase().includes(searchLower)
-        );
-      })
-    : laudos;
-
+  // Server-side search is done in loadLaudos, no client filter needed
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const getStatusBadge = (status: string) => {
