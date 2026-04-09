@@ -398,6 +398,8 @@ const NovoLaudo = () => {
     pollingRef.current = setTimeout(poll, 500) as any;
   }, [stopPolling, handleLaudoUpdate, toast]);
 
+  const loadLaudoRef = useRef<((silent?: boolean) => Promise<any>) | null>(null);
+
   const loadLaudo = useCallback(async (silent = false) => {
     if (!laudoId) return null;
 
@@ -469,6 +471,9 @@ const NovoLaudo = () => {
     }
   }, [invokeGenerateLaudo, laudoId, startPolling, stopPolling, toast, syncPipelineStageFromLaudo]);
 
+  // Keep ref in sync so effects don't need loadLaudo in deps
+  loadLaudoRef.current = loadLaudo;
+
   useEffect(() => {
     if (!laudoId) return;
 
@@ -476,27 +481,27 @@ const NovoLaudo = () => {
     hasTriggeredGeneration.current = false;
     patientModalDismissedRef.current = false;
 
-    void loadLaudo();
+    // Use ref to avoid loadLaudo in deps (prevents circular re-renders)
+    loadLaudoRef.current?.(false);
 
     return () => {
       stopPolling();
     };
-  }, [laudoId, loadLaudo, stopPolling]);
+  }, [laudoId, stopPolling]);
 
   // Recovery watchdog — only fires when polling isn't active (safety net)
   useEffect(() => {
     if (!laudoId || ['idle', 'completed'].includes(pipelineStage) || laudo?.status === 'completed') return;
-    // If polling is active, it handles everything — skip watchdog
     if (pollingRef.current) return;
 
     const recoveryInterval = window.setInterval(() => {
-      void loadLaudo(true);
+      loadLaudoRef.current?.(true);
     }, 5000);
 
     return () => {
       window.clearInterval(recoveryInterval);
     };
-  }, [pipelineStage, laudo?.status, laudoId, loadLaudo]);
+  }, [pipelineStage, laudo?.status, laudoId]);
 
   const handleGenerateLaudo = useCallback(async (transcriptText?: string) => {
     if (!laudoId) return;
@@ -1022,7 +1027,7 @@ const NovoLaudo = () => {
                 </TabsContent>
 
                 <TabsContent value="exams" forceMount className="data-[state=inactive]:hidden">
-                  <ExamUploadSection laudoId={laudoId} patientId={laudo?.patient_id} patientName={patientData?.iniciais || ''} onExamsAnalyzed={() => { toast({ title: "Exames integrados", description: "Seção de exames complementares atualizada" }); loadLaudo(); }} onRegenerateWithExams={handleRegenerateWithExams} />
+                  <ExamUploadSection laudoId={laudoId} patientId={laudo?.patient_id} patientName={patientData?.iniciais || ''} onExamsAnalyzed={() => { toast({ title: "Exames integrados", description: "Seção de exames complementares atualizada" }); loadLaudoRef.current?.(); }} onRegenerateWithExams={handleRegenerateWithExams} />
                 </TabsContent>
 
                 <TabsContent value="prescription" forceMount className="data-[state=inactive]:hidden">
@@ -1101,7 +1106,7 @@ const NovoLaudo = () => {
               }));
               setLaudoRefreshKey(k => k + 1);
               // Delay loadLaudo to let DB propagate
-              setTimeout(() => loadLaudo(), 500);
+              setTimeout(() => loadLaudoRef.current?.(), 500);
             }}
             onSkip={() => {
               setShowPatientModal(false);

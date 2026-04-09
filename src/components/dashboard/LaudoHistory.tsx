@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { FileText, Calendar, Eye, Pencil, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { useDebounce } from "@/hooks/use-debounce";
 
 interface Laudo {
   id: string;
@@ -24,13 +25,14 @@ export const LaudoHistory = () => {
   const navigate = useNavigate();
   const [laudos, setLaudos] = useState<Laudo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const search = useDebounce(searchInput, 400);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
     if (user) loadLaudos();
-  }, [user, page]);
+  }, [user, page, search]);
 
   const loadLaudos = async () => {
     setLoading(true);
@@ -39,8 +41,13 @@ export const LaudoHistory = () => {
         .from("laudos")
         .select("id, title, created_at, status, patient_data, specialty", { count: "exact" })
         .eq("user_id", user!.id)
-        .order("created_at", { ascending: false })
-        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+        .order("created_at", { ascending: false });
+
+      if (search.trim().length >= 2) {
+        query = query.ilike("title", `%${search.trim()}%`);
+      }
+
+      query = query.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
       const { data, count, error } = await query;
       if (error) throw error;
@@ -53,18 +60,7 @@ export const LaudoHistory = () => {
     }
   };
 
-  const filteredLaudos = search
-    ? laudos.filter((l) => {
-        const pd = l.patient_data as any;
-        const patientName = pd?.nome_completo || pd?.iniciais || pd?.nome || "";
-        const searchLower = search.toLowerCase();
-        return (
-          l.title.toLowerCase().includes(searchLower) ||
-          patientName.toLowerCase().includes(searchLower)
-        );
-      })
-    : laudos;
-
+  // Server-side search is done in loadLaudos, no client filter needed
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const getStatusBadge = (status: string) => {
@@ -96,13 +92,13 @@ export const LaudoHistory = () => {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           placeholder="Buscar por título ou paciente..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={searchInput}
+          onChange={(e) => { setSearchInput(e.target.value); setPage(0); }}
           className="pl-9"
         />
       </div>
 
-      {filteredLaudos.length === 0 ? (
+      {laudos.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
             <FileText className="w-10 h-10 mx-auto mb-3 opacity-40" />
@@ -111,7 +107,7 @@ export const LaudoHistory = () => {
         </Card>
       ) : (
         <div className="space-y-2">
-          {filteredLaudos.map((laudo) => (
+          {laudos.map((laudo) => (
             <Card
               key={laudo.id}
               className="shadow-soft hover:shadow-medium transition-smooth cursor-pointer"
