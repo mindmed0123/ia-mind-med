@@ -492,17 +492,16 @@ const NovoLaudo = () => {
   // Recovery watchdog — only fires when polling isn't active (safety net)
   useEffect(() => {
     if (!laudoId || ['idle', 'completed'].includes(pipelineStage) || laudo?.status === 'completed') return;
-    // If polling is active, it handles everything — skip watchdog
     if (pollingRef.current) return;
 
     const recoveryInterval = window.setInterval(() => {
-      void loadLaudo(true);
+      loadLaudoRef.current?.(true);
     }, 5000);
 
     return () => {
       window.clearInterval(recoveryInterval);
     };
-  }, [pipelineStage, laudo?.status, laudoId, loadLaudo]);
+  }, [pipelineStage, laudo?.status, laudoId]);
 
   const handleGenerateLaudo = useCallback(async (transcriptText?: string) => {
     if (!laudoId) return;
