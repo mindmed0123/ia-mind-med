@@ -25,7 +25,8 @@ export const LaudoHistory = () => {
   const navigate = useNavigate();
   const [laudos, setLaudos] = useState<Laudo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const search = useDebounce(searchInput, 400);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
 
