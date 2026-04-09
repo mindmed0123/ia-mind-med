@@ -18,6 +18,7 @@ import { useOnboarding } from "@/hooks/useOnboarding";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { TrialReminderBanner } from "@/components/trial/TrialReminderBanner";
+import { getCloudFunctionHeaders } from "@/lib/cloud-function-auth";
 
 const Dashboard = () => {
   const { user, signOut, loading } = useAuth();
@@ -66,16 +67,7 @@ const Dashboard = () => {
 
       navigate(`/novo-laudo?id=${newLaudo.id}`);
 
-      const { data: initial } = await supabase.auth.getSession();
-      let accessToken = initial?.session?.access_token;
-      if (!accessToken) {
-        return;
-      }
-      
-      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-      if (!refreshError && refreshed?.session?.access_token) {
-        accessToken = refreshed.session.access_token;
-      }
+      const headers = await getCloudFunctionHeaders();
 
       // Fire transcription in background - NovoLaudo polling will handle the rest
       supabase.functions.invoke('transcribe-audio', {
@@ -85,10 +77,7 @@ const Dashboard = () => {
           laudo_id: newLaudo.id,
           mode: 'complete',
         },
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
+        headers,
       }).catch(() => {});
     } catch (error: any) {
       const status = error?.context?.status || error?.status;

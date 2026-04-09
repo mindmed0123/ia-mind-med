@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { GENERATION_RECOVERY_WINDOW_MS, getPollingDelayMs, isReadyToGenerate, isTerminalLaudoState, shouldRetryDraftGeneration } from "@/lib/laudo-pipeline";
 
 /**
  * Unit tests for MindMed P1 fixes:
@@ -240,6 +241,70 @@ describe("Pipeline Stage Management", () => {
 
   it("returns idle for draft with no processing", () => {
     expect(getStage({ status: "draft" })).toBe("idle");
+  });
+});
+
+describe("Draft generation recovery", () => {
+  it("detects when a transcribed draft is ready for generation", () => {
+    expect(
+      isReadyToGenerate({
+        status: "draft",
+        transcript_status: "completed",
+        transcript: { text: "consulta transcrita" },
+      }),
+    ).toBe(true);
+  });
+
+  it("does not trigger generation without transcript text", () => {
+    expect(
+      isReadyToGenerate({
+        status: "draft",
+        transcript_status: "completed",
+        transcript: { text: "" },
+      }),
+    ).toBe(false);
+  });
+
+  it("retries a stuck draft generation after the recovery window", () => {
+    expect(
+      shouldRetryDraftGeneration(
+        {
+          status: "draft",
+          transcript_status: "completed",
+          transcript: { text: "consulta transcrita" },
+        },
+        true,
+        0,
+        GENERATION_RECOVERY_WINDOW_MS + 1,
+      ),
+    ).toBe(true);
+  });
+
+  it("does not retry too early while waiting for the current attempt", () => {
+    expect(
+      shouldRetryDraftGeneration(
+        {
+          status: "draft",
+          transcript_status: "completed",
+          transcript: { text: "consulta transcrita" },
+        },
+        true,
+        1000,
+        1000 + GENERATION_RECOVERY_WINDOW_MS - 1,
+      ),
+    ).toBe(false);
+  });
+
+  it("stops polling after terminal states", () => {
+    expect(isTerminalLaudoState({ status: "completed" })).toBe(true);
+    expect(isTerminalLaudoState({ status: "error" })).toBe(true);
+    expect(isTerminalLaudoState({ transcript_status: "error" })).toBe(true);
+    expect(isTerminalLaudoState({ status: "draft", transcript_status: "completed" })).toBe(false);
+  });
+
+  it("uses shorter polling early and slower polling later", () => {
+    expect(getPollingDelayMs(1)).toBe(1500);
+    expect(getPollingDelayMs(15)).toBe(2500);
   });
 });
 
