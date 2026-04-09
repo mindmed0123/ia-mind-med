@@ -4,10 +4,11 @@ import { Activity } from "lucide-react";
 
 interface InstantWelcomeProps {
   onStart: () => void;
+  onSkip: () => void;
   userName?: string;
 }
 
-export const InstantWelcome = ({ onStart, userName }: InstantWelcomeProps) => {
+export const InstantWelcome = ({ onStart, onSkip, userName }: InstantWelcomeProps) => {
   const firstName = userName?.split(" ")[0] || "Doutor(a)";
 
   return (
@@ -32,14 +33,24 @@ export const InstantWelcome = ({ onStart, userName }: InstantWelcomeProps) => {
         </div>
 
         {/* CTA */}
-        <Button
-          onClick={onStart}
-          size="lg"
-          className="w-full h-16 text-lg font-semibold gradient-primary shadow-large hover:shadow-xl transition-all hover:scale-[1.02] rounded-xl"
-        >
-          <Mic className="w-6 h-6 mr-3" />
-          Começar consulta agora
-        </Button>
+        <div className="space-y-3">
+          <Button
+            onClick={onStart}
+            size="lg"
+            className="w-full h-16 text-lg font-semibold gradient-primary shadow-large hover:shadow-xl transition-all hover:scale-[1.02] rounded-xl"
+          >
+            <Mic className="w-6 h-6 mr-3" />
+            Começar consulta agora
+          </Button>
+          <Button
+            onClick={onSkip}
+            variant="ghost"
+            size="lg"
+            className="w-full text-muted-foreground hover:text-foreground"
+          >
+            Pular e ir para o Dashboard
+          </Button>
+        </div>
 
         {/* Trust signals */}
         <div className="grid grid-cols-1 gap-3 pt-4">
