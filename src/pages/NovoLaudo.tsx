@@ -358,6 +358,9 @@ const NovoLaudo = () => {
     }
   }, [toast, stopPolling, laudoId, invokeGenerateLaudo, syncPipelineStageFromLaudo]);
 
+  // Lightweight status-only columns for fast polling
+  const POLL_COLUMNS = 'id,status,transcript_status,audio_processing_status,transcript,last_update_type,patient_data,report_markdown,diagnosis_main,diagnosis_diff,hypotheses,red_flags,sections,summary,specialty,complementary_exams,conducts,cid10_codes,legal_disclaimer,patient_id,patient_markdown,title,source_audio_url' as const;
+
   const startPolling = useCallback((id: string) => {
     stopPolling();
     pollCountRef.current = 0;
@@ -372,35 +375,41 @@ const NovoLaudo = () => {
         toast({ title: 'Tempo esgotado', description: 'O processamento demorou demais. Tente novamente.', variant: 'destructive' });
         return;
       }
+
+      // Use lightweight query for status checks, full query only when completed
+      const isEarlyPoll = pollCountRef.current <= 5;
+      const selectCols = isEarlyPoll ? 'id,status,transcript_status,audio_processing_status,transcript,last_update_type' : POLL_COLUMNS;
       
-      Promise.resolve(
-        supabase
-          .from('laudos')
-          .select('*')
-          .eq('id', id)
-          .single()
-      ).then(({ data: updated }) => {
+      supabase
+        .from('laudos')
+        .select(selectCols)
+        .eq('id', id)
+        .single()
+        .then(({ data: updated }) => {
           if (updated) {
+            // If completed or terminal with early poll, do a full fetch
+            if (isEarlyPoll && (updated.status === 'completed' || isTerminalLaudoState(updated))) {
+              supabase.from('laudos').select('*').eq('id', id).single().then(({ data: full }) => {
+                if (full) handleLaudoUpdate(full);
+              });
+              return;
+            }
             handleLaudoUpdate(updated);
             if (pollingRef.current === null || isTerminalLaudoState(updated)) {
               return;
             }
           }
-          if (pollingRef.current === null) {
-            return;
-          }
+          if (pollingRef.current === null) return;
           pollingRef.current = setTimeout(poll, getPollingDelayMs(pollCountRef.current)) as any;
         })
         .catch(() => {
-          if (pollingRef.current === null) {
-            return;
-          }
+          if (pollingRef.current === null) return;
           pollingRef.current = setTimeout(poll, getPollingDelayMs(pollCountRef.current)) as any;
         });
     };
     
-    // Start first poll
-    pollingRef.current = setTimeout(poll, 1000) as any;
+    // Start first poll faster (500ms)
+    pollingRef.current = setTimeout(poll, 500) as any;
   }, [stopPolling, handleLaudoUpdate, toast]);
 
   const loadLaudo = useCallback(async (silent = false) => {
@@ -488,12 +497,15 @@ const NovoLaudo = () => {
     };
   }, [laudoId, loadLaudo, stopPolling]);
 
+  // Recovery watchdog — only fires when polling isn't active (safety net)
   useEffect(() => {
     if (!laudoId || ['idle', 'completed'].includes(pipelineStage) || laudo?.status === 'completed') return;
+    // If polling is active, it handles everything — skip watchdog
+    if (pollingRef.current) return;
 
     const recoveryInterval = window.setInterval(() => {
       void loadLaudo(true);
-    }, 4000);
+    }, 5000);
 
     return () => {
       window.clearInterval(recoveryInterval);
