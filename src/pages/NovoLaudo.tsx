@@ -372,12 +372,13 @@ const NovoLaudo = () => {
         return;
       }
 
-      supabase
-        .from('laudos')
-        .select('*')
-        .eq('id', id)
-        .single()
-        .then(({ data: updated }) => {
+      Promise.resolve(
+        supabase
+          .from('laudos')
+          .select('*')
+          .eq('id', id)
+          .single()
+      ).then(({ data: updated }) => {
           if (updated) {
             handleLaudoUpdate(updated);
             if (pollingRef.current === null || isTerminalLaudoState(updated)) {
