@@ -2,17 +2,26 @@ export interface LaudoPipelineSnapshot {
   status?: string | null;
   transcript_status?: string | null;
   audio_processing_status?: string | null;
-  transcript?: {
-    text?: string;
-  } | string | null;
+  transcript?: unknown;
 }
 
 export const GENERATION_RECOVERY_WINDOW_MS = 5000;
 
+function extractTranscriptText(transcript: unknown) {
+  if (typeof transcript === "string") {
+    return transcript;
+  }
+
+  if (transcript && typeof transcript === "object" && "text" in transcript) {
+    const value = (transcript as { text?: unknown }).text;
+    return typeof value === "string" ? value : "";
+  }
+
+  return "";
+}
+
 export function isReadyToGenerate(snapshot?: LaudoPipelineSnapshot | null) {
-  const transcriptText = typeof snapshot?.transcript === "string"
-    ? snapshot.transcript
-    : snapshot?.transcript?.text;
+  const transcriptText = extractTranscriptText(snapshot?.transcript);
 
   return Boolean(
     snapshot?.transcript_status === "completed" &&
