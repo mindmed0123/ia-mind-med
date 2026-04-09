@@ -27,6 +27,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FirstLaudoSuccess } from "@/components/onboarding/FirstLaudoSuccess";
 import { MindChatWidget } from "@/components/chat/MindChatWidget";
+import { getCloudFunctionHeaders } from "@/lib/cloud-function-auth";
+import { getPollingDelayMs, isReadyToGenerate, isTerminalLaudoState, shouldRetryDraftGeneration } from "@/lib/laudo-pipeline";
 
 type PipelineStage = 'idle' | 'uploading' | 'transcribing' | 'preparing' | 'calling_ai' | 'structuring' | 'saving' | 'completed' | 'error';
 
@@ -46,7 +48,7 @@ const NovoLaudo = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { templates: specialtyTemplates } = useSpecialtyTemplates();
   const { isEmbedded, bridgeToken, error: bridgeError, sendCompleted, sendCancelled } = useEmbeddedBridge();
   const [laudoId, setLaudoId] = useState<string | null>(searchParams.get('id'));
@@ -142,9 +144,9 @@ const NovoLaudo = () => {
     }
   }, [user]);
 
-  // Keep refs in sync to avoid stale closures in Realtime
-  const handleGenerateLaudoRef = useRef<(t?: string) => Promise<void>>();
+  // Keep refs in sync to avoid stale closures in async callbacks
   const generationRetryCount = useRef(0);
+  const lastGenerationAttemptAt = useRef(0);
   useEffect(() => { transcriptRef.current = transcript; }, [transcript]);
   useEffect(() => { patientDataRef.current = patientData; }, [patientData]);
 
@@ -161,10 +163,9 @@ const NovoLaudo = () => {
   }, []);
 
   // Direct generation call that bypasses state guards - used for auto-trigger
-  const invokeGenerateLaudo = useCallback(async (transcriptText: string, currentLaudoId: string) => {
+  const invokeGenerateLaudo = useCallback(async (transcriptText: string, currentLaudoId: string): Promise<boolean> => {
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) return;
+      const headers = await getCloudFunctionHeaders(session?.access_token);
 
       setPipelineStage('calling_ai');
 
@@ -188,6 +189,7 @@ const NovoLaudo = () => {
           mode: 'fast',
           template_specialty: selectedSpecialty || undefined,
         },
+        headers,
       });
 
       if (error) {
@@ -195,25 +197,35 @@ const NovoLaudo = () => {
         // Retry up to 2 times
         if (generationRetryCount.current < 2) {
           generationRetryCount.current++;
-          setTimeout(() => invokeGenerateLaudo(transcriptText, currentLaudoId), 2000);
+          setTimeout(() => {
+            void invokeGenerateLaudo(transcriptText, currentLaudoId);
+          }, 2000);
         } else {
+          hasTriggeredGeneration.current = false;
           setPipelineStage('error');
           setIsSubmitting(false);
           toast({ title: 'Erro ao gerar laudo', description: 'Tente novamente usando o botão abaixo', variant: 'destructive' });
         }
+        return false;
       }
+
+      return true;
     } catch (err: any) {
       console.error('generate-laudo exception:', err);
       if (generationRetryCount.current < 2) {
         generationRetryCount.current++;
-        setTimeout(() => invokeGenerateLaudo(transcriptText, currentLaudoId), 2000);
+        setTimeout(() => {
+          void invokeGenerateLaudo(transcriptText, currentLaudoId);
+        }, 2000);
       } else {
+        hasTriggeredGeneration.current = false;
         setPipelineStage('error');
         setIsSubmitting(false);
         toast({ title: 'Erro ao gerar laudo', description: err.message || 'Erro inesperado', variant: 'destructive' });
       }
+      return false;
     }
-  }, [selectedSpecialty, toast]);
+  }, [selectedSpecialty, session?.access_token, toast]);
 
   const handleLaudoUpdate = useCallback((updated: any) => {
     setLaudo(updated);
@@ -296,20 +308,18 @@ const NovoLaudo = () => {
     }
 
     // Auto-trigger generation when transcription completes
-    if (
-      updated.transcript_status === 'completed' &&
-      updated.status !== 'completed' &&
-      updated.status !== 'generating' &&
-      !hasTriggeredGeneration.current &&
-      updated.transcript?.text
-    ) {
+    if (shouldRetryDraftGeneration(updated, hasTriggeredGeneration.current, lastGenerationAttemptAt.current)) {
       hasTriggeredGeneration.current = true;
       generationRetryCount.current = 0;
+      lastGenerationAttemptAt.current = Date.now();
       setPipelineStage('preparing');
-      // Use direct invoke instead of ref to avoid stale closure
       const currentId = laudoId || updated.id;
       if (currentId) {
-        invokeGenerateLaudo(updated.transcript.text, currentId);
+        void invokeGenerateLaudo(updated.transcript.text, currentId).then((started) => {
+          if (!started) {
+            hasTriggeredGeneration.current = false;
+          }
+        });
       }
     }
   }, [toast, stopPolling, laudoId, invokeGenerateLaudo]);
@@ -336,13 +346,22 @@ const NovoLaudo = () => {
           .eq('id', id)
           .single()
       ).then(({ data: updated }) => {
-          if (updated) handleLaudoUpdate(updated);
-          const delay = pollCountRef.current < 15 ? 1500 : 2500;
-          pollingRef.current = setTimeout(poll, delay) as any;
+          if (updated) {
+            handleLaudoUpdate(updated);
+            if (pollingRef.current === null || isTerminalLaudoState(updated)) {
+              return;
+            }
+          }
+          if (pollingRef.current === null) {
+            return;
+          }
+          pollingRef.current = setTimeout(poll, getPollingDelayMs(pollCountRef.current)) as any;
         })
         .catch(() => {
-          const delay = pollCountRef.current < 15 ? 1500 : 2500;
-          pollingRef.current = setTimeout(poll, delay) as any;
+          if (pollingRef.current === null) {
+            return;
+          }
+          pollingRef.current = setTimeout(poll, getPollingDelayMs(pollCountRef.current)) as any;
         });
     };
     
@@ -398,13 +417,18 @@ const NovoLaudo = () => {
       } else if (data.status === 'generating') {
         setPipelineStage('calling_ai');
         startPolling(laudoId);
-      } else if (data.transcript_status === 'completed' && data.status === 'draft' && transcriptData?.text) {
+      } else if (isReadyToGenerate(data)) {
         setPipelineStage('preparing');
+        startPolling(laudoId);
         if (!hasTriggeredGeneration.current) {
           hasTriggeredGeneration.current = true;
           generationRetryCount.current = 0;
-          invokeGenerateLaudo(transcriptData.text, laudoId);
-          startPolling(laudoId);
+          lastGenerationAttemptAt.current = Date.now();
+          void invokeGenerateLaudo(transcriptData.text, laudoId).then((started) => {
+            if (!started) {
+              hasTriggeredGeneration.current = false;
+            }
+          });
         }
       } else if (data.status === 'error' || data.transcript_status === 'error') {
         setPipelineStage('error');
@@ -429,13 +453,11 @@ const NovoLaudo = () => {
     setIsSubmitting(true);
     generationRetryCount.current = 0;
     hasTriggeredGeneration.current = true;
+    lastGenerationAttemptAt.current = Date.now();
     
     await invokeGenerateLaudo(textToUse, laudoId);
     startPolling(laudoId);
   }, [laudoId, transcript, toast, startPolling, invokeGenerateLaudo]);
-  
-  // Keep ref in sync
-  useEffect(() => { handleGenerateLaudoRef.current = handleGenerateLaudo; }, [handleGenerateLaudo]);
 
   const handleTextGenerate = async (text: string) => {
     if (!user || isSubmitting) return;
@@ -462,6 +484,8 @@ const NovoLaudo = () => {
       setLaudoId(newLaudo.id);
       setTranscript(text);
 
+      const headers = await getCloudFunctionHeaders(session?.access_token);
+
       const { error } = await supabase.functions.invoke('generate-laudo', {
         body: {
           patient: {
@@ -482,6 +506,7 @@ const NovoLaudo = () => {
           mode: 'complete',
           template_specialty: selectedSpecialty || undefined,
         },
+        headers,
       });
 
       if (error) throw error;
@@ -529,14 +554,7 @@ const NovoLaudo = () => {
       navigate(`/novo-laudo?id=${newLaudo.id}`, { replace: true });
 
       // Fire transcription in background (don't block UI)
-      const { data: initial } = await supabase.auth.getSession();
-      let accessToken = initial?.session?.access_token;
-      if (!accessToken) return;
-      
-      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-      if (!refreshError && refreshed?.session?.access_token) {
-        accessToken = refreshed.session.access_token;
-      }
+      const headers = await getCloudFunctionHeaders(session?.access_token);
 
       supabase.functions.invoke('transcribe-audio', {
         body: {
@@ -545,10 +563,7 @@ const NovoLaudo = () => {
           laudo_id: newLaudo.id,
           mode: 'complete',
         },
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
+        headers,
       }).catch(err => {
         // Polling will detect the error status
       });
@@ -565,14 +580,9 @@ const NovoLaudo = () => {
       setIsSubmitting(true);
       setPipelineStage('transcribing');
       hasTriggeredGeneration.current = false;
+      lastGenerationAttemptAt.current = 0;
       
-      const { data: initial } = await supabase.auth.getSession();
-      let accessToken = initial?.session?.access_token;
-      if (!accessToken) throw new Error('Sessão expirada. Faça login novamente.');
-      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-      if (!refreshError && refreshed?.session?.access_token) {
-        accessToken = refreshed.session.access_token;
-      }
+      const headers = await getCloudFunctionHeaders(session?.access_token);
       const sourceUrl = laudo?.source_audio_url;
       if (!sourceUrl) throw new Error('Áudio de origem não encontrado.');
       
@@ -581,7 +591,7 @@ const NovoLaudo = () => {
       
       const { error } = await supabase.functions.invoke('transcribe-audio', {
         body: { audio_url: sourceUrl, laudo_id: laudoId, mode: 'fast' },
-        headers: { Authorization: `Bearer ${accessToken}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+        headers,
       });
       if (error) throw error;
       toast({ title: 'Reprocessando áudio...', description: 'Tentando novamente a transcrição.' });
@@ -634,6 +644,7 @@ const NovoLaudo = () => {
     setPipelineStage('preparing');
     hasShownSuccessToast.current = false;
     hasTriggeredGeneration.current = true;
+    lastGenerationAttemptAt.current = Date.now();
 
     try {
       // Reset laudo status so generate-laudo can claim it
@@ -644,6 +655,8 @@ const NovoLaudo = () => {
 
       setPipelineStage('calling_ai');
       
+      const headers = await getCloudFunctionHeaders(session?.access_token);
+
       const { error } = await supabase.functions.invoke('generate-laudo', {
         body: {
           patient: {
@@ -664,6 +677,7 @@ const NovoLaudo = () => {
           mode: 'complete',
           template_specialty: selectedSpecialty || undefined,
         },
+        headers,
       });
 
       if (error) throw error;
