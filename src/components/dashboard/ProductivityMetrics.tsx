@@ -19,6 +19,7 @@ interface Metrics {
 
 export const ProductivityMetrics = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
 
