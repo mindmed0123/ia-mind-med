@@ -358,16 +358,12 @@ const NovoLaudo = () => {
     }
   }, [toast, stopPolling, laudoId, invokeGenerateLaudo, syncPipelineStageFromLaudo]);
 
-  // Lightweight status-only columns for fast polling
-  const POLL_COLUMNS = 'id,status,transcript_status,audio_processing_status,transcript,last_update_type,patient_data,report_markdown,diagnosis_main,diagnosis_diff,hypotheses,red_flags,sections,summary,specialty,complementary_exams,conducts,cid10_codes,legal_disclaimer,patient_id,patient_markdown,title,source_audio_url' as const;
-
   const startPolling = useCallback((id: string) => {
     stopPolling();
     pollCountRef.current = 0;
     
     const poll = () => {
       pollCountRef.current++;
-      // Timeout after 3 minutes
       if (pollCountRef.current > 90) {
         stopPolling();
         setPipelineStage('error');
@@ -376,24 +372,13 @@ const NovoLaudo = () => {
         return;
       }
 
-      // Use lightweight query for status checks, full query only when completed
-      const isEarlyPoll = pollCountRef.current <= 5;
-      const selectCols = isEarlyPoll ? 'id,status,transcript_status,audio_processing_status,transcript,last_update_type' : POLL_COLUMNS;
-      
       supabase
         .from('laudos')
-        .select(selectCols)
+        .select('*')
         .eq('id', id)
         .single()
         .then(({ data: updated }) => {
           if (updated) {
-            // If completed or terminal with early poll, do a full fetch
-            if (isEarlyPoll && (updated.status === 'completed' || isTerminalLaudoState(updated))) {
-              supabase.from('laudos').select('*').eq('id', id).single().then(({ data: full }) => {
-                if (full) handleLaudoUpdate(full);
-              });
-              return;
-            }
             handleLaudoUpdate(updated);
             if (pollingRef.current === null || isTerminalLaudoState(updated)) {
               return;
@@ -408,7 +393,7 @@ const NovoLaudo = () => {
         });
     };
     
-    // Start first poll faster (500ms)
+    // Start first poll faster (500ms instead of 1000ms)
     pollingRef.current = setTimeout(poll, 500) as any;
   }, [stopPolling, handleLaudoUpdate, toast]);
 
