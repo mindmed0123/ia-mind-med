@@ -2,7 +2,7 @@ import html2pdf from 'html2pdf.js';
 import QRCode from 'qrcode';
 
 // =====================================================
-// MindMed PDF Engine v3 — Premium Hospital Grade
+// MindMed PDF Engine v4 — Fast & Premium
 // =====================================================
 
 const PAGE_W = 210;
@@ -11,7 +11,6 @@ const HEADER_RESERVE = 30;
 const FOOTER_RESERVE = 18;
 const SIDE_MARGIN = 18;
 
-// Brand palette
 const NAVY: [number, number, number] = [11, 61, 107];
 const BLUE: [number, number, number] = [21, 101, 168];
 const GOLD: [number, number, number] = [199, 148, 74];
@@ -38,9 +37,9 @@ interface PdfOptions {
   pdfMeta?: PdfMeta;
 }
 
-// ── Gradient bar ──
+// ── Gradient bar (simplified — fewer segments for speed) ──
 function drawGradientBar(doc: any, y: number, height: number): void {
-  const segments = 100;
+  const segments = 40;
   const segW = PAGE_W / segments;
   for (let i = 0; i < segments; i++) {
     const t = i / segments;
@@ -63,10 +62,8 @@ function drawGradientBar(doc: any, y: number, height: number): void {
 
 // ── Header ──
 function renderHeader(doc: any, meta: PdfMeta): void {
-  // Top accent
   drawGradientBar(doc, 0, 1.5);
 
-  // Logo badge
   const logoX = SIDE_MARGIN;
   const logoY = 5;
   const logoSize = 10;
@@ -77,7 +74,6 @@ function renderHeader(doc: any, meta: PdfMeta): void {
   doc.setFont('helvetica', 'bold');
   doc.text('M', logoX + logoSize / 2, logoY + 7.2, { align: 'center' });
 
-  // Brand name
   doc.setTextColor(...NAVY);
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
@@ -92,7 +88,6 @@ function renderHeader(doc: any, meta: PdfMeta): void {
     logoY + 9
   );
 
-  // Doctor info (right)
   const rightX = PAGE_W - SIDE_MARGIN;
   doc.setTextColor(...NAVY);
   doc.setFontSize(10);
@@ -116,7 +111,6 @@ function renderHeader(doc: any, meta: PdfMeta): void {
     doc.text(meta.doctorSpecialty, rightX, logoY + 12, { align: 'right' });
   }
 
-  // Separator
   const lineY = 20;
   doc.setDrawColor(...NAVY);
   doc.setLineWidth(0.5);
@@ -130,12 +124,10 @@ function renderHeader(doc: any, meta: PdfMeta): void {
 function renderFooter(doc: any, meta: PdfMeta, pageNum: number, totalPages: number): void {
   const footerTop = PAGE_H - FOOTER_RESERVE;
 
-  // Thin separator
   doc.setDrawColor(226, 232, 240);
   doc.setLineWidth(0.2);
   doc.line(SIDE_MARGIN, footerTop, PAGE_W - SIDE_MARGIN, footerTop);
 
-  // Left: branding
   doc.setTextColor(...DARK_GRAY);
   doc.setFontSize(5);
   doc.setFont('helvetica', 'normal');
@@ -144,7 +136,6 @@ function renderFooter(doc: any, meta: PdfMeta, pageNum: number, totalPages: numb
   doc.setFontSize(4.5);
   doc.text(`${meta.dateFormatted} às ${meta.timeFormatted}`, SIDE_MARGIN, footerTop + 7);
 
-  // Right: hash + page
   const rightX = PAGE_W - SIDE_MARGIN;
   doc.setFont('courier', 'normal');
   doc.setFontSize(4);
@@ -155,32 +146,44 @@ function renderFooter(doc: any, meta: PdfMeta, pageNum: number, totalPages: numb
   doc.setTextColor(...DARK_GRAY);
   doc.text(`${pageNum}/${totalPages}`, rightX, footerTop + 7.5, { align: 'right' });
 
-  // Bottom accent
   drawGradientBar(doc, PAGE_H - 1.5, 1.5);
 }
 
-// ── Main Generator ──
+// ── QR code cache ──
+const qrCache = new Map<string, string>();
+
+async function getQrDataUrl(url: string): Promise<string> {
+  const cached = qrCache.get(url);
+  if (cached) return cached;
+  const dataUrl = await QRCode.toDataURL(url, {
+    width: 120, margin: 1,
+    color: { dark: '#000000', light: '#ffffff' }
+  });
+  qrCache.set(url, dataUrl);
+  return dataUrl;
+}
+
+// ── Main Generator (optimized for speed) ──
 export const generatePdf = async ({ html, fileName, verifyUrl, pdfMeta }: PdfOptions): Promise<Blob> => {
   try {
-    const qrCodeDataUrl = await QRCode.toDataURL(verifyUrl, {
-      width: 150, margin: 1,
-      color: { dark: '#000000', light: '#ffffff' }
-    });
+    const qrCodeDataUrl = await getQrDataUrl(verifyUrl);
 
     const htmlWithQr = html.replace(
       '📱 [QR Code seria gerado aqui]',
-      `<img src="${qrCodeDataUrl}" alt="QR Code" style="max-width:150px;margin:10px auto;display:block;" />`
+      `<img src="${qrCodeDataUrl}" alt="QR Code" style="max-width:120px;margin:8px auto;display:block;" />`
     );
 
     const options = {
       margin: [HEADER_RESERVE, SIDE_MARGIN, FOOTER_RESERVE, SIDE_MARGIN] as [number, number, number, number],
       filename: fileName,
-      image: { type: 'jpeg' as const, quality: 0.98 },
+      image: { type: 'jpeg' as const, quality: 0.85 },
       html2canvas: {
-        scale: 2.5,
+        scale: 1.5,
         useCORS: true,
         logging: false,
-        letterRendering: true,
+        letterRendering: false,
+        imageTimeout: 5000,
+        removeContainer: true,
       },
       jsPDF: {
         unit: 'mm',
@@ -223,7 +226,7 @@ export const downloadPdf = (blob: Blob, fileName: string): void => {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
 // ── Upload to storage ──
