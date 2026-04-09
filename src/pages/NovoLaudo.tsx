@@ -144,6 +144,7 @@ const NovoLaudo = () => {
 
   // Keep refs in sync to avoid stale closures in Realtime
   const handleGenerateLaudoRef = useRef<(t?: string) => Promise<void>>();
+  const generationRetryCount = useRef(0);
   useEffect(() => { transcriptRef.current = transcript; }, [transcript]);
   useEffect(() => { patientDataRef.current = patientData; }, [patientData]);
 
@@ -158,6 +159,61 @@ const NovoLaudo = () => {
     }
     pollCountRef.current = 0;
   }, []);
+
+  // Direct generation call that bypasses state guards - used for auto-trigger
+  const invokeGenerateLaudo = useCallback(async (transcriptText: string, currentLaudoId: string) => {
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) return;
+
+      setPipelineStage('calling_ai');
+
+      const { error } = await supabase.functions.invoke('generate-laudo', {
+        body: {
+          patient: {
+            iniciais: patientDataRef.current?.iniciais || 'N/I',
+            sexo: patientDataRef.current?.sexo || 'Não informado',
+            idade: parseInt(patientDataRef.current?.idade) || 0,
+          },
+          specialty: patientDataRef.current?.especialidade || 'Não especificada',
+          chief_complaint: patientDataRef.current?.queixa_principal || 'Não informada',
+          transcript: transcriptText,
+          vitals: patientDataRef.current?.sinais_vitais || {},
+          meds: patientDataRef.current?.medicacoes || [],
+          allergies: patientDataRef.current?.alergias || [],
+          exam_findings: '',
+          contexto_clinico: patientDataRef.current?.contexto_clinico || '',
+          historico: patientDataRef.current?.historico || '',
+          laudo_id: currentLaudoId,
+          mode: 'fast',
+          template_specialty: selectedSpecialty || undefined,
+        },
+      });
+
+      if (error) {
+        console.error('generate-laudo invoke error:', error);
+        // Retry up to 2 times
+        if (generationRetryCount.current < 2) {
+          generationRetryCount.current++;
+          setTimeout(() => invokeGenerateLaudo(transcriptText, currentLaudoId), 2000);
+        } else {
+          setPipelineStage('error');
+          setIsSubmitting(false);
+          toast({ title: 'Erro ao gerar laudo', description: 'Tente novamente usando o botão abaixo', variant: 'destructive' });
+        }
+      }
+    } catch (err: any) {
+      console.error('generate-laudo exception:', err);
+      if (generationRetryCount.current < 2) {
+        generationRetryCount.current++;
+        setTimeout(() => invokeGenerateLaudo(transcriptText, currentLaudoId), 2000);
+      } else {
+        setPipelineStage('error');
+        setIsSubmitting(false);
+        toast({ title: 'Erro ao gerar laudo', description: err.message || 'Erro inesperado', variant: 'destructive' });
+      }
+    }
+  }, [selectedSpecialty, toast]);
 
   const handleLaudoUpdate = useCallback((updated: any) => {
     setLaudo(updated);
@@ -239,7 +295,7 @@ const NovoLaudo = () => {
       setPipelineStage('transcribing');
     }
 
-      // Auto-trigger generation when transcription completes
+    // Auto-trigger generation when transcription completes
     if (
       updated.transcript_status === 'completed' &&
       updated.status !== 'completed' &&
@@ -248,10 +304,15 @@ const NovoLaudo = () => {
       updated.transcript?.text
     ) {
       hasTriggeredGeneration.current = true;
-        setPipelineStage('preparing');
-      handleGenerateLaudoRef.current?.(updated.transcript.text);
+      generationRetryCount.current = 0;
+      setPipelineStage('preparing');
+      // Use direct invoke instead of ref to avoid stale closure
+      const currentId = laudoId || updated.id;
+      if (currentId) {
+        invokeGenerateLaudo(updated.transcript.text, currentId);
+      }
     }
-  }, [toast, stopPolling]);
+  }, [toast, stopPolling, laudoId, invokeGenerateLaudo]);
 
   const startPolling = useCallback((id: string) => {
     stopPolling();
