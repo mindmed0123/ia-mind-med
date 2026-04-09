@@ -9,7 +9,7 @@ import { Copy, Download, FileText, User, AlertTriangle, Pill, Crown, Stethoscope
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
-import { useSubscription } from "@/hooks/useSubscription";
+import { useAppState } from "@/hooks/useAppState";
 
 interface LaudoSectionConfig {
   key: string;
@@ -63,7 +63,7 @@ const SectionBlock = ({ num, icon: Icon, title, children, variant = 'default', d
 export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }: LaudoViewerProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { subscription } = useSubscription();
+  const { subscription } = useAppState();
   const [laudo, setLaudo] = useState<any>(laudoData || null);
   const [loading, setLoading] = useState(!laudoData);
 

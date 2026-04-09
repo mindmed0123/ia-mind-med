@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useAppState } from '@/hooks/useAppState';
+import { useAuth } from '@/contexts/AuthContext';
 import { Activity } from 'lucide-react';
 
 interface SubscriptionGuardProps {
@@ -10,9 +11,11 @@ interface SubscriptionGuardProps {
 
 export function SubscriptionGuard({ children, allowEmbedded }: SubscriptionGuardProps) {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const hasBridge = !!searchParams.get('bridge');
   const isEmbedded = allowEmbedded && (searchParams.get('embedded') === 'true' || hasBridge);
-  const { isAllowed, loading } = useSubscriptionGuard();
+  const { user, loading: authLoading } = useAuth();
+  const { isAllowed, loading } = useAppState();
   const [showTimeout, setShowTimeout] = useState(false);
 
   useEffect(() => {
@@ -24,9 +27,14 @@ export function SubscriptionGuard({ children, allowEmbedded }: SubscriptionGuard
     return () => clearTimeout(t);
   }, [loading, isEmbedded]);
 
-  if (isEmbedded) {
-    return <>{children}</>;
-  }
+  // Redirect if not allowed
+  useEffect(() => {
+    if (!loading && !authLoading && user && !isAllowed && !isEmbedded) {
+      navigate('/medicos/assinatura-expirada', { replace: true });
+    }
+  }, [loading, authLoading, user, isAllowed, isEmbedded, navigate]);
+
+  if (isEmbedded) return <>{children}</>;
 
   if (loading) {
     return (
