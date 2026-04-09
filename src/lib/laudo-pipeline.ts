@@ -4,17 +4,21 @@ export interface LaudoPipelineSnapshot {
   audio_processing_status?: string | null;
   transcript?: {
     text?: string;
-  } | null;
+  } | string | null;
 }
 
 export const GENERATION_RECOVERY_WINDOW_MS = 5000;
 
 export function isReadyToGenerate(snapshot?: LaudoPipelineSnapshot | null) {
+  const transcriptText = typeof snapshot?.transcript === "string"
+    ? snapshot.transcript
+    : snapshot?.transcript?.text;
+
   return Boolean(
     snapshot?.transcript_status === "completed" &&
       snapshot?.status !== "completed" &&
       snapshot?.status !== "generating" &&
-      snapshot?.transcript?.text,
+      transcriptText,
   );
 }
 
