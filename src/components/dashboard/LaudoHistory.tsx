@@ -92,13 +92,13 @@ export const LaudoHistory = () => {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           placeholder="Buscar por título ou paciente..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={searchInput}
+          onChange={(e) => { setSearchInput(e.target.value); setPage(0); }}
           className="pl-9"
         />
       </div>
 
-      {filteredLaudos.length === 0 ? (
+      {laudos.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
             <FileText className="w-10 h-10 mx-auto mb-3 opacity-40" />
@@ -107,7 +107,7 @@ export const LaudoHistory = () => {
         </Card>
       ) : (
         <div className="space-y-2">
-          {filteredLaudos.map((laudo) => (
+          {laudos.map((laudo) => (
             <Card
               key={laudo.id}
               className="shadow-soft hover:shadow-medium transition-smooth cursor-pointer"
