@@ -34,21 +34,21 @@ export const ProductivityMetrics = () => {
       const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
       const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
 
-      const [laudosRes, patientsRes, thisMonthRes, lastMonthRes, recentRes] = await Promise.all([
-        supabase.from("laudos").select("id, transcript", { count: "exact" }).eq("user_id", user!.id),
-        supabase.from("patients").select("id", { count: "exact" }).eq("user_id", user!.id),
-        supabase.from("laudos").select("id", { count: "exact" }).eq("user_id", user!.id).gte("created_at", startOfMonth),
-        supabase.from("laudos").select("id", { count: "exact" }).eq("user_id", user!.id).gte("created_at", startOfLastMonth).lte("created_at", endOfLastMonth),
+      const [totalLaudosRes, transcriptionsRes, patientsRes, thisMonthRes, lastMonthRes, recentRes] = await Promise.all([
+        supabase.from("laudos").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
+        supabase.from("laudos").select("id", { count: "exact", head: true }).eq("user_id", user!.id).not("transcript", "is", null),
+        supabase.from("patients").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
+        supabase.from("laudos").select("id", { count: "exact", head: true }).eq("user_id", user!.id).gte("created_at", startOfMonth),
+        supabase.from("laudos").select("id", { count: "exact", head: true }).eq("user_id", user!.id).gte("created_at", startOfLastMonth).lte("created_at", endOfLastMonth),
         supabase.from("laudos").select("id, title, created_at, status").eq("user_id", user!.id).order("created_at", { ascending: false }).limit(5),
       ]);
 
-      const allLaudos = laudosRes.data || [];
       setMetrics({
-        totalLaudos: allLaudos.length,
-        totalTranscriptions: allLaudos.filter((l) => l.transcript).length,
-        totalPatients: patientsRes.data?.length || 0,
-        laudosThisMonth: thisMonthRes.data?.length || 0,
-        laudosLastMonth: lastMonthRes.data?.length || 0,
+        totalLaudos: totalLaudosRes.count || 0,
+        totalTranscriptions: transcriptionsRes.count || 0,
+        totalPatients: patientsRes.count || 0,
+        laudosThisMonth: thisMonthRes.count || 0,
+        laudosLastMonth: lastMonthRes.count || 0,
         recentLaudos: (recentRes.data || []).map((l) => ({
           id: l.id,
           title: l.title,
