@@ -1106,7 +1106,7 @@ const NovoLaudo = () => {
               }));
               setLaudoRefreshKey(k => k + 1);
               // Delay loadLaudo to let DB propagate
-              setTimeout(() => loadLaudo(), 500);
+              setTimeout(() => loadLaudoRef.current?.(), 500);
             }}
             onSkip={() => {
               setShowPatientModal(false);
