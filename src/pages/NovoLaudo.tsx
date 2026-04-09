@@ -398,6 +398,8 @@ const NovoLaudo = () => {
     pollingRef.current = setTimeout(poll, 500) as any;
   }, [stopPolling, handleLaudoUpdate, toast]);
 
+  const loadLaudoRef = useRef<((silent?: boolean) => Promise<any>) | null>(null);
+
   const loadLaudo = useCallback(async (silent = false) => {
     if (!laudoId) return null;
 
@@ -468,6 +470,9 @@ const NovoLaudo = () => {
       return null;
     }
   }, [invokeGenerateLaudo, laudoId, startPolling, stopPolling, toast, syncPipelineStageFromLaudo]);
+
+  // Keep ref in sync so effects don't need loadLaudo in deps
+  loadLaudoRef.current = loadLaudo;
 
   useEffect(() => {
     if (!laudoId) return;
