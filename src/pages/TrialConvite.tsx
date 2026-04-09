@@ -91,7 +91,8 @@ const TrialConvite = () => {
           toast.error("Erro ao criar conta");
         }
       } else {
-        toast.success("Conta criada! Verifique seu email para confirmar o cadastro.");
+        toast.success("Conta criada com sucesso! Redirecionando...");
+        navigate("/dashboard");
       }
     } catch {
       toast.error("Erro ao criar conta. Tente novamente.");
