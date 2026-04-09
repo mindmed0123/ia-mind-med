@@ -454,7 +454,7 @@ const NovoLaudo = () => {
   }, [laudoId, loadLaudo, stopPolling]);
 
   useEffect(() => {
-    if (!laudoId || !isProcessing || laudo?.status === 'completed') return;
+    if (!laudoId || ['idle', 'completed'].includes(pipelineStage) || laudo?.status === 'completed') return;
 
     const recoveryInterval = window.setInterval(() => {
       void loadLaudo(true);
@@ -463,7 +463,7 @@ const NovoLaudo = () => {
     return () => {
       window.clearInterval(recoveryInterval);
     };
-  }, [isProcessing, laudo?.status, laudoId, loadLaudo]);
+  }, [pipelineStage, laudo?.status, laudoId, loadLaudo]);
 
   const handleGenerateLaudo = useCallback(async (transcriptText?: string) => {
     if (!laudoId) return;
