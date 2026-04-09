@@ -142,6 +142,9 @@ const Dashboard = () => {
           await completeOnboarding();
           navigate("/novo-laudo");
         }}
+        onSkip={async () => {
+          await completeOnboarding();
+        }}
         userName={user.email?.split("@")[0]}
       />
     );
