@@ -957,7 +957,26 @@ const NovoLaudo = () => {
               </Tabs>
             </>
             ) : isProcessing ? (
-              <SmartProgress stage={getSmartStage()} onRetry={retryTranscription} isRetrying={isSubmitting} />
+              <SmartProgress 
+                stage={getSmartStage()} 
+                onRetry={() => {
+                  // If stuck at generation phase, retry generation instead of transcription
+                  if (pipelineStage === 'preparing' || pipelineStage === 'calling_ai' || pipelineStage === 'structuring') {
+                    const text = transcript || (laudo?.transcript as any)?.text;
+                    if (text && laudoId) {
+                      hasTriggeredGeneration.current = false;
+                      generationRetryCount.current = 0;
+                      setPipelineStage('preparing');
+                      setIsSubmitting(true);
+                      invokeGenerateLaudo(text, laudoId);
+                      startPolling(laudoId);
+                    }
+                  } else {
+                    retryTranscription();
+                  }
+                }} 
+                isRetrying={isSubmitting} 
+              />
             ) : (
               <Card className="border-border/60">
                 <CardContent className="py-16 text-center">
