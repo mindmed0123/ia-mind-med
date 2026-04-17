@@ -80,6 +80,10 @@ function AgendamentosContent() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [metricsOpen, setMetricsOpen] = useState(false);
 
+  // Doctors who are not the owner only see their own appointments
+  const isOwner = !!organization && !!user && organization.owner_id === user.id;
+  const forcedDoctorIds = !isOwner && user ? [user.id] : undefined;
+
   const { rangeStart, rangeEnd } = useMemo(() => {
     if (view === "day") {
       const s = new Date(refDate); s.setHours(0, 0, 0, 0);
