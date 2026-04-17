@@ -86,7 +86,7 @@ export function useAppointments({ organizationId, rangeStart, rangeEnd, doctorId
   return { appointments, loading, error, reload: load };
 }
 
-export function useAppointmentTypes(organizationId: string | null) {
+export function useAppointmentTypes(organizationId: string | null, reloadKey: number = 0) {
   const [types, setTypes] = useState<AppointmentType[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -109,7 +109,7 @@ export function useAppointmentTypes(organizationId: string | null) {
     return () => {
       mounted = false;
     };
-  }, [organizationId]);
+  }, [organizationId, reloadKey]);
 
   return { types, loading };
 }

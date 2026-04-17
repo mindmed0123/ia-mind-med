@@ -3,6 +3,10 @@ project_id = "zwebwrbbrcmajkuptpwq"
 [functions]
   [functions.analyze-image]
     verify_jwt = true
+  [functions.book-appointment]
+    verify_jwt = false
+  [functions.get-public-availability]
+    verify_jwt = false
   [functions.auth-email-hook]
     verify_jwt = false
   [functions.compare-images]

@@ -8,6 +8,7 @@ import { DayView } from "@/components/agendamentos/DayView";
 import { WeekView } from "@/components/agendamentos/WeekView";
 import { MonthView } from "@/components/agendamentos/MonthView";
 import { AppointmentModal } from "@/components/agendamentos/AppointmentModal";
+import { AgendaSettingsDialog } from "@/components/agendamentos/AgendaSettingsDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,6 +23,7 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
+  Settings,
 } from "lucide-react";
 import { Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -64,7 +66,8 @@ function AgendamentosContent() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { organization, members, loading: orgLoading } = useOrganization();
-  const { types } = useAppointmentTypes(organization?.id ?? null);
+  const [typesReloadKey, setTypesReloadKey] = useState(0);
+  const { types } = useAppointmentTypes(organization?.id ?? null, typesReloadKey);
 
   const [view, setView] = useState<ViewMode>("week");
   const [refDate, setRefDate] = useState<Date>(new Date());
@@ -72,6 +75,7 @@ function AgendamentosContent() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
   const [initialStart, setInitialStart] = useState<Date | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const { rangeStart, rangeEnd } = useMemo(() => {
     if (view === "day") {
@@ -174,9 +178,14 @@ function AgendamentosContent() {
               </div>
             </div>
           </div>
-          <Button onClick={() => openCreate()} className="bg-gradient-to-r from-primary to-accent">
-            <Plus className="w-4 h-4 mr-1.5" /> Novo agendamento
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
+              <Settings className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Configurações</span>
+            </Button>
+            <Button onClick={() => openCreate()} className="bg-gradient-to-r from-primary to-accent">
+              <Plus className="w-4 h-4 mr-1.5" /> Novo agendamento
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -290,6 +299,15 @@ function AgendamentosContent() {
         initialStart={initialStart}
         appointment={editingAppt}
         onSaved={reload}
+      />
+
+      <AgendaSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        organizationId={organization.id}
+        members={members}
+        initialTypes={types}
+        onChanged={() => setTypesReloadKey((k) => k + 1)}
       />
     </div>
   );
