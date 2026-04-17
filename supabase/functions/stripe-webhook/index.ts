@@ -252,6 +252,38 @@ serve(async (req) => {
         } else {
           logStep(`Subscription updated to ${dbStatus}`);
         }
+
+        // Sync seats_paid from Stripe quantity (if owner changed via Customer Portal)
+        try {
+          const quantity = subscription.items?.data?.[0]?.quantity ?? 1;
+          const { data: subRow } = await supabase
+            .from("subscriptions")
+            .select("user_id")
+            .eq("stripe_subscription_id", subscriptionId)
+            .maybeSingle();
+
+          if (subRow?.user_id) {
+            const { data: orgRow } = await supabase
+              .from("organizations")
+              .select("id, seats_paid")
+              .eq("owner_id", subRow.user_id)
+              .maybeSingle();
+
+            if (orgRow && orgRow.seats_paid !== quantity) {
+              const { error: orgErr } = await supabase
+                .from("organizations")
+                .update({ seats_paid: quantity })
+                .eq("id", orgRow.id);
+              if (orgErr) {
+                logStep("Error syncing seats_paid", { error: orgErr });
+              } else {
+                logStep("seats_paid synced from Stripe", { orgId: orgRow.id, quantity });
+              }
+            }
+          }
+        } catch (e) {
+          logStep("Seats sync exception", { error: e instanceof Error ? e.message : String(e) });
+        }
         break;
       }
 
