@@ -9,6 +9,7 @@ import { WeekView } from "@/components/agendamentos/WeekView";
 import { MonthView } from "@/components/agendamentos/MonthView";
 import { AppointmentModal } from "@/components/agendamentos/AppointmentModal";
 import { AgendaSettingsDialog } from "@/components/agendamentos/AgendaSettingsDialog";
+import { AgendaMetricsDialog } from "@/components/agendamentos/AgendaMetricsDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,6 +25,7 @@ import {
   Clock,
   XCircle,
   Settings,
+  BarChart3,
 } from "lucide-react";
 import { Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -76,6 +78,7 @@ function AgendamentosContent() {
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
   const [initialStart, setInitialStart] = useState<Date | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [metricsOpen, setMetricsOpen] = useState(false);
 
   const { rangeStart, rangeEnd } = useMemo(() => {
     if (view === "day") {
@@ -179,6 +182,9 @@ function AgendamentosContent() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setMetricsOpen(true)}>
+              <BarChart3 className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Métricas</span>
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
               <Settings className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Configurações</span>
             </Button>
@@ -308,6 +314,13 @@ function AgendamentosContent() {
         members={members}
         initialTypes={types}
         onChanged={() => setTypesReloadKey((k) => k + 1)}
+      />
+
+      <AgendaMetricsDialog
+        open={metricsOpen}
+        onOpenChange={setMetricsOpen}
+        organizationId={organization.id}
+        members={members}
       />
     </div>
   );
