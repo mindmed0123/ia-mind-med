@@ -66,7 +66,8 @@ function AgendamentosContent() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { organization, members, loading: orgLoading } = useOrganization();
-  const { types } = useAppointmentTypes(organization?.id ?? null);
+  const [typesReloadKey, setTypesReloadKey] = useState(0);
+  const { types } = useAppointmentTypes(organization?.id ?? null, typesReloadKey);
 
   const [view, setView] = useState<ViewMode>("week");
   const [refDate, setRefDate] = useState<Date>(new Date());
