@@ -76,7 +76,6 @@ function AgendamentosContent() {
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
   const [initialStart, setInitialStart] = useState<Date | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [typesReloadKey, setTypesReloadKey] = useState(0);
 
   const { rangeStart, rangeEnd } = useMemo(() => {
     if (view === "day") {
@@ -303,7 +302,6 @@ function AgendamentosContent() {
       />
 
       <AgendaSettingsDialog
-        key={typesReloadKey}
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         organizationId={organization.id}
