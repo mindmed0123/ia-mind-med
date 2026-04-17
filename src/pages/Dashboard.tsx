@@ -4,7 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, LogOut, FileAudio, FileText, Settings, Shield, Users, Pill, Bot, History } from "lucide-react";
+import { Activity, LogOut, FileAudio, FileText, Settings, Shield, Users, Pill, Bot, History, Calendar } from "lucide-react";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAdmin } from "@/hooks/useAdmin";
 import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
@@ -26,6 +27,7 @@ const Dashboard = () => {
   const { toast } = useToast();
   const { isAdmin, loading: adminLoading } = useAdmin();
   const { needsWelcome, loading: onboardingChecking, completeOnboarding, needsLgpdConsent, lgpdConsentLoading, markLgpdConsentGiven } = useOnboarding();
+  const { hasAccess: hasAgendaAccess } = useFeatureAccess("appointments");
 
   // After LGPD consent is given, trigger onboarding check
   const handleConsentGiven = useCallback(() => {
@@ -250,6 +252,15 @@ const Dashboard = () => {
                     <Pill className="w-5 h-5 mr-2" />
                     Receituários
                   </Button>
+                  {hasAgendaAccess && (
+                    <Button 
+                      onClick={() => navigate("/agendamentos")} 
+                      className="h-auto py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-90 col-span-2"
+                    >
+                      <Calendar className="w-5 h-5 mr-2" />
+                      Agenda médica
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
