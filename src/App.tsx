@@ -35,6 +35,7 @@ const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const Termos = lazy(() => import("./pages/Termos"));
 const Privacidade = lazy(() => import("./pages/Privacidade"));
 const Agendamentos = lazy(() => import("./pages/Agendamentos"));
+const Agendar = lazy(() => import("./pages/Agendar"));
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,7 @@ const App = () => (
                 <Route path="/unsubscribe" element={<Unsubscribe />} />
                 <Route path="/termos" element={<Termos />} />
                 <Route path="/privacidade" element={<Privacidade />} />
+                <Route path="/agendar" element={<Agendar />} />
                 
                 {/* Protected routes */}
                 <Route path="/dashboard" element={<SubscriptionGuard><Dashboard /></SubscriptionGuard>} />
