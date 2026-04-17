@@ -9,10 +9,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { OrgMember } from "@/hooks/useOrganization";
 import { AppointmentType } from "@/hooks/useAppointments";
+import { UnavailabilityTab } from "./UnavailabilityTab";
 import { toast } from "sonner";
 import {
   Loader2, Plus, Trash2, Copy, ExternalLink, Link2, Clock,
-  CalendarRange, ToggleLeft, Palette,
+  CalendarRange, ToggleLeft, Palette, CalendarOff,
 } from "lucide-react";
 
 interface Props {
@@ -61,10 +62,11 @@ export function AgendaSettingsDialog({
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab} className="mt-2">
-          <TabsList className="grid grid-cols-3 w-full">
+          <TabsList className="grid grid-cols-4 w-full">
             <TabsTrigger value="types"><Palette className="w-3.5 h-3.5 mr-1.5" />Tipos</TabsTrigger>
-            <TabsTrigger value="availability"><Clock className="w-3.5 h-3.5 mr-1.5" />Disponibilidade</TabsTrigger>
-            <TabsTrigger value="links"><Link2 className="w-3.5 h-3.5 mr-1.5" />Links públicos</TabsTrigger>
+            <TabsTrigger value="availability"><Clock className="w-3.5 h-3.5 mr-1.5" />Horários</TabsTrigger>
+            <TabsTrigger value="blocks"><CalendarOff className="w-3.5 h-3.5 mr-1.5" />Bloqueios</TabsTrigger>
+            <TabsTrigger value="links"><Link2 className="w-3.5 h-3.5 mr-1.5" />Links</TabsTrigger>
           </TabsList>
 
           <TabsContent value="types" className="mt-4">
@@ -72,6 +74,9 @@ export function AgendaSettingsDialog({
           </TabsContent>
           <TabsContent value="availability" className="mt-4">
             <AvailabilityTab organizationId={organizationId} members={members} />
+          </TabsContent>
+          <TabsContent value="blocks" className="mt-4">
+            <UnavailabilityTab organizationId={organizationId} members={members} />
           </TabsContent>
           <TabsContent value="links" className="mt-4">
             <BookingLinksTab organizationId={organizationId} members={members} />

@@ -170,23 +170,43 @@ Deno.serve(async (req) => {
         .gte("start_at", dayStart.toISOString())
         .lte("start_at", dayEnd.toISOString());
 
-      // Unavailability blocks
+      // Unavailability blocks (one-off intersecting the day)
       const { data: blocks } = await supabase
         .from("doctor_unavailability")
-        .select("start_at, end_at")
+        .select("start_at, end_at, recurrence_pattern, recurrence_weekdays, recurrence_end_date")
         .eq("organization_id", link.organization_id)
-        .eq("doctor_id", doctorId)
-        .lte("start_at", dayEnd.toISOString())
-        .gte("end_at", dayStart.toISOString());
+        .eq("doctor_id", doctorId);
 
       const busy: Array<[number, number]> = [];
       (appts ?? []).forEach((a) => {
         if (a.status === "cancelled" || a.status === "no_show") return;
         busy.push([new Date(a.start_at).getTime(), new Date(a.end_at).getTime()]);
       });
-      (blocks ?? []).forEach((b) =>
-        busy.push([new Date(b.start_at).getTime(), new Date(b.end_at).getTime()]),
-      );
+
+      const dayStartMs = dayStart.getTime();
+      const dayEndMs = dayEnd.getTime();
+
+      (blocks ?? []).forEach((b: any) => {
+        const bStart = new Date(b.start_at);
+        const bEnd = new Date(b.end_at);
+        if (b.recurrence_pattern === "weekly" && Array.isArray(b.recurrence_weekdays)) {
+          // Recurring weekly: check if today's weekday is included and not past recurrence_end_date
+          if (!b.recurrence_weekdays.includes(weekday)) return;
+          if (b.recurrence_end_date && new Date(`${b.recurrence_end_date}T23:59:59-03:00`).getTime() < dayStartMs) return;
+          if (bStart.getTime() > dayEndMs) return; // recurrence hasn't started yet
+          // Project the block's time-of-day onto the requested date
+          const sh = bStart.getUTCHours(), sm = bStart.getUTCMinutes();
+          const eh = bEnd.getUTCHours(), em = bEnd.getUTCMinutes();
+          // Use BRT-equivalent times derived from the original block
+          const projStart = new Date(`${dateStr}T${pad(bStart.getHours())}:${pad(bStart.getMinutes())}:00-03:00`).getTime();
+          const projEnd = new Date(`${dateStr}T${pad(bEnd.getHours())}:${pad(bEnd.getMinutes())}:00-03:00`).getTime();
+          busy.push([projStart, projEnd]);
+        } else {
+          // One-off: only include if intersects the day
+          if (bEnd.getTime() < dayStartMs || bStart.getTime() > dayEndMs) return;
+          busy.push([bStart.getTime(), bEnd.getTime()]);
+        }
+      });
 
       const durationMs = type.duration_minutes * 60_000;
       const stepMs = type.duration_minutes * 60_000; // back-to-back slots

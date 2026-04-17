@@ -411,7 +411,11 @@ export type Database = {
           id: string
           organization_id: string
           reason: string | null
+          recurrence_end_date: string | null
+          recurrence_pattern: string
+          recurrence_weekdays: number[] | null
           start_at: string
+          title: string | null
         }
         Insert: {
           created_at?: string
@@ -421,7 +425,11 @@ export type Database = {
           id?: string
           organization_id: string
           reason?: string | null
+          recurrence_end_date?: string | null
+          recurrence_pattern?: string
+          recurrence_weekdays?: number[] | null
           start_at: string
+          title?: string | null
         }
         Update: {
           created_at?: string
@@ -431,7 +439,11 @@ export type Database = {
           id?: string
           organization_id?: string
           reason?: string | null
+          recurrence_end_date?: string | null
+          recurrence_pattern?: string
+          recurrence_weekdays?: number[] | null
           start_at?: string
+          title?: string | null
         }
         Relationships: [
           {
@@ -1314,6 +1326,15 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      get_agenda_metrics: {
+        Args: {
+          p_doctor_id?: string
+          p_end: string
+          p_organization_id: string
+          p_start: string
+        }
+        Returns: Json
       }
       get_quota_status:
         | { Args: never; Returns: Json }
