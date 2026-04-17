@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAppointments, useAppointmentTypes, Appointment } from "@/hooks/useAppointments";
@@ -66,9 +66,20 @@ export default function Agendamentos() {
 
 function AgendamentosContent() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { organization, members, loading: orgLoading } = useOrganization();
   const [typesReloadKey, setTypesReloadKey] = useState(0);
+
+  // Auto-open settings dialog when ?settings=team
+  useEffect(() => {
+    if (searchParams.get("settings") === "team") {
+      setSettingsOpen(true);
+      searchParams.delete("settings");
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { types } = useAppointmentTypes(organization?.id ?? null, typesReloadKey);
 
   const [view, setView] = useState<ViewMode>("week");
