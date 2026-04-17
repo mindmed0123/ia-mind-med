@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAdmin } from "@/hooks/useAdmin";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, BarChart3, Users, Mail, Activity } from "lucide-react";
+import { Loader2, ArrowLeft, BarChart3, Users, Mail, Activity, Calendar } from "lucide-react";
+import { AdminFeatureAccess } from "@/components/admin/AdminFeatureAccess";
 import { toast } from "sonner";
 import { AdminKPICards } from "@/components/admin/AdminKPICards";
 import { AdminConversionFunnel } from "@/components/admin/AdminConversionFunnel";
@@ -249,7 +250,7 @@ export default function Admin() {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-8">
+          <TabsList className="grid w-full grid-cols-5 mb-8">
             <TabsTrigger value="overview">
               <BarChart3 className="w-4 h-4 mr-2" />
               Visão Geral
@@ -265,6 +266,10 @@ export default function Admin() {
             <TabsTrigger value="activity">
               <Activity className="w-4 h-4 mr-2" />
               Atividade
+            </TabsTrigger>
+            <TabsTrigger value="modules">
+              <Calendar className="w-4 h-4 mr-2" />
+              Módulos
             </TabsTrigger>
           </TabsList>
 
@@ -293,6 +298,10 @@ export default function Admin() {
           {/* Activity Tab */}
           <TabsContent value="activity">
             <AdminRecentActivity laudos={recentLaudos} />
+          </TabsContent>
+
+          <TabsContent value="modules">
+            <AdminFeatureAccess />
           </TabsContent>
         </Tabs>
       </main>
