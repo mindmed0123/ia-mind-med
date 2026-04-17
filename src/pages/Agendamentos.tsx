@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAppointments, useAppointmentTypes, Appointment } from "@/hooks/useAppointments";
@@ -66,6 +66,7 @@ export default function Agendamentos() {
 
 function AgendamentosContent() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { organization, members, loading: orgLoading } = useOrganization();
   const [typesReloadKey, setTypesReloadKey] = useState(0);
@@ -79,6 +80,20 @@ function AgendamentosContent() {
   const [initialStart, setInitialStart] = useState<Date | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [metricsOpen, setMetricsOpen] = useState(false);
+
+  // Auto-open settings dialog when ?settings=team
+  useEffect(() => {
+    if (searchParams.get("settings") === "team") {
+      setSettingsOpen(true);
+      searchParams.delete("settings");
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Doctors who are not the owner only see their own appointments
+  const isOwner = !!organization && !!user && organization.owner_id === user.id;
+  const forcedDoctorIds = !isOwner && user ? [user.id] : undefined;
 
   const { rangeStart, rangeEnd } = useMemo(() => {
     if (view === "day") {
@@ -100,7 +115,7 @@ function AgendamentosContent() {
     organizationId: organization?.id ?? null,
     rangeStart,
     rangeEnd,
-    doctorIds: selectedDoctors.length > 0 ? selectedDoctors : undefined,
+    doctorIds: forcedDoctorIds ?? (selectedDoctors.length > 0 ? selectedDoctors : undefined),
   });
 
   // Métricas do range
@@ -224,7 +239,7 @@ function AgendamentosContent() {
             </div>
 
             <div className="ml-auto flex items-center gap-3">
-              {members.length > 1 && (
+              {isOwner && members.length > 1 && (
                 <div className="hidden md:flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-muted-foreground" />
                   {members.map((m) => {

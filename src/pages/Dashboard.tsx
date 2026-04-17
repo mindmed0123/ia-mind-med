@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, LogOut, FileAudio, FileText, Settings, Shield, Users, Pill, Bot, History, Calendar } from "lucide-react";
+import { Activity, LogOut, FileAudio, FileText, Settings, Shield, Users, Pill, Bot, History, Calendar, UserPlus } from "lucide-react";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAdmin } from "@/hooks/useAdmin";
 import { AudioUploader } from "@/components/audio/AudioUploader";
@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { TrialReminderBanner } from "@/components/trial/TrialReminderBanner";
 import { getCloudFunctionHeaders } from "@/lib/cloud-function-auth";
+import { useOrganization } from "@/hooks/useOrganization";
 
 const Dashboard = () => {
   const { user, signOut, loading } = useAuth();
@@ -28,6 +29,8 @@ const Dashboard = () => {
   const { isAdmin, loading: adminLoading } = useAdmin();
   const { needsWelcome, loading: onboardingChecking, completeOnboarding, needsLgpdConsent, lgpdConsentLoading, markLgpdConsentGiven } = useOnboarding();
   const { hasAccess: hasAgendaAccess } = useFeatureAccess("appointments");
+  const { organization } = useOrganization();
+  const isOrgOwner = !!organization && !!user && organization.owner_id === user.id;
 
   // After LGPD consent is given, trigger onboarding check
   const handleConsentGiven = useCallback(() => {
