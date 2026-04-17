@@ -104,7 +104,7 @@ function AgendamentosContent() {
     organizationId: organization?.id ?? null,
     rangeStart,
     rangeEnd,
-    doctorIds: selectedDoctors.length > 0 ? selectedDoctors : undefined,
+    doctorIds: forcedDoctorIds ?? (selectedDoctors.length > 0 ? selectedDoctors : undefined),
   });
 
   // Métricas do range
@@ -228,7 +228,7 @@ function AgendamentosContent() {
             </div>
 
             <div className="ml-auto flex items-center gap-3">
-              {members.length > 1 && (
+              {isOwner && members.length > 1 && (
                 <div className="hidden md:flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-muted-foreground" />
                   {members.map((m) => {
