@@ -351,9 +351,9 @@ function InviteDialog({
             </div>
           </div>
 
-          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-md p-3 flex gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div className="text-xs text-amber-900 dark:text-amber-200">
+          <div className="bg-warning/10 border border-warning/30 rounded-md p-3 flex gap-2">
+            <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+            <div className="text-xs text-foreground">
               <strong>+R$ {SEAT_PRICE_BRL}/mês</strong> serão adicionados à sua assinatura quando o médico
               aceitar o convite. Sua nova mensalidade extra ficará em <strong>R$ {projectedMonthly.toLocaleString("pt-BR")}/mês</strong>.
             </div>

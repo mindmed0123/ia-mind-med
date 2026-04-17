@@ -10,16 +10,19 @@ import { Switch } from "@/components/ui/switch";
 import { OrgMember } from "@/hooks/useOrganization";
 import { AppointmentType } from "@/hooks/useAppointments";
 import { UnavailabilityTab } from "./UnavailabilityTab";
+import { TeamTab } from "./TeamTab";
 import { toast } from "sonner";
 import {
   Loader2, Plus, Trash2, Copy, ExternalLink, Link2, Clock,
-  CalendarRange, ToggleLeft, Palette, CalendarOff,
+  CalendarRange, ToggleLeft, Palette, CalendarOff, Users,
 } from "lucide-react";
 
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   organizationId: string;
+  ownerUserId: string;
+  currentUserId: string;
   members: OrgMember[];
   initialTypes: AppointmentType[];
   onChanged: () => void;
