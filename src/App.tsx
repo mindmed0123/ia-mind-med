@@ -34,6 +34,7 @@ const TrialConvite = lazy(() => import("./pages/TrialConvite"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const Termos = lazy(() => import("./pages/Termos"));
 const Privacidade = lazy(() => import("./pages/Privacidade"));
+const Agendamentos = lazy(() => import("./pages/Agendamentos"));
 
 const queryClient = new QueryClient();
 
@@ -80,6 +81,7 @@ const App = () => (
                 <Route path="/evolucao/:patientId" element={<SubscriptionGuard><EvolutionReport /></SubscriptionGuard>} />
                 <Route path="/admin" element={<SubscriptionGuard><Admin /></SubscriptionGuard>} />
                 <Route path="/dav-chat" element={<SubscriptionGuard><DavChat /></SubscriptionGuard>} />
+                <Route path="/agendamentos" element={<SubscriptionGuard><Agendamentos /></SubscriptionGuard>} />
                 
                 <Route path="*" element={<NotFound />} />
               </Routes>
