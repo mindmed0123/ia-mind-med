@@ -10,16 +10,19 @@ import { Switch } from "@/components/ui/switch";
 import { OrgMember } from "@/hooks/useOrganization";
 import { AppointmentType } from "@/hooks/useAppointments";
 import { UnavailabilityTab } from "./UnavailabilityTab";
+import { TeamTab } from "./TeamTab";
 import { toast } from "sonner";
 import {
   Loader2, Plus, Trash2, Copy, ExternalLink, Link2, Clock,
-  CalendarRange, ToggleLeft, Palette, CalendarOff,
+  CalendarRange, ToggleLeft, Palette, CalendarOff, Users,
 } from "lucide-react";
 
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   organizationId: string;
+  ownerUserId: string;
+  currentUserId: string;
   members: OrgMember[];
   initialTypes: AppointmentType[];
   onChanged: () => void;
@@ -47,9 +50,9 @@ const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const PRESET_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
 
 export function AgendaSettingsDialog({
-  open, onOpenChange, organizationId, members, initialTypes, onChanged,
+  open, onOpenChange, organizationId, ownerUserId, currentUserId, members, initialTypes, onChanged,
 }: Props) {
-  const [tab, setTab] = useState("types");
+  const [tab, setTab] = useState("team");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -62,13 +65,23 @@ export function AgendaSettingsDialog({
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab} className="mt-2">
-          <TabsList className="grid grid-cols-4 w-full">
+          <TabsList className="grid grid-cols-5 w-full">
+            <TabsTrigger value="team"><Users className="w-3.5 h-3.5 mr-1.5" />Equipe</TabsTrigger>
             <TabsTrigger value="types"><Palette className="w-3.5 h-3.5 mr-1.5" />Tipos</TabsTrigger>
             <TabsTrigger value="availability"><Clock className="w-3.5 h-3.5 mr-1.5" />Horários</TabsTrigger>
             <TabsTrigger value="blocks"><CalendarOff className="w-3.5 h-3.5 mr-1.5" />Bloqueios</TabsTrigger>
             <TabsTrigger value="links"><Link2 className="w-3.5 h-3.5 mr-1.5" />Links</TabsTrigger>
           </TabsList>
 
+          <TabsContent value="team" className="mt-4">
+            <TeamTab
+              organizationId={organizationId}
+              ownerUserId={ownerUserId}
+              currentUserId={currentUserId}
+              members={members}
+              onMembersChanged={onChanged}
+            />
+          </TabsContent>
           <TabsContent value="types" className="mt-4">
             <TypesTab organizationId={organizationId} initialTypes={initialTypes} onChanged={onChanged} />
           </TabsContent>

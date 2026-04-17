@@ -826,6 +826,65 @@ export type Database = {
         }
         Relationships: []
       }
+      organization_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          display_color: string | null
+          email: string
+          expires_at: string
+          full_name: string | null
+          id: string
+          invited_by: string
+          organization_id: string
+          role: Database["public"]["Enums"]["org_role"]
+          status: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          display_color?: string | null
+          email: string
+          expires_at?: string
+          full_name?: string | null
+          id?: string
+          invited_by: string
+          organization_id: string
+          role?: Database["public"]["Enums"]["org_role"]
+          status?: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          display_color?: string | null
+          email?: string
+          expires_at?: string
+          full_name?: string | null
+          id?: string
+          invited_by?: string
+          organization_id?: string
+          role?: Database["public"]["Enums"]["org_role"]
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_invites_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_members: {
         Row: {
           created_at: string
@@ -879,6 +938,7 @@ export type Database = {
           name: string
           owner_id: string
           phone: string | null
+          seats_paid: number
           slug: string | null
           timezone: string
           updated_at: string
@@ -891,6 +951,7 @@ export type Database = {
           name: string
           owner_id: string
           phone?: string | null
+          seats_paid?: number
           slug?: string | null
           timezone?: string
           updated_at?: string
@@ -903,6 +964,7 @@ export type Database = {
           name?: string
           owner_id?: string
           phone?: string | null
+          seats_paid?: number
           slug?: string | null
           timezone?: string
           updated_at?: string
@@ -1316,9 +1378,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_organization_invite: { Args: { _token: string }; Returns: Json }
       check_and_consume_quota:
         | { Args: never; Returns: Json }
         | { Args: { p_user_id: string }; Returns: Json }
+      count_active_org_members: { Args: { _org_id: string }; Returns: number }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -1336,6 +1400,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_invite_preview: { Args: { _token: string }; Returns: Json }
       get_quota_status:
         | { Args: never; Returns: Json }
         | { Args: { p_user_id: string }; Returns: Json }
@@ -1351,6 +1416,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_invited_doctor: { Args: { _user_id: string }; Returns: boolean }
       is_org_member: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean

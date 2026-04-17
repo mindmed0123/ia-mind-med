@@ -52,14 +52,39 @@ async function fetchSubscription(userId: string): Promise<SubscriptionInfo | nul
 
   _cache.fetchPromise = (async () => {
     try {
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('status, plan, trial_end, remaining_starter_credits, quota_used, current_period_end, stripe_subscription_id')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Fetch subscription + check if user is an invited doctor (gets PRO via owner's seat)
+      const [subRes, invitedRes] = await Promise.all([
+        supabase
+          .from('subscriptions')
+          .select('status, plan, trial_end, remaining_starter_credits, quota_used, current_period_end, stripe_subscription_id')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase.rpc('is_invited_doctor', { _user_id: userId }),
+      ]);
 
+      const isInvitedDoctor = invitedRes.data === true;
+
+      // Invited doctors get full PRO access without their own subscription
+      if (isInvitedDoctor) {
+        const info: SubscriptionInfo = {
+          plan: 'PRO',
+          status: 'ACTIVE',
+          isActive: true,
+          isPro: true,
+          isTrial: false,
+          remainingCredits: null,
+          quotaUsed: 0,
+          currentPeriodEnd: null,
+          trialEnd: null,
+        };
+        _cache = { subscription: info, fetchedAt: Date.now(), fetchPromise: null };
+        notifyListeners();
+        return info;
+      }
+
+      const { data, error } = subRes;
       if (error || !data) {
         const fallback: SubscriptionInfo = {
           plan: 'STARTER', status: 'PENDING_CHECKOUT', isActive: false,

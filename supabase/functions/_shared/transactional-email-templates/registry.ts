@@ -15,6 +15,7 @@ import { template as firstLaudo } from './first-laudo.tsx'
 import { template as pdfExported } from './pdf-exported.tsx'
 import { template as trialExpired } from './trial-expired.tsx'
 import { template as upgradeConfirmed } from './upgrade-confirmed.tsx'
+import { template as orgInvite } from './org-invite.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'trial-reminder': trialReminder,
@@ -23,4 +24,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'pdf-exported': pdfExported,
   'trial-expired': trialExpired,
   'upgrade-confirmed': upgradeConfirmed,
+  'org-invite': orgInvite,
 }
