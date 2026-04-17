@@ -311,6 +311,8 @@ function AgendamentosContent() {
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         organizationId={organization.id}
+        ownerUserId={organization.owner_id}
+        currentUserId={user?.id ?? ""}
         members={members}
         initialTypes={types}
         onChanged={() => setTypesReloadKey((k) => k + 1)}
