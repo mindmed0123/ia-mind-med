@@ -38,6 +38,154 @@ export type Database = {
         }
         Relationships: []
       }
+      appointment_types: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          display_order: number
+          duration_minutes: number
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_types_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointments: {
+        Row: {
+          appointment_type_id: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          doctor_id: string
+          end_at: string
+          id: string
+          internal_notes: string | null
+          laudo_id: string | null
+          notes: string | null
+          organization_id: string
+          patient_email_snapshot: string | null
+          patient_id: string | null
+          patient_name_snapshot: string
+          patient_phone_snapshot: string | null
+          source: Database["public"]["Enums"]["appointment_source"]
+          start_at: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
+        }
+        Insert: {
+          appointment_type_id?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          doctor_id: string
+          end_at: string
+          id?: string
+          internal_notes?: string | null
+          laudo_id?: string | null
+          notes?: string | null
+          organization_id: string
+          patient_email_snapshot?: string | null
+          patient_id?: string | null
+          patient_name_snapshot: string
+          patient_phone_snapshot?: string | null
+          source?: Database["public"]["Enums"]["appointment_source"]
+          start_at: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+        }
+        Update: {
+          appointment_type_id?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          doctor_id?: string
+          end_at?: string
+          id?: string
+          internal_notes?: string | null
+          laudo_id?: string | null
+          notes?: string | null
+          organization_id?: string
+          patient_email_snapshot?: string | null
+          patient_id?: string | null
+          patient_name_snapshot?: string
+          patient_phone_snapshot?: string | null
+          source?: Database["public"]["Enums"]["appointment_source"]
+          start_at?: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_appointment_type_id_fkey"
+            columns: ["appointment_type_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_laudo_id_fkey"
+            columns: ["laudo_id"]
+            isOneToOne: false
+            referencedRelation: "laudos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -73,6 +221,53 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      booking_links: {
+        Row: {
+          allowed_appointment_type_ids: string[] | null
+          created_at: string
+          created_by: string
+          doctor_id: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          label: string
+          organization_id: string
+          token: string
+        }
+        Insert: {
+          allowed_appointment_type_ids?: string[] | null
+          created_at?: string
+          created_by: string
+          doctor_id?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          organization_id: string
+          token: string
+        }
+        Update: {
+          allowed_appointment_type_ids?: string[] | null
+          created_at?: string
+          created_by?: string
+          doctor_id?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          organization_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_links_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       chat_conversations: {
         Row: {
@@ -162,6 +357,91 @@ export type Database = {
           version?: string
         }
         Relationships: []
+      }
+      doctor_availability: {
+        Row: {
+          created_at: string
+          doctor_id: string
+          end_time: string
+          id: string
+          is_active: boolean
+          organization_id: string
+          start_time: string
+          updated_at: string
+          weekday: number
+        }
+        Insert: {
+          created_at?: string
+          doctor_id: string
+          end_time: string
+          id?: string
+          is_active?: boolean
+          organization_id: string
+          start_time: string
+          updated_at?: string
+          weekday: number
+        }
+        Update: {
+          created_at?: string
+          doctor_id?: string
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          organization_id?: string
+          start_time?: string
+          updated_at?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doctor_availability_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doctor_unavailability: {
+        Row: {
+          created_at: string
+          created_by: string
+          doctor_id: string
+          end_at: string
+          id: string
+          organization_id: string
+          reason: string | null
+          start_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          doctor_id: string
+          end_at: string
+          id?: string
+          organization_id: string
+          reason?: string | null
+          start_at: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          doctor_id?: string
+          end_at?: string
+          id?: string
+          organization_id?: string
+          reason?: string | null
+          start_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doctor_unavailability_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_send_log: {
         Row: {
@@ -305,6 +585,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      feature_access: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          expires_at: string | null
+          feature_key: string
+          granted_at: string
+          granted_by: string | null
+          id: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          expires_at?: string | null
+          feature_key: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          expires_at?: string | null
+          feature_key?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       laudos: {
         Row: {
@@ -495,6 +814,89 @@ export type Database = {
         }
         Relationships: []
       }
+      organization_members: {
+        Row: {
+          created_at: string
+          display_color: string | null
+          display_name: string | null
+          id: string
+          is_active: boolean
+          organization_id: string
+          role: Database["public"]["Enums"]["org_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_color?: string | null
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id: string
+          role?: Database["public"]["Enums"]["org_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_color?: string | null
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id?: string
+          role?: Database["public"]["Enums"]["org_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          logo_url: string | null
+          name: string
+          owner_id: string
+          phone: string | null
+          slug: string | null
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name: string
+          owner_id: string
+          phone?: string | null
+          slug?: string | null
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+          owner_id?: string
+          phone?: string | null
+          slug?: string | null
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       patient_documents: {
         Row: {
           ai_analysis: Json | null
@@ -575,6 +977,7 @@ export type Database = {
           medications: string[] | null
           name: string
           notes: string | null
+          organization_id: string | null
           phone: string | null
           sex: string | null
           smoking: boolean | null
@@ -598,6 +1001,7 @@ export type Database = {
           medications?: string[] | null
           name: string
           notes?: string | null
+          organization_id?: string | null
           phone?: string | null
           sex?: string | null
           smoking?: boolean | null
@@ -621,13 +1025,22 @@ export type Database = {
           medications?: string[] | null
           name?: string
           notes?: string | null
+          organization_id?: string | null
           phone?: string | null
           sex?: string | null
           smoking?: boolean | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "patients_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       prescriptions: {
         Row: {
@@ -905,11 +1318,24 @@ export type Database = {
       get_quota_status:
         | { Args: never; Returns: Json }
         | { Args: { p_user_id: string }; Returns: Json }
+      get_user_organizations: { Args: { _user_id: string }; Returns: string[] }
+      has_feature_access: {
+        Args: { _feature_key: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_org_member: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_org_owner: {
+        Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
       log_audit_action: {
@@ -943,6 +1369,15 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      appointment_source: "internal" | "online"
+      appointment_status:
+        | "scheduled"
+        | "confirmed"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+        | "no_show"
+      org_role: "owner" | "doctor" | "staff"
       plan_type: "STARTER" | "PRO" | "CLINIC"
       subscription_status:
         | "ACTIVE"
@@ -1080,6 +1515,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      appointment_source: ["internal", "online"],
+      appointment_status: [
+        "scheduled",
+        "confirmed",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "no_show",
+      ],
+      org_role: ["owner", "doctor", "staff"],
       plan_type: ["STARTER", "PRO", "CLINIC"],
       subscription_status: [
         "ACTIVE",
