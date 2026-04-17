@@ -70,16 +70,6 @@ function AgendamentosContent() {
   const { user } = useAuth();
   const { organization, members, loading: orgLoading } = useOrganization();
   const [typesReloadKey, setTypesReloadKey] = useState(0);
-
-  // Auto-open settings dialog when ?settings=team
-  useEffect(() => {
-    if (searchParams.get("settings") === "team") {
-      setSettingsOpen(true);
-      searchParams.delete("settings");
-      setSearchParams(searchParams, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   const { types } = useAppointmentTypes(organization?.id ?? null, typesReloadKey);
 
   const [view, setView] = useState<ViewMode>("week");
@@ -90,6 +80,16 @@ function AgendamentosContent() {
   const [initialStart, setInitialStart] = useState<Date | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [metricsOpen, setMetricsOpen] = useState(false);
+
+  // Auto-open settings dialog when ?settings=team
+  useEffect(() => {
+    if (searchParams.get("settings") === "team") {
+      setSettingsOpen(true);
+      searchParams.delete("settings");
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Doctors who are not the owner only see their own appointments
   const isOwner = !!organization && !!user && organization.owner_id === user.id;
