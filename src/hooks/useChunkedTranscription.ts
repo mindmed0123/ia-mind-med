@@ -9,7 +9,7 @@ import {
 } from "@/lib/audio-chunker";
 import { getCloudFunctionHeaders } from "@/lib/cloud-function-auth";
 
-export type ChunkStatus = "pending" | "uploading" | "transcribing" | "done" | "error";
+export type ChunkStatus = "pending" | "uploading" | "transcribing" | "summarizing" | "done" | "error";
 
 export interface ChunkProgress {
   index: number;
@@ -17,13 +17,25 @@ export interface ChunkProgress {
   endSec: number;
   status: ChunkStatus;
   text?: string;
+  summary?: any;
   error?: string;
 }
 
+export type PipelinePhase =
+  | "idle"
+  | "preparing"
+  | "transcribing"
+  | "summarizing"
+  | "consolidating"
+  | "done"
+  | "error";
+
 export interface ChunkedTranscriptionState {
   isRunning: boolean;
+  phase: PipelinePhase;
   totalChunks: number;
   completedChunks: number;
+  summarizedChunks: number;
   durationSec: number;
   partialText: string;       // assembled from completed chunks (in order)
   chunks: ChunkProgress[];
@@ -42,6 +54,8 @@ interface StartArgs {
   chunkThresholdSec?: number;
   concurrency?: number;
   chunkSeconds?: number;
+  /** When true, also summarize each chunk for map-reduce consolidation. */
+  enableMapReduce?: boolean;
 }
 
 interface StartResult {
@@ -49,6 +63,8 @@ interface StartResult {
   text?: string;
   durationSec?: number;
   segments?: Array<{ text: string; start: number; end: number; confidence: number }>;
+  summaries?: any[];
+  consolidatedTranscript?: string;
 }
 
 const DEFAULT_THRESHOLD = 300;       // 5 min — under this, single-shot is fine
