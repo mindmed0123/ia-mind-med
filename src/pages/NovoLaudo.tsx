@@ -1095,7 +1095,15 @@ const NovoLaudo = () => {
                 </TabsContent>
 
                 <TabsContent value="exams" forceMount className="data-[state=inactive]:hidden">
-                  <ExamUploadSection laudoId={laudoId} patientId={laudo?.patient_id} patientName={patientData?.iniciais || ''} onExamsAnalyzed={() => { toast({ title: "Exames integrados", description: "Seção de exames complementares atualizada" }); loadLaudoRef.current?.(); }} onRegenerateWithExams={handleRegenerateWithExams} />
+                  <ExamUploadSection
+                    laudoId={laudoId}
+                    patientId={laudo?.patient_id}
+                    patientName={patientData?.iniciais || ''}
+                    clinicalContext={typeof laudo?.clinical_context === 'string' ? laudo.clinical_context : (laudo?.clinical_context ? JSON.stringify(laudo.clinical_context) : '')}
+                    transcriptText={typeof laudo?.transcript === 'string' ? laudo.transcript : (laudo?.transcript?.text || '')}
+                    onExamsAnalyzed={() => { toast({ title: "Exames integrados", description: "Seção de exames complementares atualizada" }); loadLaudoRef.current?.(); }}
+                    onRegenerateWithExams={handleRegenerateWithExams}
+                  />
                 </TabsContent>
 
                 <TabsContent value="prescription" forceMount className="data-[state=inactive]:hidden">
