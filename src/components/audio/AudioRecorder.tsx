@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuota } from "@/hooks/useQuota";
 
 interface AudioRecorderProps {
-  onRecordingComplete?: (url: string, path: string) => void;
+  onRecordingComplete?: (url: string, path: string, meta?: { blob?: Blob; durationSec?: number }) => void;
 }
 
 export const AudioRecorder = ({ onRecordingComplete }: AudioRecorderProps) => {
@@ -205,7 +205,7 @@ export const AudioRecorder = ({ onRecordingComplete }: AudioRecorderProps) => {
 
     const result = await uploadAudio(file);
     if (result) {
-      onRecordingComplete?.(result.url, result.path);
+      onRecordingComplete?.(result.url, result.path, { blob: audioBlob, durationSec: recordingTime });
       setAudioBlob(null);
       setAudioUrl(null);
       setRecordingTime(0);

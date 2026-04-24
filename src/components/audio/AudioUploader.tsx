@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuota } from "@/hooks/useQuota";
 
 interface AudioUploaderProps {
-  onUploadComplete?: (url: string, path: string) => void;
+  onUploadComplete?: (url: string, path: string, meta?: { blob?: Blob; durationSec?: number }) => void;
 }
 
 export const AudioUploader = ({ onUploadComplete }: AudioUploaderProps) => {
@@ -56,7 +56,7 @@ export const AudioUploader = ({ onUploadComplete }: AudioUploaderProps) => {
 
     const result = await uploadAudio(selectedFile);
     if (result) {
-      onUploadComplete?.(result.url, result.path);
+      onUploadComplete?.(result.url, result.path, { blob: selectedFile });
     }
   };
 
