@@ -61,6 +61,8 @@ serve(async (req) => {
     const duration = Number(body.duration) || 0;
     const mode = body.mode || "complete";
     const language = body.language || "pt";
+    const consolidatedTranscript: string | undefined = body.consolidated_transcript;
+    const summaries = asArray(body.summaries);
 
     if (!laudoId || !text.trim()) {
       return new Response(
