@@ -101,13 +101,24 @@ const LAUDO_TOOL = {
   },
 };
 
-// Models by mode — fast uses the lightest model for speed
+// Models by mode — fast uses the lightest model for speed; long uses Flash for
+// large context windows. Each mode has a fallback model that takes over if the
+// primary times out or returns 5xx.
 const MODELS = {
   fast: 'google/gemini-2.5-flash-lite',
   complete: 'google/gemini-2.5-flash',
+  long: 'google/gemini-2.5-flash',
+};
+const FALLBACK_MODELS: Record<string, string> = {
+  fast: 'google/gemini-2.5-flash',
+  complete: 'google/gemini-2.5-flash-lite',
+  long: 'google/gemini-2.5-flash-lite',
 };
 
-const MAX_TOKENS = { fast: 2500, complete: 4000 };
+const MAX_TOKENS = { fast: 2500, complete: 4000, long: 5000 };
+// Long mode receives a pre-condensed transcript (map-reduce summaries) so we
+// can be more generous on input characters without exploding the context.
+const MAX_INPUT_CHARS = { fast: 3500, complete: 8000, long: 16000 };
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
