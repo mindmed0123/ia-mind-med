@@ -32,7 +32,7 @@ export const useAudioUpload = () => {
     if (file.size > MAX_FILE_SIZE) {
       toast({
         title: "Arquivo muito grande",
-        description: "O arquivo deve ter no máximo 100MB",
+        description: "O arquivo deve ter no máximo 500MB",
         variant: "destructive",
       });
       return false;
