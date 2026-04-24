@@ -2,7 +2,8 @@ import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Image as ImageIcon, Loader2, RefreshCw, Trash2, Eye, Sparkles } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Upload, FileText, Image as ImageIcon, Loader2, RefreshCw, Trash2, Eye, Sparkles, Brain } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,17 +18,29 @@ interface ExamFile {
   ai_analysis?: any;
   analyzed_at?: string | null;
   analyzing?: boolean;
+  medical_observation?: string;
+  persisted?: boolean;
 }
 
 interface ExamUploadSectionProps {
   laudoId: string;
   patientId?: string | null;
   patientName?: string;
+  clinicalContext?: string;
+  transcriptText?: string;
   onExamsAnalyzed?: (summary: string) => void;
   onRegenerateWithExams?: (examSummary: string) => void;
 }
 
-export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnalyzed, onRegenerateWithExams }: ExamUploadSectionProps) => {
+export const ExamUploadSection = ({
+  laudoId,
+  patientId,
+  patientName,
+  clinicalContext,
+  transcriptText,
+  onExamsAnalyzed,
+  onRegenerateWithExams,
+}: ExamUploadSectionProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -68,6 +81,7 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
 
         // Save to patient_documents if patient exists
         let docId: string = crypto.randomUUID();
+        let persisted = false;
         if (patientId) {
           const { data: doc, error: docError } = await supabase
             .from('patient_documents')
@@ -84,9 +98,9 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
             .select()
             .single();
 
-          if (docError) {
-          } else if (doc) {
+          if (!docError && doc) {
             docId = doc.id;
+            persisted = true;
           }
         }
 
@@ -96,11 +110,13 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
           file_type: file.type,
           file_url: urlData.publicUrl,
           analyzing: false,
+          medical_observation: '',
+          persisted,
         };
 
         setExams(prev => [...prev, newExam]);
 
-        // Auto-analyze
+        // Auto-analyze (sem observação ainda — médico pode reprocessar depois com a obs)
         analyzeExam(newExam);
       }
 
@@ -113,7 +129,8 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
     }
   };
 
-  const analyzeExam = async (exam: ExamFile) => {
+  const analyzeExam = async (exam: ExamFile, observationOverride?: string) => {
+    const observation = observationOverride !== undefined ? observationOverride : exam.medical_observation;
     setExams(prev => prev.map(e => e.id === exam.id ? { ...e, analyzing: true } : e));
 
     try {
@@ -123,6 +140,9 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
           imageUrl: exam.file_url,
           patientName: patientName || '',
           patientId: patientId || '',
+          medicalObservation: observation || '',
+          clinicalContext: clinicalContext || '',
+          transcriptText: transcriptText || '',
         }
       });
 
@@ -130,7 +150,13 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
 
       setExams(prev => prev.map(e =>
         e.id === exam.id
-          ? { ...e, analyzing: false, ai_description: data.analysis?.description, ai_analysis: data.analysis, analyzed_at: new Date().toISOString() }
+          ? {
+              ...e,
+              analyzing: false,
+              ai_description: data.analysis?.description,
+              ai_analysis: data.analysis,
+              analyzed_at: new Date().toISOString(),
+            }
           : e
       ));
     } catch (error: any) {
@@ -139,9 +165,44 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
     }
   };
 
+  const updateObservation = (id: string, value: string) => {
+    setExams(prev => prev.map(e => e.id === id ? { ...e, medical_observation: value } : e));
+  };
+
+  const handleReprocess = async (exam: ExamFile) => {
+    if (!exam.medical_observation?.trim()) {
+      toast({
+        title: "Observação vazia",
+        description: "Adicione uma observação clínica para reprocessar com contexto.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Persiste a observação no banco (se existe registro)
+    if (exam.persisted) {
+      await supabase
+        .from('patient_documents')
+        .update({ medical_observation: exam.medical_observation })
+        .eq('id', exam.id);
+    }
+
+    toast({ title: "Reprocessando exame", description: "A IA está reanalisando com sua observação clínica." });
+    await analyzeExam(exam, exam.medical_observation);
+  };
+
   const removeExam = (id: string) => {
     setExams(prev => prev.filter(e => e.id !== id));
   };
+
+  const buildExamSummary = (analyzedExams: ExamFile[]) =>
+    analyzedExams.map(e => {
+      const analysis = e.ai_analysis;
+      const obs = e.medical_observation?.trim()
+        ? `\n- Observação do médico: ${e.medical_observation.trim()}`
+        : '';
+      return `**${e.file_name}** (${analysis.image_type || 'Exame'}):\n${analysis.findings || analysis.description || 'Sem achados'}${analysis.abnormalities ? `\n- Anormalidades: ${analysis.abnormalities}` : ''}${analysis.recommendations ? `\n- Recomendações: ${analysis.recommendations}` : ''}${obs}`;
+    }).join('\n\n');
 
   const handleUpdateLaudoWithExams = async () => {
     const analyzedExams = exams.filter(e => e.ai_analysis);
@@ -152,13 +213,8 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
 
     setUpdatingLaudo(true);
     try {
-      // Build exam summary
-      const examSummary = analyzedExams.map(e => {
-        const analysis = e.ai_analysis;
-        return `**${e.file_name}** (${analysis.image_type || 'Exame'}):\n${analysis.findings || analysis.description || 'Sem achados'}${analysis.abnormalities ? `\n- Anormalidades: ${analysis.abnormalities}` : ''}${analysis.recommendations ? `\n- Recomendações: ${analysis.recommendations}` : ''}`;
-      }).join('\n\n');
+      const examSummary = buildExamSummary(analyzedExams);
 
-      // Update the laudo sections with exam data
       const { data: currentLaudo, error: fetchError } = await supabase
         .from('laudos')
         .select('sections, pdf_version')
@@ -175,6 +231,7 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
           file_name: e.file_name,
           file_type: e.file_type,
           analysis: e.ai_analysis,
+          medical_observation: e.medical_observation || null,
         })),
       };
 
@@ -215,7 +272,7 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Envie exames do paciente (PDF, JPG, PNG) para que a IA analise e enriqueça o laudo.
+          Envie exames do paciente (PDF, JPG, PNG). A IA correlaciona imagem + sua observação + contexto da consulta.
         </p>
 
         <input
@@ -244,7 +301,7 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
         {exams.length > 0 && (
           <div className="space-y-3">
             {exams.map((exam) => (
-              <div key={exam.id} className="border rounded-lg p-3 space-y-2">
+              <div key={exam.id} className="border rounded-lg p-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {getFileIcon(exam.file_type)}
@@ -282,6 +339,34 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
                     <p>{exam.ai_analysis.findings}</p>
                   </div>
                 )}
+
+                {/* Observação do médico + Reprocessar */}
+                <div className="space-y-2 pt-2 border-t">
+                  <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                    <Brain className="w-3 h-3" />
+                    Observação clínica do médico (a IA usará esse contexto ao reprocessar)
+                  </label>
+                  <Textarea
+                    value={exam.medical_observation || ''}
+                    onChange={(e) => updateObservation(exam.id, e.target.value)}
+                    placeholder="Ex.: paciente refere dor há 3 dias na região, suspeita de fratura por estresse..."
+                    className="min-h-[70px] text-sm"
+                    disabled={exam.analyzing}
+                  />
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleReprocess(exam)}
+                    disabled={exam.analyzing || !exam.medical_observation?.trim()}
+                    className="gap-2"
+                  >
+                    {exam.analyzing ? (
+                      <><Loader2 className="w-3 h-3 animate-spin" /> Reprocessando...</>
+                    ) : (
+                      <><Sparkles className="w-3 h-3" /> Reprocessar com IA usando observação</>
+                    )}
+                  </Button>
+                </div>
               </div>
             ))}
 
@@ -307,11 +392,7 @@ export const ExamUploadSection = ({ laudoId, patientId, patientName, onExamsAnal
                       toast({ title: "Sem análises", description: "Aguarde a análise dos exames antes de regenerar", variant: "destructive" });
                       return;
                     }
-                    const examSummary = analyzedExams.map(e => {
-                      const analysis = e.ai_analysis;
-                      return `**${e.file_name}** (${analysis.image_type || 'Exame'}):\n${analysis.findings || analysis.description || 'Sem achados'}${analysis.abnormalities ? `\nAnormalidades: ${analysis.abnormalities}` : ''}${analysis.recommendations ? `\nRecomendações: ${analysis.recommendations}` : ''}`;
-                    }).join('\n\n');
-                    onRegenerateWithExams(examSummary);
+                    onRegenerateWithExams(buildExamSummary(analyzedExams));
                   }}
                   disabled={exams.every(e => e.analyzing) || exams.filter(e => e.ai_analysis).length === 0}
                   className="w-full bg-primary hover:bg-primary/90 gap-2"
