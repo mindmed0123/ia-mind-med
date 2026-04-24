@@ -15,7 +15,7 @@ interface OrgInviteProps {
 const OrgInviteEmail = ({ organizationName, inviterName, inviteUrl, recipientName }: OrgInviteProps) => (
   <Html lang="pt-BR" dir="ltr">
     <Head />
-    <Preview>{inviterName} convidou você para a clínica {organizationName} no MindMed</Preview>
+    <Preview>{`${inviterName ?? 'Alguém'} convidou você para a clínica ${organizationName ?? ''} no MindMed`}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Section style={headerSection}>
