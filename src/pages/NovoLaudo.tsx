@@ -942,6 +942,12 @@ const NovoLaudo = () => {
                           <AudioRecorder onRecordingComplete={handleAudioUploadComplete} />
                         </TabsContent>
                       </Tabs>
+
+                      {chunkedTranscription.state.totalChunks > 0 && (
+                        <div className="mt-4">
+                          <TranscriptionStream state={chunkedTranscription.state} />
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </TabsContent>
