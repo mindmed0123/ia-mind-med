@@ -132,7 +132,7 @@ serve(async (req) => {
         (typeof patientData.queixa_principal === "string" && patientData.queixa_principal) ||
         (typeof clinicalContext.chief_complaint === "string" && clinicalContext.chief_complaint) ||
         "Não informada",
-      transcript: text,
+      transcript: consolidatedTranscript || text,
       vitals: { ...asObject(clinicalContext.vitals), ...asObject(patientData.sinais_vitais) },
       meds: asArray(patientData.medicacoes).length ? asArray(patientData.medicacoes) : asArray(clinicalContext.meds),
       allergies: asArray(patientData.alergias).length ? asArray(patientData.alergias) : asArray(clinicalContext.allergies),
@@ -149,6 +149,12 @@ serve(async (req) => {
       mode: generationMode,
       template_specialty: typeof existing.specialty === "string" ? existing.specialty : undefined,
     };
+
+    log(cid, "generate_payload_ready", {
+      laudoId, mode: generationMode,
+      using_consolidated: Boolean(consolidatedTranscript),
+      summaries_count: summaries.length,
+    });
 
     // Dispatch generate-laudo asynchronously (don't await — UI is polling)
     const dispatchPromise = fetch(`${supabaseUrl}/functions/v1/generate-laudo`, {
