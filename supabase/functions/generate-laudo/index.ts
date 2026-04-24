@@ -257,9 +257,9 @@ serve(async (req) => {
 
     // ===== TRUNCATE TRANSCRIPT =====
     const transcriptText = typeof transcript === 'string' ? transcript : transcript?.text || transcript_text || '';
-    const MAX_CHARS = mode === 'fast' ? 3000 : 5000;
+    const MAX_CHARS = (MAX_INPUT_CHARS as any)[mode] || MAX_INPUT_CHARS.fast;
     const truncated = transcriptText.length > MAX_CHARS
-      ? transcriptText.substring(0, MAX_CHARS) + '\n[...truncado]'
+      ? transcriptText.substring(0, MAX_CHARS) + '\n[...truncado para caber no contexto]'
       : transcriptText;
 
     if (!transcriptText.trim()) {
@@ -278,7 +278,12 @@ serve(async (req) => {
       sectionsInstruction = `\n\nALÉM dos campos padrão, preencha também o campo specialty_sections com as seguintes chaves: ${sectionKeys.join(', ')}. Cada chave deve conter o texto correspondente à seção.`;
     }
 
-    const fullSystemPrompt = systemPrompt + sectionsInstruction;
+    // Long-mode hint when transcript was condensed by map-reduce
+    const longHint = mode === 'long'
+      ? '\n\nIMPORTANTE: A entrada abaixo é um resumo consolidado de uma consulta longa (60-90 min) já estruturado por tópicos. Use TODOS os tópicos para construir o laudo final. Não invente dados que não estejam no resumo.'
+      : '';
+
+    const fullSystemPrompt = systemPrompt + sectionsInstruction + longHint;
 
     const parts: string[] = [];
     parts.push(`PAC: ${patient?.iniciais || 'N/I'}, ${patient?.sexo || 'N/I'}, ${patient?.idade || 'N/I'}a`);
@@ -294,84 +299,78 @@ serve(async (req) => {
     const userPrompt = parts.join('\n');
 
     const promptChars = fullSystemPrompt.length + userPrompt.length;
-    const modelUsed = MODELS[mode as keyof typeof MODELS] || MODELS.fast;
-    const maxTokens = MAX_TOKENS[mode as keyof typeof MAX_TOKENS] || MAX_TOKENS.fast;
+    const modelUsed = (MODELS as any)[mode] || MODELS.fast;
+    const fallbackModel = FALLBACK_MODELS[mode] || FALLBACK_MODELS.fast;
+    const maxTokens = (MAX_TOKENS as any)[mode] || MAX_TOKENS.fast;
 
     log(cid, 'llm_start', {
-      laudo_id, model: modelUsed, mode, prompt_chars: promptChars,
+      laudo_id, model: modelUsed, fallback: fallbackModel, mode,
+      prompt_chars: promptChars,
       transcript_chars: transcriptText.length, max_tokens: maxTokens,
       template: templateData?.specialty || 'default',
     });
 
-    // ===== LLM CALL with tool calling =====
+    // ===== LLM CALL with retry + fallback =====
     const lovableKey = Deno.env.get('LOVABLE_API_KEY');
     if (!lovableKey) throw new Error('AI não configurada');
 
     const t4 = now();
     await updateStage('calling_ai');
-    const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 30000);
 
-    let response;
+    let llmResult: Awaited<ReturnType<typeof callLlmWithFallback>>;
     try {
-      response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${lovableKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      llmResult = await callLlmWithFallback(
+        lovableKey,
+        {
           model: modelUsed,
+          fallbackModel,
           messages: [
             { role: 'system', content: fullSystemPrompt },
             { role: 'user', content: userPrompt },
           ],
           tools: [LAUDO_TOOL],
-          tool_choice: { type: "function", function: { name: "generate_laudo" } },
-          max_tokens: maxTokens,
+          toolChoice: { type: 'function', function: { name: 'generate_laudo' } },
+          maxTokens,
           temperature: 0.15,
-        }),
-        signal: ctrl.signal,
-      });
+          timeoutMs: mode === 'long' ? 90000 : 60000,
+          retries: 1,
+        },
+        (step, data) => log(cid, step, data),
+      );
     } catch (e: any) {
-      clearTimeout(timeout);
-      if (e.name === 'AbortError') {
-        log(cid, 'timeout', { ms: 45000 });
-        throw new Error('Tempo limite (45s). Tente novamente.');
-      }
-      throw e;
-    } finally {
-      clearTimeout(timeout);
-    }
-
-    const t5 = now();
-    const llmMs = t5 - t4;
-
-    if (!response.ok) {
-      const body = await response.text();
-      log(cid, 'llm_error', { status: response.status, llm_ms: llmMs });
-      if (response.status === 429) {
+      const status = (e as any)?.status;
+      log(cid, 'llm_failed_after_fallback', { status, msg: e?.message });
+      if (status === 429) {
         await supabase.from('laudos').update({ status: 'draft' }).eq('id', laudo_id);
         return new Response(JSON.stringify({ error: 'Limite de requisições. Aguarde.' }), {
           status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (response.status === 402) {
+      if (status === 402) {
         await supabase.from('laudos').update({ status: 'draft' }).eq('id', laudo_id);
         return new Response(JSON.stringify({ error: 'Créditos insuficientes.' }), {
           status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      throw new Error(`Erro IA: ${response.status}`);
+      throw new Error('Falha na geração do laudo após retry e fallback.');
     }
 
-    const data = await response.json();
+    const t5 = now();
+    const llmMs = t5 - t4;
+    const data = llmResult.data;
+    const actualModel = llmResult.modelUsed;
     const usage = data.usage;
     const choice = data.choices?.[0];
     const finishReason = choice?.finish_reason;
 
-    log(cid, 'llm_done', { llm_ms: llmMs, tokens: usage?.total_tokens, finish_reason: finishReason });
-
+    log(cid, 'llm_done', {
+      llm_ms: llmMs,
+      tokens: usage?.total_tokens,
+      finish_reason: finishReason,
+      model_used: actualModel,
+      fell_back: llmResult.fellBack,
+      attempts: llmResult.attempts,
+    });
     // ===== PARSE RESPONSE =====
     const t6 = now();
     let laudoData: any;
