@@ -122,8 +122,15 @@ export function useChunkedTranscription() {
       duration = 0;
     }
 
+    // If duration is known and below threshold → single-shot.
+    // If duration is unknown (probe timed out) but blob is small → single-shot.
+    // Large blob with unknown duration → chunk anyway (safer than 25MB Whisper limit).
+    const SAFE_SINGLE_SHOT_BYTES = 6 * 1024 * 1024; // ~6 MB
     if (duration > 0 && !shouldChunkAudio(duration, chunkThresholdSec)) {
       return { chunked: false, durationSec: duration };
+    }
+    if (duration === 0 && blob.size <= SAFE_SINGLE_SHOT_BYTES) {
+      return { chunked: false, durationSec: 0 };
     }
 
     setState((prev) => ({ ...prev, isRunning: true, error: null, durationSec: duration }));
