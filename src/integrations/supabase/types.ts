@@ -667,6 +667,7 @@ export type Database = {
           pdf_version: number | null
           red_flags: Json | null
           report_markdown: string | null
+          scientific_basis: Json | null
           sections: Json | null
           source_audio_url: string | null
           specialty: string | null
@@ -708,6 +709,7 @@ export type Database = {
           pdf_version?: number | null
           red_flags?: Json | null
           report_markdown?: string | null
+          scientific_basis?: Json | null
           sections?: Json | null
           source_audio_url?: string | null
           specialty?: string | null
@@ -749,6 +751,7 @@ export type Database = {
           pdf_version?: number | null
           red_flags?: Json | null
           report_markdown?: string | null
+          scientific_basis?: Json | null
           sections?: Json | null
           source_audio_url?: string | null
           specialty?: string | null

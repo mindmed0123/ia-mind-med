@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Copy, Download, FileText, User, AlertTriangle, Pill, Crown, Stethoscope, ClipboardList, FlaskConical, ShieldAlert, Activity, Sparkles, Clock, Brain, CheckCircle } from "lucide-react";
+import { Copy, Download, FileText, User, AlertTriangle, Pill, Crown, Stethoscope, ClipboardList, FlaskConical, ShieldAlert, Activity, Sparkles, Clock, Brain, CheckCircle, BookOpen, ExternalLink, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
@@ -66,6 +66,30 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
   const { subscription } = useAppState();
   const [laudo, setLaudo] = useState<any>(laudoData || null);
   const [loading, setLoading] = useState(!laudoData);
+  const [generatingScience, setGeneratingScience] = useState(false);
+
+  const handleGenerateScientificBasis = async () => {
+    if (!subscription?.isPro) {
+      navigate('/precos');
+      return;
+    }
+    setGeneratingScience(true);
+    try {
+      toast({ title: "Buscando evidências…", description: "Consultando PubMed e gerando embasamento." });
+      const { data, error } = await supabase.functions.invoke('generate-scientific-basis', {
+        body: { laudo_id: laudoId },
+      });
+      if (error) throw error;
+      if (data?.scientific_basis) {
+        setLaudo((prev: any) => ({ ...prev, scientific_basis: data.scientific_basis }));
+        toast({ title: "Embasamento científico pronto!", description: `${data.scientific_basis.articles?.length || 0} artigos referenciados.` });
+      }
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message || "Não foi possível gerar o embasamento.", variant: "destructive" });
+    } finally {
+      setGeneratingScience(false);
+    }
+  };
 
   // If parent passes laudoData, use it directly (no DB fetch needed)
   useEffect(() => {
@@ -381,6 +405,103 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
                     </li>
                   ))}
                 </ul>
+              )}
+            </SectionBlock>
+          )}
+
+          {/* Embasamento Científico (PRO, RAG PubMed) */}
+          {isSectionVisible('scientific_basis') !== false && (
+            <SectionBlock icon={BookOpen} title="Embasamento Científico" variant="highlight" delay={450}>
+              {laudo.scientific_basis ? (
+                <div className="space-y-4">
+                  {laudo.scientific_basis.summary && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Resumo das evidências</h4>
+                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{laudo.scientific_basis.summary}</p>
+                    </div>
+                  )}
+                  {laudo.scientific_basis.justification && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Justificativa médica</h4>
+                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{laudo.scientific_basis.justification}</p>
+                    </div>
+                  )}
+                  {Array.isArray(laudo.scientific_basis.guidelines) && laudo.scientific_basis.guidelines.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Diretrizes citadas</h4>
+                      <ul className="space-y-1.5">
+                        {laudo.scientific_basis.guidelines.map((g: any, idx: number) => (
+                          <li key={idx} className="text-sm text-foreground flex items-start gap-2">
+                            <span className="text-primary">•</span>
+                            <span>
+                              <span className="font-medium">{g.name}</span>
+                              {g.source ? <span className="text-muted-foreground"> — {g.source}</span> : null}
+                              {g.url ? (
+                                <a href={g.url} target="_blank" rel="noopener noreferrer" className="ml-1 text-primary hover:underline inline-flex items-center gap-1">
+                                  link <ExternalLink className="w-3 h-3" />
+                                </a>
+                              ) : null}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {Array.isArray(laudo.scientific_basis.articles) && laudo.scientific_basis.articles.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-2">
+                        Artigos PubMed ({laudo.scientific_basis.articles.length})
+                      </h4>
+                      <ol className="space-y-3">
+                        {laudo.scientific_basis.articles.map((a: any, idx: number) => (
+                          <li key={a.pmid} className="text-sm border-l-2 border-primary/30 pl-3">
+                            <div className="flex items-baseline gap-1">
+                              <span className="font-semibold text-muted-foreground">[{idx + 1}]</span>
+                              <a href={a.url} target="_blank" rel="noopener noreferrer" className="font-medium text-foreground hover:text-primary inline-flex items-baseline gap-1">
+                                {a.title}
+                                <ExternalLink className="w-3 h-3 inline-block opacity-60" />
+                              </a>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {(a.authors || []).slice(0, 3).join(', ')}{(a.authors?.length || 0) > 3 ? ' et al.' : ''}
+                              {a.journal ? ` · ${a.journal}` : ''}
+                              {a.year ? ` · ${a.year}` : ''}
+                              <span className="ml-1 font-mono">PMID:{a.pmid}</span>
+                            </div>
+                            {a.relevance && (
+                              <p className="text-xs text-foreground/80 italic mt-1">{a.relevance}</p>
+                            )}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                    <span className="text-[10px] text-muted-foreground">
+                      Gerado em {new Date(laudo.scientific_basis.generated_at).toLocaleString('pt-BR')}
+                    </span>
+                    <Button size="sm" variant="ghost" onClick={handleGenerateScientificBasis} disabled={generatingScience} className="h-7 text-xs gap-1.5">
+                      {generatingScience ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      Atualizar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4 space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Gere um embasamento científico baseado em PubMed para este laudo.<br />
+                    O MindMed buscará artigos atuais e construirá a justificativa médica com citações.
+                  </p>
+                  <Button onClick={handleGenerateScientificBasis} disabled={generatingScience} size="sm" className="gap-1.5">
+                    {generatingScience ? (
+                      <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Buscando evidências…</>
+                    ) : subscription?.isPro ? (
+                      <><BookOpen className="w-3.5 h-3.5" /> Gerar Embasamento Científico</>
+                    ) : (
+                      <><Crown className="w-3.5 h-3.5" /> Recurso PRO</>
+                    )}
+                  </Button>
+                </div>
               )}
             </SectionBlock>
           )}

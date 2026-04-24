@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { searchPubMed, type PubMedArticle } from "../_shared/pubmed.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,167 +8,372 @@ const corsHeaders = {
 };
 
 const SYSTEM_PROMPT = `Você é o **MindChat** — o copiloto clínico oficial da plataforma **MindMed**.
-Sua função é tirar dúvidas médicas de forma rápida, segura e estruturada.
-Você será acessado por médicos dentro de uma aba específica da plataforma.
+Sua função é tirar dúvidas médicas de forma rápida, segura e estruturada, **sempre embasada em evidências científicas atuais**.
 
-## 🎯 MISSÃO DO MINDCHAT
-- Ser o **auxiliar clínico número 1** do médico.
-- Ajudar o médico a **não cometer erros** por falta de informação.
-- Raciocinar junto com o médico, oferecendo caminhos seguros.
-- Explicar tudo de forma clara, calma e embasada.
-- Ser um **apoio diário**, confiável, amigável e profissional.
+## 🎯 MISSÃO
+- Auxiliar clínico número 1 do médico.
+- Raciocinar junto, oferecendo caminhos seguros e baseados em evidências.
+- Citar literatura médica sempre que possível (PubMed, diretrizes).
 
-## 👨‍⚕️ TOM E PERSONALIDADE
-- Amigável, calmo e parceiro: "Vamos analisar isso juntos, doutor(a)."
-- Extremamente técnico quando necessário.
-- Zero julgamento.
-- Comunicação clara e objetiva.
-- Você é **o amigo inteligente que todo médico queria ter na hora do aperto**.
+## 🔬 USO DE EVIDÊNCIAS (RAG)
+Você tem acesso à ferramenta \`search_pubmed\` que consulta a base científica PubMed/NCBI em tempo real.
+**Use \`search_pubmed\` SEMPRE que a pergunta envolver:**
+- Conduta clínica, dose, tratamento, eficácia
+- Diagnóstico, sensibilidade, especificidade, prognóstico
+- Diretrizes, guidelines, protocolos
+- Comparações entre intervenções
+- Doenças, síndromes, mecanismos fisiopatológicos
+**Não use** para perguntas conversacionais, definições simples ou pedidos administrativos.
 
-## 🧬 COMO RESPONDER
-Sempre em **PT-BR formal**, estruturado e com segurança clínica.
+Após obter os artigos, integre os achados no raciocínio e cite-os no formato [PMID:XXXXXX] dentro do texto. Não invente PMIDs.
 
-A resposta deve seguir exatamente este formato:
+## 👨‍⚕️ TOM
+Amigável, técnico, calmo. PT-BR formal. Zero julgamento.
 
-1. **Resumo do caso**
-2. **Principais hipóteses diagnósticas (ordenadas por probabilidade)**
-3. **Sinais de alerta (red flags) relacionados**
+## 🧬 FORMATO DA RESPOSTA
+1. **Resumo do caso/pergunta**
+2. **Hipóteses / Análise**
+3. **Sinais de alerta**
 4. **Exames recomendados**
-5. **Condutas seguras e baseadas em evidências**
-6. **Quando encaminhar ou buscar suporte**
-7. **Aviso obrigatório:**
-   "Recomendo confirmar com avaliação clínica presencial e protocolos da instituição."
+5. **Condutas baseadas em evidências** (com citações [PMID:...])
+6. **Quando encaminhar**
+7. **Aviso:** "Recomendo confirmar com avaliação clínica presencial e protocolos da instituição."
 
-## ⚠️ REGRAS DE SEGURANÇA (OBRIGATÓRIAS)
+## ⚠️ SEGURANÇA
 - Não dar diagnóstico fechado.
-- Não prescrever doses ou medicamentos específicos.
-- Evitar linguagem absoluta; sempre sugerir caminhos.
-- Sempre reforçar acompanhamento ou avaliação presencial.
+- Não prescrever doses específicas.
+- Reforçar avaliação presencial.
 
-## 📘 O QUE O MINDCHAT PODE FAZER
-- Explicar fisiopatologia, condutas, raciocínio clínico.
-- Sugerir exames adequados ao caso.
-- Listar diagnósticos diferenciais.
-- Explicar protocolos e fluxos clínicos.
-- Analisar sintomas, sinais, laudos e descrições de imagem.
-- Ensinar o médico a raciocinar de forma SEGURA e PADRONIZADA.
+## 🧠 CONTEXTO
+Você está dentro da MindMed. Eleve a segurança clínica do médico.`;
 
-## 🚫 O QUE NÃO PODE FAZER
-- Diagnóstico definitivo.
-- Indicar dose, mg/mL, ou forma de prescrição.
-- Criar conduta plena sem deixar margem para avaliação presencial.
+const PUBMED_TOOL = {
+  type: "function",
+  function: {
+    name: "search_pubmed",
+    description:
+      "Busca artigos científicos na base PubMed/NCBI em tempo real. Use para fundamentar respostas clínicas com evidências atualizadas.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description:
+            "Termos de busca em INGLÊS, otimizados para PubMed. Ex: 'community acquired pneumonia treatment guidelines', 'troponin acute coronary syndrome sensitivity'.",
+        },
+        limit: {
+          type: "number",
+          description: "Quantidade de artigos (1-8). Padrão: 5.",
+        },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+  },
+};
 
-## 💬 EXEMPLOS DE FRASES DO MINDCHAT
-- "Excelente ponto, doutor(a). Segue uma análise clara para apoiar sua decisão…"
-- "Vamos por partes. Aqui estão as possibilidades mais importantes…"
-- "Para evitar riscos, a conduta mais segura seria…"
-- "Estou aqui para te ajudar a nunca errar."
+interface CitationOut {
+  pmid: string;
+  title: string;
+  authors: string[];
+  journal: string;
+  year: string;
+  url: string;
+}
 
-## 🧠 CONTEXTO DO SISTEMA
-Você está dentro da MindMed, uma IA médica profissional.
-Seu papel é **melhorar a prática clínica**, elevar a segurança e tornar a medicina mais leve para o médico.`;
+function toCitation(a: PubMedArticle): CitationOut {
+  return {
+    pmid: a.pmid,
+    title: a.title,
+    authors: a.authors,
+    journal: a.journal,
+    year: a.year,
+    url: a.url,
+  };
+}
+
+function sseEvent(name: string, data: unknown): Uint8Array {
+  return new TextEncoder().encode(
+    `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`
+  );
+}
+
+function passthroughSSE(line: string): Uint8Array {
+  return new TextEncoder().encode(line + "\n");
+}
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const { messages, conversationId } = await req.json();
-    
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY is not configured");
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
 
-    // Get authorization header for Supabase client
-    const authHeader = req.headers.get('Authorization');
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const authHeader = req.headers.get("Authorization");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
     const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: {
-        headers: { Authorization: authHeader || '' }
-      }
+      global: { headers: { Authorization: authHeader || "" } },
     });
 
-    // Get the user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
-      console.error("User not authenticated:", userError);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log("Processing chat request for user:", user.id);
-    console.log("Conversation ID:", conversationId);
-    console.log("Messages count:", messages?.length);
+    console.log("dav-chat: user", user.id, "conv", conversationId, "msgs", messages?.length);
 
-    // Call Lovable AI Gateway with streaming
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
+    // Build initial chat thread
+    const chatMessages: any[] = [
+      { role: "system", content: SYSTEM_PROMPT },
+      ...messages,
+    ];
+
+    const collectedCitations: CitationOut[] = [];
+    const seenPmids = new Set<string>();
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        const callGateway = async (msgs: any[], allowTools: boolean) => {
+          return await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash",
+              messages: msgs,
+              stream: true,
+              ...(allowTools
+                ? { tools: [PUBMED_TOOL], tool_choice: "auto" }
+                : {}),
+            }),
+          });
+        };
+
+        // ROUND 1: allow tool calls (do not stream tokens to client yet — we
+        // need to inspect whether the model decides to call tools).
+        try {
+          const r1 = await callGateway(chatMessages, true);
+          if (!r1.ok) {
+            const errText = await r1.text();
+            console.error("AI gateway round1 error:", r1.status, errText);
+            controller.enqueue(
+              sseEvent("error", {
+                status: r1.status,
+                message:
+                  r1.status === 429
+                    ? "Limite de requisições. Tente em alguns minutos."
+                    : r1.status === 402
+                    ? "Créditos insuficientes."
+                    : "Erro no serviço de IA.",
+              })
+            );
+            controller.close();
+            return;
+          }
+
+          const reader = r1.body!.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let assistantText = "";
+          const toolCallsByIndex = new Map<
+            number,
+            { id: string; name: string; argsBuf: string }
+          >();
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            let nl: number;
+            while ((nl = buffer.indexOf("\n")) !== -1) {
+              let line = buffer.slice(0, nl);
+              buffer = buffer.slice(nl + 1);
+              if (line.endsWith("\r")) line = line.slice(0, -1);
+              if (!line.startsWith("data: ")) continue;
+              const jsonStr = line.slice(6).trim();
+              if (jsonStr === "[DONE]") break;
+              try {
+                const parsed = JSON.parse(jsonStr);
+                const delta = parsed.choices?.[0]?.delta;
+                if (!delta) continue;
+
+                if (delta.content) {
+                  assistantText += delta.content;
+                  // Stream tokens immediately
+                  controller.enqueue(passthroughSSE(line));
+                }
+
+                if (delta.tool_calls) {
+                  for (const tc of delta.tool_calls) {
+                    const idx = tc.index ?? 0;
+                    const cur =
+                      toolCallsByIndex.get(idx) ??
+                      { id: "", name: "", argsBuf: "" };
+                    if (tc.id) cur.id = tc.id;
+                    if (tc.function?.name) cur.name = tc.function.name;
+                    if (tc.function?.arguments)
+                      cur.argsBuf += tc.function.arguments;
+                    toolCallsByIndex.set(idx, cur);
+                  }
+                }
+              } catch {
+                // partial JSON — push back
+                buffer = line + "\n" + buffer;
+                break;
+              }
+            }
+          }
+
+          // If no tool calls were requested, emit citations event (empty) + DONE.
+          if (toolCallsByIndex.size === 0) {
+            controller.enqueue(sseEvent("citations", { citations: [] }));
+            controller.enqueue(passthroughSSE("data: [DONE]"));
+            controller.close();
+            return;
+          }
+
+          // Execute tool calls (PubMed)
+          const toolCalls = Array.from(toolCallsByIndex.values());
+          const toolMessages: any[] = [];
+          for (const tc of toolCalls) {
+            if (tc.name !== "search_pubmed") continue;
+            let args: { query?: string; limit?: number } = {};
+            try {
+              args = JSON.parse(tc.argsBuf || "{}");
+            } catch (e) {
+              console.warn("Failed to parse tool args:", e);
+            }
+            const q = (args.query || "").trim();
+            const lim = Math.max(1, Math.min(8, args.limit ?? 5));
+
+            // Notify client we are searching
+            controller.enqueue(
+              sseEvent("tool_start", { tool: "search_pubmed", query: q })
+            );
+
+            let articles: PubMedArticle[] = [];
+            if (q) {
+              try {
+                articles = await searchPubMed(q, lim);
+              } catch (e) {
+                console.error("PubMed error:", e);
+              }
+            }
+
+            for (const a of articles) {
+              if (!seenPmids.has(a.pmid)) {
+                seenPmids.add(a.pmid);
+                collectedCitations.push(toCitation(a));
+              }
+            }
+
+            toolMessages.push({
+              role: "tool",
+              tool_call_id: tc.id,
+              name: "search_pubmed",
+              content: JSON.stringify({
+                query: q,
+                results: articles.map((a) => ({
+                  pmid: a.pmid,
+                  title: a.title,
+                  authors: a.authors,
+                  journal: a.journal,
+                  year: a.year,
+                  abstract: a.abstract,
+                })),
+              }),
+            });
+          }
+
+          // ROUND 2: send tool results back, stream final answer to client.
+          const round2Messages = [
+            ...chatMessages,
+            {
+              role: "assistant",
+              content: assistantText || null,
+              tool_calls: toolCalls.map((tc) => ({
+                id: tc.id,
+                type: "function",
+                function: { name: tc.name, arguments: tc.argsBuf || "{}" },
+              })),
+            },
+            ...toolMessages,
+          ];
+
+          // Inform client a new answer phase begins (so it can clear "searching" UI)
+          controller.enqueue(sseEvent("answer_start", {}));
+
+          const r2 = await callGateway(round2Messages, false);
+          if (!r2.ok) {
+            const errText = await r2.text();
+            console.error("AI gateway round2 error:", r2.status, errText);
+            controller.enqueue(
+              sseEvent("error", { status: r2.status, message: "Erro no serviço de IA." })
+            );
+            controller.close();
+            return;
+          }
+
+          const reader2 = r2.body!.getReader();
+          let buf2 = "";
+          while (true) {
+            const { done, value } = await reader2.read();
+            if (done) break;
+            buf2 += decoder.decode(value, { stream: true });
+
+            let nl: number;
+            while ((nl = buf2.indexOf("\n")) !== -1) {
+              let line = buf2.slice(0, nl);
+              buf2 = buf2.slice(nl + 1);
+              if (line.endsWith("\r")) line = line.slice(0, -1);
+              if (!line.startsWith("data: ")) continue;
+              const jsonStr = line.slice(6).trim();
+              if (jsonStr === "[DONE]") break;
+              // Pass through token deltas verbatim
+              controller.enqueue(passthroughSSE(line));
+            }
+          }
+
+          // Final citations event + DONE
+          controller.enqueue(
+            sseEvent("citations", { citations: collectedCitations })
+          );
+          controller.enqueue(passthroughSSE("data: [DONE]"));
+          controller.close();
+        } catch (err) {
+          console.error("dav-chat stream error:", err);
+          controller.enqueue(
+            sseEvent("error", { message: "Erro ao processar mensagem." })
+          );
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          ...messages,
-        ],
-        stream: true,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns minutos." }), {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes. Por favor, adicione créditos à sua conta." }), {
-          status: 402,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      
-      return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    console.log("Streaming response from AI gateway...");
-
-    // Return the stream directly
-    return new Response(response.body, {
-      headers: { 
-        ...corsHeaders, 
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+        ...corsHeaders,
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
       },
     });
-
   } catch (error) {
     const errorId = crypto.randomUUID();
     console.error(`[${errorId}]`, error);
-    return new Response(JSON.stringify({ 
-      error: "Erro ao processar sua mensagem. Tente novamente.",
-      error_id: errorId
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ error: "Erro ao processar sua mensagem.", error_id: errorId }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });

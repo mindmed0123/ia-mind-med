@@ -96,6 +96,8 @@ export function ChatInterface({
                   role={message.role}
                   content={message.content}
                   isStreaming={isStreaming && index === messages.length - 1 && message.role === 'assistant'}
+                  citations={message.citations}
+                  searching={message.searching}
                 />
               ))}
             </div>

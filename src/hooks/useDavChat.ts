@@ -2,11 +2,22 @@ import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+export interface Citation {
+  pmid: string;
+  title: string;
+  authors: string[];
+  journal: string;
+  year: string;
+  url: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   created_at: string;
+  citations?: Citation[];
+  searching?: { query: string } | null;
 }
 
 export interface Conversation {
@@ -213,6 +224,8 @@ export function useDavChat() {
 
       setIsLoading(false);
 
+      let currentEvent: string | null = null;
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -225,20 +238,58 @@ export function useDavChat() {
           textBuffer = textBuffer.slice(newlineIndex + 1);
 
           if (line.endsWith('\r')) line = line.slice(0, -1);
-          if (line.startsWith(':') || line.trim() === '') continue;
+          if (line.startsWith(':') || line.trim() === '') {
+            currentEvent = null;
+            continue;
+          }
+          if (line.startsWith('event: ')) {
+            currentEvent = line.slice(7).trim();
+            continue;
+          }
           if (!line.startsWith('data: ')) continue;
 
           const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') break;
+          if (jsonStr === '[DONE]') { currentEvent = null; break; }
+
+          // Custom SSE events from dav-chat
+          if (currentEvent) {
+            try {
+              const evt = JSON.parse(jsonStr);
+              if (currentEvent === 'tool_start') {
+                setMessages(prev => prev.map(m =>
+                  m.id === assistantMessageId
+                    ? { ...m, searching: { query: evt.query || '' } }
+                    : m
+                ));
+              } else if (currentEvent === 'answer_start') {
+                setMessages(prev => prev.map(m =>
+                  m.id === assistantMessageId ? { ...m, searching: null } : m
+                ));
+              } else if (currentEvent === 'citations') {
+                setMessages(prev => prev.map(m =>
+                  m.id === assistantMessageId
+                    ? { ...m, citations: evt.citations || [], searching: null }
+                    : m
+                ));
+              } else if (currentEvent === 'error') {
+                throw new Error(evt.message || 'Erro no serviço');
+              }
+            } catch (e) {
+              if ((e as Error).message?.startsWith('Erro')) throw e;
+              // ignore parse errors on event payloads
+            }
+            currentEvent = null;
+            continue;
+          }
 
           try {
             const parsed = JSON.parse(jsonStr);
             const delta = parsed.choices?.[0]?.delta?.content;
             if (delta) {
               assistantContent += delta;
-              setMessages(prev => 
-                prev.map(m => 
-                  m.id === assistantMessageId 
+              setMessages(prev =>
+                prev.map(m =>
+                  m.id === assistantMessageId
                     ? { ...m, content: assistantContent }
                     : m
                 )
