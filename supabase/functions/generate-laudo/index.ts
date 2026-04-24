@@ -464,7 +464,7 @@ serve(async (req) => {
         report_markdown: textoLaudo,
         patient_markdown: textoPaciente,
         legal_disclaimer: disclaimer,
-        ai_model: modelUsed,
+        ai_model: actualModel,
         ai_usage: {
           prompt_tokens: usage?.prompt_tokens,
           completion_tokens: usage?.completion_tokens,
@@ -474,6 +474,8 @@ serve(async (req) => {
           finish_reason: finishReason,
           correlation_id: cid,
           mode,
+          fell_back: llmResult.fellBack,
+          attempts: llmResult.attempts,
         },
         generation_mode: mode,
         specialty: templateData?.specialty || specialty || null,
@@ -490,18 +492,21 @@ serve(async (req) => {
 
     const t8 = now();
     log(cid, 'complete', {
-      laudo_id, model: modelUsed, mode,
+      laudo_id, model: actualModel, requested_model: modelUsed, mode,
       template: templateData?.specialty || 'default',
       tokens: usage?.total_tokens, llm_ms: llmMs, total_ms: t8 - t0,
       t_auth: t1 - t0, t_checks: t2 - t1, t_llm: llmMs, t_parse: t7 - t5, t_db: t8 - t7,
+      fell_back: llmResult.fellBack,
     });
 
     return new Response(JSON.stringify({
       success: true, 
       metadata: { 
-        model: modelUsed, mode, llm_ms: llmMs, total_ms: t8 - t0, correlation_id: cid,
+        model: actualModel, requested_model: modelUsed, mode,
+        llm_ms: llmMs, total_ms: t8 - t0, correlation_id: cid,
         template_used: templateData?.specialty || 'default',
         template_sections: templateData?.sections || [],
+        fell_back: llmResult.fellBack,
       },
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
