@@ -983,6 +983,7 @@ export type Database = {
           file_type: string
           file_url: string
           id: string
+          medical_observation: string | null
           notes: string | null
           patient_id: string
           updated_at: string
@@ -1000,6 +1001,7 @@ export type Database = {
           file_type: string
           file_url: string
           id?: string
+          medical_observation?: string | null
           notes?: string | null
           patient_id: string
           updated_at?: string
@@ -1017,6 +1019,7 @@ export type Database = {
           file_type?: string
           file_url?: string
           id?: string
+          medical_observation?: string | null
           notes?: string | null
           patient_id?: string
           updated_at?: string
