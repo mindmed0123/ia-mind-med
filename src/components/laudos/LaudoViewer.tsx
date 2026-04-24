@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Copy, Download, FileText, User, AlertTriangle, Pill, Crown, Stethoscope, ClipboardList, FlaskConical, ShieldAlert, Activity, Sparkles, Clock, Brain, CheckCircle } from "lucide-react";
+import { Copy, Download, FileText, User, AlertTriangle, Pill, Crown, Stethoscope, ClipboardList, FlaskConical, ShieldAlert, Activity, Sparkles, Clock, Brain, CheckCircle, BookOpen, ExternalLink, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
