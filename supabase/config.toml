@@ -45,3 +45,5 @@ project_id = "zwebwrbbrcmajkuptpwq"
     verify_jwt = false
   [functions.verify-pdf]
     verify_jwt = false
+  [functions.laudo-watchdog]
+    verify_jwt = false
