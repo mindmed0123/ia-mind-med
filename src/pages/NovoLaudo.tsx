@@ -586,7 +586,11 @@ const NovoLaudo = () => {
     }
   };
 
-  const handleAudioUploadComplete = async (url: string, path: string) => {
+  const handleAudioUploadComplete = async (
+    url: string,
+    path: string,
+    meta?: { blob?: Blob; durationSec?: number },
+  ) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     setPipelineStage('uploading');
@@ -610,27 +614,82 @@ const NovoLaudo = () => {
       setLaudoId(newLaudo.id);
       setPipelineStage('transcribing');
 
-      toast({ title: "Processando áudio...", description: "A transcrição e geração do laudo serão automáticas" });
-
-      // Start polling BEFORE firing transcription so we catch updates immediately
-      startPolling(newLaudo.id);
-
       navigate(`/novo-laudo?id=${newLaudo.id}`, { replace: true });
 
-      // Fire transcription in background (don't block UI)
       const headers = await getCloudFunctionHeaders(session?.access_token);
+      const audioBlob = meta?.blob;
 
-      supabase.functions.invoke('transcribe-audio', {
-        body: {
-          audio_url: url,
-          audio_path: path,
-          laudo_id: newLaudo.id,
-          mode: 'complete',
-        },
-        headers,
-      }).catch(err => {
-        // Polling will detect the error status
-      });
+      // Decide between chunked and single-shot pipeline. Chunked is used for
+      // long consultations (>5 min) and parallelizes Whisper calls so a 1h+
+      // recording finishes in a fraction of the time.
+      let useChunking = false;
+      if (audioBlob) {
+        // If we have a duration hint from the recorder, use it; otherwise we
+        // let the chunker probe and fall back if it's short.
+        if (typeof meta?.durationSec === 'number') {
+          useChunking = meta.durationSec > 300;
+        } else {
+          useChunking = true; // probe inside the hook will short-circuit if short
+        }
+      }
+
+      if (useChunking && audioBlob) {
+        toast({
+          title: 'Áudio longo detectado',
+          description: 'Processando em paralelo para acelerar a transcrição.',
+        });
+
+        // Start polling so the laudo refreshes after generate-laudo dispatch
+        startPolling(newLaudo.id);
+
+        try {
+          const result = await chunkedTranscription.start({
+            blob: audioBlob,
+            laudoId: newLaudo.id,
+            accessToken: session?.access_token,
+            mode: 'complete',
+          });
+
+          // If the audio was short, fall back to the legacy single-shot path
+          if (!result.chunked) {
+            supabase.functions.invoke('transcribe-audio', {
+              body: {
+                audio_url: url,
+                audio_path: path,
+                laudo_id: newLaudo.id,
+                mode: 'complete',
+              },
+              headers,
+            }).catch(() => { /* polling surfaces errors */ });
+          }
+        } catch (err: any) {
+          if (err?.message !== 'cancelled') {
+            // Recover by trying the single-shot pipeline once
+            supabase.functions.invoke('transcribe-audio', {
+              body: {
+                audio_url: url,
+                audio_path: path,
+                laudo_id: newLaudo.id,
+                mode: 'complete',
+              },
+              headers,
+            }).catch(() => { /* polling surfaces errors */ });
+          }
+        }
+      } else {
+        toast({ title: 'Processando áudio...', description: 'A transcrição e geração do laudo serão automáticas' });
+        startPolling(newLaudo.id);
+
+        supabase.functions.invoke('transcribe-audio', {
+          body: {
+            audio_url: url,
+            audio_path: path,
+            laudo_id: newLaudo.id,
+            mode: 'complete',
+          },
+          headers,
+        }).catch(() => { /* polling surfaces errors */ });
+      }
     } catch (error: any) {
       setPipelineStage('error');
       setIsSubmitting(false);
