@@ -15,21 +15,32 @@ function formatTime(sec: number) {
 }
 
 export function TranscriptionStream({ state }: TranscriptionStreamProps) {
-  const { totalChunks, completedChunks, durationSec, partialText, chunks, error } = state;
+  const { totalChunks, completedChunks, summarizedChunks, durationSec, partialText, chunks, error, phase } = state;
 
   if (totalChunks === 0 && !partialText) return null;
 
   const progress = totalChunks > 0 ? Math.round((completedChunks / totalChunks) * 100) : 0;
+
+  const phaseLabel: Record<string, string> = {
+    idle: "Aguardando",
+    preparing: "Preparando áudio…",
+    transcribing: "🎙️ Transcrevendo blocos em paralelo",
+    summarizing: "🧠 Resumindo blocos clinicamente",
+    consolidating: "📋 Consolidando consulta longa…",
+    done: "✅ Transcrição concluída",
+    error: "Erro no processamento",
+  };
 
   return (
     <div className="space-y-4 rounded-lg border bg-card p-4 shadow-sm">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-foreground">
-            Transcrição em paralelo — {completedChunks}/{totalChunks} blocos
+            {phaseLabel[phase] || "Processando"} — {completedChunks}/{totalChunks} blocos
+            {summarizedChunks > 0 && ` · ${summarizedChunks} resumidos`}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Áudio de {formatTime(durationSec)} dividido em {totalChunks} partes processadas simultaneamente
+            Áudio de {formatTime(durationSec)} dividido em {totalChunks} blocos de 5 min processados em paralelo
           </p>
         </div>
         <div className="text-right">
@@ -50,6 +61,7 @@ export function TranscriptionStream({ state }: TranscriptionStreamProps) {
               c.status === "pending" && "bg-muted/40 border-muted-foreground/10 text-muted-foreground",
               c.status === "uploading" && "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-300",
               c.status === "transcribing" && "bg-primary/10 border-primary/40 text-primary",
+              c.status === "summarizing" && "bg-purple-500/10 border-purple-500/40 text-purple-700 dark:text-purple-300",
               c.status === "done" && "bg-green-500/10 border-green-500/40 text-green-700 dark:text-green-300",
               c.status === "error" && "bg-destructive/10 border-destructive/40 text-destructive",
             )}

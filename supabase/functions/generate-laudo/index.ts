@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { callLlmWithFallback } from "../_shared/llm-call.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -100,13 +101,24 @@ const LAUDO_TOOL = {
   },
 };
 
-// Models by mode — fast uses the lightest model for speed
+// Models by mode — fast uses the lightest model for speed; long uses Flash for
+// large context windows. Each mode has a fallback model that takes over if the
+// primary times out or returns 5xx.
 const MODELS = {
   fast: 'google/gemini-2.5-flash-lite',
   complete: 'google/gemini-2.5-flash',
+  long: 'google/gemini-2.5-flash',
+};
+const FALLBACK_MODELS: Record<string, string> = {
+  fast: 'google/gemini-2.5-flash',
+  complete: 'google/gemini-2.5-flash-lite',
+  long: 'google/gemini-2.5-flash-lite',
 };
 
-const MAX_TOKENS = { fast: 2500, complete: 4000 };
+const MAX_TOKENS = { fast: 2500, complete: 4000, long: 5000 };
+// Long mode receives a pre-condensed transcript (map-reduce summaries) so we
+// can be more generous on input characters without exploding the context.
+const MAX_INPUT_CHARS = { fast: 3500, complete: 8000, long: 16000 };
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -245,9 +257,9 @@ serve(async (req) => {
 
     // ===== TRUNCATE TRANSCRIPT =====
     const transcriptText = typeof transcript === 'string' ? transcript : transcript?.text || transcript_text || '';
-    const MAX_CHARS = mode === 'fast' ? 3000 : 5000;
+    const MAX_CHARS = (MAX_INPUT_CHARS as any)[mode] || MAX_INPUT_CHARS.fast;
     const truncated = transcriptText.length > MAX_CHARS
-      ? transcriptText.substring(0, MAX_CHARS) + '\n[...truncado]'
+      ? transcriptText.substring(0, MAX_CHARS) + '\n[...truncado para caber no contexto]'
       : transcriptText;
 
     if (!transcriptText.trim()) {
@@ -266,7 +278,12 @@ serve(async (req) => {
       sectionsInstruction = `\n\nALÉM dos campos padrão, preencha também o campo specialty_sections com as seguintes chaves: ${sectionKeys.join(', ')}. Cada chave deve conter o texto correspondente à seção.`;
     }
 
-    const fullSystemPrompt = systemPrompt + sectionsInstruction;
+    // Long-mode hint when transcript was condensed by map-reduce
+    const longHint = mode === 'long'
+      ? '\n\nIMPORTANTE: A entrada abaixo é um resumo consolidado de uma consulta longa (60-90 min) já estruturado por tópicos. Use TODOS os tópicos para construir o laudo final. Não invente dados que não estejam no resumo.'
+      : '';
+
+    const fullSystemPrompt = systemPrompt + sectionsInstruction + longHint;
 
     const parts: string[] = [];
     parts.push(`PAC: ${patient?.iniciais || 'N/I'}, ${patient?.sexo || 'N/I'}, ${patient?.idade || 'N/I'}a`);
@@ -282,84 +299,78 @@ serve(async (req) => {
     const userPrompt = parts.join('\n');
 
     const promptChars = fullSystemPrompt.length + userPrompt.length;
-    const modelUsed = MODELS[mode as keyof typeof MODELS] || MODELS.fast;
-    const maxTokens = MAX_TOKENS[mode as keyof typeof MAX_TOKENS] || MAX_TOKENS.fast;
+    const modelUsed = (MODELS as any)[mode] || MODELS.fast;
+    const fallbackModel = FALLBACK_MODELS[mode] || FALLBACK_MODELS.fast;
+    const maxTokens = (MAX_TOKENS as any)[mode] || MAX_TOKENS.fast;
 
     log(cid, 'llm_start', {
-      laudo_id, model: modelUsed, mode, prompt_chars: promptChars,
+      laudo_id, model: modelUsed, fallback: fallbackModel, mode,
+      prompt_chars: promptChars,
       transcript_chars: transcriptText.length, max_tokens: maxTokens,
       template: templateData?.specialty || 'default',
     });
 
-    // ===== LLM CALL with tool calling =====
+    // ===== LLM CALL with retry + fallback =====
     const lovableKey = Deno.env.get('LOVABLE_API_KEY');
     if (!lovableKey) throw new Error('AI não configurada');
 
     const t4 = now();
     await updateStage('calling_ai');
-    const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 30000);
 
-    let response;
+    let llmResult: Awaited<ReturnType<typeof callLlmWithFallback>>;
     try {
-      response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${lovableKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      llmResult = await callLlmWithFallback(
+        lovableKey,
+        {
           model: modelUsed,
+          fallbackModel,
           messages: [
             { role: 'system', content: fullSystemPrompt },
             { role: 'user', content: userPrompt },
           ],
           tools: [LAUDO_TOOL],
-          tool_choice: { type: "function", function: { name: "generate_laudo" } },
-          max_tokens: maxTokens,
+          toolChoice: { type: 'function', function: { name: 'generate_laudo' } },
+          maxTokens,
           temperature: 0.15,
-        }),
-        signal: ctrl.signal,
-      });
+          timeoutMs: mode === 'long' ? 90000 : 60000,
+          retries: 1,
+        },
+        (step, data) => log(cid, step, data),
+      );
     } catch (e: any) {
-      clearTimeout(timeout);
-      if (e.name === 'AbortError') {
-        log(cid, 'timeout', { ms: 45000 });
-        throw new Error('Tempo limite (45s). Tente novamente.');
-      }
-      throw e;
-    } finally {
-      clearTimeout(timeout);
-    }
-
-    const t5 = now();
-    const llmMs = t5 - t4;
-
-    if (!response.ok) {
-      const body = await response.text();
-      log(cid, 'llm_error', { status: response.status, llm_ms: llmMs });
-      if (response.status === 429) {
+      const status = (e as any)?.status;
+      log(cid, 'llm_failed_after_fallback', { status, msg: e?.message });
+      if (status === 429) {
         await supabase.from('laudos').update({ status: 'draft' }).eq('id', laudo_id);
         return new Response(JSON.stringify({ error: 'Limite de requisições. Aguarde.' }), {
           status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (response.status === 402) {
+      if (status === 402) {
         await supabase.from('laudos').update({ status: 'draft' }).eq('id', laudo_id);
         return new Response(JSON.stringify({ error: 'Créditos insuficientes.' }), {
           status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      throw new Error(`Erro IA: ${response.status}`);
+      throw new Error('Falha na geração do laudo após retry e fallback.');
     }
 
-    const data = await response.json();
+    const t5 = now();
+    const llmMs = t5 - t4;
+    const data = llmResult.data;
+    const actualModel = llmResult.modelUsed;
     const usage = data.usage;
     const choice = data.choices?.[0];
     const finishReason = choice?.finish_reason;
 
-    log(cid, 'llm_done', { llm_ms: llmMs, tokens: usage?.total_tokens, finish_reason: finishReason });
-
+    log(cid, 'llm_done', {
+      llm_ms: llmMs,
+      tokens: usage?.total_tokens,
+      finish_reason: finishReason,
+      model_used: actualModel,
+      fell_back: llmResult.fellBack,
+      attempts: llmResult.attempts,
+    });
     // ===== PARSE RESPONSE =====
     const t6 = now();
     let laudoData: any;
@@ -453,7 +464,7 @@ serve(async (req) => {
         report_markdown: textoLaudo,
         patient_markdown: textoPaciente,
         legal_disclaimer: disclaimer,
-        ai_model: modelUsed,
+        ai_model: actualModel,
         ai_usage: {
           prompt_tokens: usage?.prompt_tokens,
           completion_tokens: usage?.completion_tokens,
@@ -463,6 +474,8 @@ serve(async (req) => {
           finish_reason: finishReason,
           correlation_id: cid,
           mode,
+          fell_back: llmResult.fellBack,
+          attempts: llmResult.attempts,
         },
         generation_mode: mode,
         specialty: templateData?.specialty || specialty || null,
@@ -479,18 +492,21 @@ serve(async (req) => {
 
     const t8 = now();
     log(cid, 'complete', {
-      laudo_id, model: modelUsed, mode,
+      laudo_id, model: actualModel, requested_model: modelUsed, mode,
       template: templateData?.specialty || 'default',
       tokens: usage?.total_tokens, llm_ms: llmMs, total_ms: t8 - t0,
       t_auth: t1 - t0, t_checks: t2 - t1, t_llm: llmMs, t_parse: t7 - t5, t_db: t8 - t7,
+      fell_back: llmResult.fellBack,
     });
 
     return new Response(JSON.stringify({
       success: true, 
       metadata: { 
-        model: modelUsed, mode, llm_ms: llmMs, total_ms: t8 - t0, correlation_id: cid,
+        model: actualModel, requested_model: modelUsed, mode,
+        llm_ms: llmMs, total_ms: t8 - t0, correlation_id: cid,
         template_used: templateData?.specialty || 'default',
         template_sections: templateData?.sections || [],
+        fell_back: llmResult.fellBack,
       },
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 

@@ -33,7 +33,7 @@ export const AudioRecorder = ({ onRecordingComplete }: AudioRecorderProps) => {
   const { toast } = useToast();
   const { consumeQuota } = useQuota();
 
-  const MAX_RECORDING_TIME = 30 * 60; // 30 minutos
+  const MAX_RECORDING_TIME = 90 * 60; // 90 minutos (consultas longas hospitalares)
 
   useEffect(() => {
     return () => {
@@ -135,7 +135,7 @@ export const AudioRecorder = ({ onRecordingComplete }: AudioRecorderProps) => {
             stopRecording();
             toast({
               title: "Limite atingido",
-              description: "Gravação parada automaticamente após 30 minutos.",
+              description: "Gravação parada automaticamente após 90 minutos.",
             });
             return prev;
           }
@@ -260,7 +260,7 @@ export const AudioRecorder = ({ onRecordingComplete }: AudioRecorderProps) => {
                 <div>
                   <p className="text-lg font-semibold text-foreground">Clique para gravar</p>
                   <p className="text-sm text-muted-foreground">
-                    Grave a consulta médica (máx. 30 minutos)
+                    Grave a consulta médica (até 90 minutos)
                   </p>
                 </div>
               </div>
