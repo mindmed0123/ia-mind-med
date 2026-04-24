@@ -66,6 +66,30 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
   const { subscription } = useAppState();
   const [laudo, setLaudo] = useState<any>(laudoData || null);
   const [loading, setLoading] = useState(!laudoData);
+  const [generatingScience, setGeneratingScience] = useState(false);
+
+  const handleGenerateScientificBasis = async () => {
+    if (!subscription?.isPro) {
+      navigate('/precos');
+      return;
+    }
+    setGeneratingScience(true);
+    try {
+      toast({ title: "Buscando evidências…", description: "Consultando PubMed e gerando embasamento." });
+      const { data, error } = await supabase.functions.invoke('generate-scientific-basis', {
+        body: { laudo_id: laudoId },
+      });
+      if (error) throw error;
+      if (data?.scientific_basis) {
+        setLaudo((prev: any) => ({ ...prev, scientific_basis: data.scientific_basis }));
+        toast({ title: "Embasamento científico pronto!", description: `${data.scientific_basis.articles?.length || 0} artigos referenciados.` });
+      }
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message || "Não foi possível gerar o embasamento.", variant: "destructive" });
+    } finally {
+      setGeneratingScience(false);
+    }
+  };
 
   // If parent passes laudoData, use it directly (no DB fetch needed)
   useEffect(() => {
