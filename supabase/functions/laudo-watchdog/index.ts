@@ -74,7 +74,8 @@ Deno.serve(async (req) => {
         updated_at: new Date().toISOString(),
       };
       if (l.audio_processing_status === "processing") {
-        updates.audio_processing_status = "error";
+        // DB constraint only allows: pending, processing, completed, failed
+        updates.audio_processing_status = "failed";
       }
       if (l.transcript_status === "processing") {
         updates.transcript_status = "error";
