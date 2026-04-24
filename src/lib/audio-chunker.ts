@@ -41,29 +41,53 @@ export function shouldChunkAudio(durationSec: number, threshold = DEFAULT_CHUNK_
  * cheap and works for any browser-supported codec.
  */
 export function probeAudioDuration(blob: Blob): Promise<number> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const url = URL.createObjectURL(blob);
     const audio = new Audio();
     audio.preload = "metadata";
+
+    let settled = false;
+    const cleanup = () => {
+      URL.revokeObjectURL(url);
+      audio.onloadedmetadata = null;
+      audio.ontimeupdate = null;
+      audio.onerror = null;
+    };
+    const finish = (value: number) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(Number.isFinite(value) && value > 0 ? value : 0);
+    };
+
+    // Hard timeout — never block the UI on metadata read.
+    const timeout = window.setTimeout(() => finish(0), 8000);
+
     audio.onloadedmetadata = () => {
       const d = audio.duration;
-      URL.revokeObjectURL(url);
-      // Some recorded webm blobs report Infinity until first seek
-      if (!isFinite(d) || isNaN(d)) {
-        // Fallback: try seeking far ahead, then re-read
+      if (Number.isFinite(d) && d > 0) {
+        window.clearTimeout(timeout);
+        finish(d);
+        return;
+      }
+      // webm recordings often report Infinity until a seek forces a re-scan.
+      audio.ontimeupdate = () => {
+        const fixed = audio.duration;
+        if (Number.isFinite(fixed) && fixed > 0) {
+          window.clearTimeout(timeout);
+          finish(fixed);
+        }
+      };
+      try {
         audio.currentTime = 1e9;
-        audio.ontimeupdate = () => {
-          const fixed = audio.duration;
-          audio.ontimeupdate = null;
-          resolve(isFinite(fixed) ? fixed : 0);
-        };
-      } else {
-        resolve(d);
+      } catch {
+        window.clearTimeout(timeout);
+        finish(0);
       }
     };
     audio.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Não foi possível ler a duração do áudio"));
+      window.clearTimeout(timeout);
+      finish(0);
     };
     audio.src = url;
   });
