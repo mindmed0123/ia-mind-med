@@ -506,6 +506,8 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
             </SectionBlock>
           )}
         </TabsContent>
+
+        {/* ══════ TAB: LAUDO COMPLETO ══════ */}
         <TabsContent value="laudo" className="mt-5">
           <Card className="rounded-xl border-border/60">
             <CardHeader className="pb-3">
