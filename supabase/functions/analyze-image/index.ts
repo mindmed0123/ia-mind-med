@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { documentId, imageUrl, patientName, patientId } = await req.json();
+    const { documentId, imageUrl, patientName, patientId, medicalObservation, clinicalContext, transcriptText } = await req.json();
 
     if (!documentId || !imageUrl) {
       return new Response(
@@ -26,7 +26,21 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    console.log('Analyzing image for document:', documentId);
+    console.log('Analyzing image for document:', documentId, 'has observation:', !!medicalObservation);
+
+    // Build a richer user prompt that incorporates the doctor's observation,
+    // clinical context and (optionally) the consultation transcript so the
+    // model interprets the image WITH context, not in isolation.
+    const contextParts: string[] = [];
+    if (patientName) contextParts.push(`Paciente: ${patientName}`);
+    if (clinicalContext) contextParts.push(`Contexto clínico: ${clinicalContext}`);
+    if (transcriptText) contextParts.push(`Trecho da consulta:\n${String(transcriptText).slice(0, 2000)}`);
+    if (medicalObservation) {
+      contextParts.push(`Observação do médico sobre este exame:\n${medicalObservation}`);
+    }
+    const contextBlock = contextParts.length
+      ? `\n\nContexto fornecido pelo médico:\n${contextParts.join('\n\n')}`
+      : '';
 
     // Call Lovable AI with vision capabilities
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -46,13 +60,14 @@ Ao analisar uma imagem médica, você deve:
 1. Identificar o tipo de exame/imagem (raio-X, tomografia, foto clínica, etc.)
 2. Descrever os achados visuais principais de forma objetiva
 3. Identificar possíveis anormalidades ou alterações
-4. Sugerir correlações clínicas quando apropriado
+4. Sugerir correlações clínicas quando apropriado, **integrando a observação do médico e o contexto clínico fornecido**
 5. Recomendar exames complementares se necessário
 
 IMPORTANTE:
 - Seja preciso e objetivo
 - Use terminologia médica adequada
 - Não faça diagnósticos definitivos, apenas descrições e hipóteses
+- Quando houver observação do médico, leve-a em conta como a hipótese clínica principal e correlacione os achados visuais com ela.
 - Sempre mencione a necessidade de avaliação médica profissional
 
 Responda em português brasileiro no formato JSON:
@@ -61,7 +76,7 @@ Responda em português brasileiro no formato JSON:
   "image_type": "tipo de imagem identificado",
   "findings": "Achados visuais detalhados",
   "abnormalities": "Possíveis anormalidades identificadas",
-  "clinical_correlation": "Correlação clínica sugerida",
+  "clinical_correlation": "Correlação clínica sugerida (incorporando observação do médico se houver)",
   "recommendations": "Recomendações ou exames complementares",
   "confidence": "alto/médio/baixo"
 }`
@@ -71,7 +86,7 @@ Responda em português brasileiro no formato JSON:
             content: [
               {
                 type: 'text',
-                text: `Analise esta imagem médica do paciente ${patientName || 'não identificado'}. Forneça uma análise detalhada.`
+                text: `Analise esta imagem médica do paciente ${patientName || 'não identificado'}. Forneça uma análise detalhada.${contextBlock}`
               },
               {
                 type: 'image_url',
