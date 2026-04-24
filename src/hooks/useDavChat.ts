@@ -2,11 +2,22 @@ import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+export interface Citation {
+  pmid: string;
+  title: string;
+  authors: string[];
+  journal: string;
+  year: string;
+  url: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   created_at: string;
+  citations?: Citation[];
+  searching?: { query: string } | null;
 }
 
 export interface Conversation {
