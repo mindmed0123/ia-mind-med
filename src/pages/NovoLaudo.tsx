@@ -14,10 +14,12 @@ import { LaudoTemplateConfig, type LaudoSectionConfig } from "@/components/laudo
 import { PatientLinkingModal } from "@/components/laudos/PatientLinkingModal";
 import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
+import { TranscriptionStream } from "@/components/audio/TranscriptionStream";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSpecialtyTemplates } from "@/hooks/useSpecialtyTemplates";
+import { useChunkedTranscription } from "@/hooks/useChunkedTranscription";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
