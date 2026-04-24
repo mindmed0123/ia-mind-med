@@ -53,6 +53,7 @@ const NovoLaudo = () => {
   const { user, session } = useAuth();
   const { templates: specialtyTemplates } = useSpecialtyTemplates();
   const { isEmbedded, bridgeToken, error: bridgeError, sendCompleted, sendCancelled } = useEmbeddedBridge();
+  const chunkedTranscription = useChunkedTranscription();
   const [laudoId, setLaudoId] = useState<string | null>(searchParams.get('id'));
   const initialTab = searchParams.get('tab');
   const [laudo, setLaudo] = useState<any>(null);
