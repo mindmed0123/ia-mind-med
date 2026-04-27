@@ -2,8 +2,8 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB (suporta consultas hospitalares de até 90min)
-const MAX_DURATION = 90 * 60; // 90 minutes in seconds (1h30)
+const MAX_FILE_SIZE = 700 * 1024 * 1024; // 700MB (suporta consultas hospitalares de até 120min)
+const MAX_DURATION = 120 * 60; // 120 minutes in seconds (2h)
 
 const ALLOWED_FORMATS = [
   'audio/webm',
@@ -32,7 +32,7 @@ export const useAudioUpload = () => {
     if (file.size > MAX_FILE_SIZE) {
       toast({
         title: "Arquivo muito grande",
-        description: "O arquivo deve ter no máximo 500MB",
+        description: "O arquivo deve ter no máximo 700MB",
         variant: "destructive",
       });
       return false;
