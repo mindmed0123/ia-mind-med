@@ -162,8 +162,8 @@ export const AudioUploader = ({ onUploadComplete }: AudioUploaderProps) => {
 
           <div className="text-xs text-muted-foreground space-y-1">
             <p>• Formatos aceitos: webm, ogg, mp3, wav, m4a, flac, mp4</p>
-            <p>• Tamanho máximo: 500 MB</p>
-            <p>• Duração máxima: 1h30 (90 minutos)</p>
+            <p>• Tamanho máximo: 700 MB</p>
+            <p>• Duração máxima: 2h (120 minutos)</p>
           </div>
         </div>
       </CardContent>
