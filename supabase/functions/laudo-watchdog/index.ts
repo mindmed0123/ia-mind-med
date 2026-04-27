@@ -16,11 +16,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// 8 minutes — long enough for 90min audio chunks (5min each) to finish, 
+// 12 minutes — long enough for 120min audio (24 chunks de 5min em paralelo concurrency=3)
 // short enough to recover quickly if something hangs.
-const STUCK_THRESHOLD_MS = 8 * 60 * 1000;
-// 12 minutes for laudo generation itself (LLM consolidation can take a while)
-const LAUDO_STUCK_THRESHOLD_MS = 12 * 60 * 1000;
+const STUCK_THRESHOLD_MS = 12 * 60 * 1000;
+// 15 minutes for laudo generation itself (LLM consolidation pode demorar em áudios de 2h)
+const LAUDO_STUCK_THRESHOLD_MS = 15 * 60 * 1000;
 
 function log(step: string, data?: Record<string, unknown>) {
   console.log(JSON.stringify({ fn: "laudo-watchdog", step, ...data }));
