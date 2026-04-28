@@ -47,6 +47,45 @@ export const ExamUploadSection = ({
   const [exams, setExams] = useState<ExamFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [updatingLaudo, setUpdatingLaudo] = useState(false);
+  const [manualExamText, setManualExamText] = useState('');
+  const [updatingFromManual, setUpdatingFromManual] = useState(false);
+
+  const handleManualExamUpdate = async () => {
+    const text = manualExamText.trim();
+    if (text.length < 5) {
+      toast({
+        title: 'Descrição muito curta',
+        description: 'Adicione uma descrição com mais detalhes do exame.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setUpdatingFromManual(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('update-laudo', {
+        body: {
+          laudo_id: laudoId,
+          additional_info: text,
+          source: 'manual_exam',
+        },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Laudo atualizado!',
+        description: data?.change_summary || 'A descrição foi incorporada ao laudo.',
+      });
+      setManualExamText('');
+      onExamsAnalyzed?.(text);
+    } catch (err: any) {
+      toast({
+        title: 'Não foi possível atualizar',
+        description: 'Seu laudo original foi preservado. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingFromManual(false);
+    }
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
