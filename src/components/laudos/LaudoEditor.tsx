@@ -736,6 +736,41 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
         </CardContent>
       </Card>
 
+
+      {/* Atualizar Laudo com IA — complemento inteligente */}
+      <Card className="border-primary/30 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            Complementar com IA
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Adicione observações, correções ou complementos. A IA incorporará na seção correta sem
+            duplicar nem apagar o conteúdo existente.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Textarea
+            value={aiComplementText}
+            onChange={(e) => setAiComplementText(e.target.value)}
+            placeholder="Ex.: Paciente relatou também dor lombar irradiando para MMII. Adicionar tramadol 50mg 8/8h por 5 dias."
+            className="min-h-[120px] bg-background"
+            disabled={updatingWithAI}
+          />
+          <Button
+            onClick={handleAIComplement}
+            disabled={updatingWithAI || aiComplementText.trim().length < 5}
+            className="w-full gap-2"
+          >
+            {updatingWithAI ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Atualizando laudo com novas informações...</>
+            ) : (
+              <><Sparkles className="w-4 h-4" /> Atualizar Laudo</>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Actions */}
       <div className="flex flex-wrap gap-3 justify-end">
         <Button
