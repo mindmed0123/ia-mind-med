@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 import { useAppState } from "@/hooks/useAppState";
+import { buildCleanLaudoText } from "@/lib/laudo-clean-text";
 
 interface LaudoSectionConfig {
   key: string;
