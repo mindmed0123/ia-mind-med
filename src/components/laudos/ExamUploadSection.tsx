@@ -47,6 +47,45 @@ export const ExamUploadSection = ({
   const [exams, setExams] = useState<ExamFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [updatingLaudo, setUpdatingLaudo] = useState(false);
+  const [manualExamText, setManualExamText] = useState('');
+  const [updatingFromManual, setUpdatingFromManual] = useState(false);
+
+  const handleManualExamUpdate = async () => {
+    const text = manualExamText.trim();
+    if (text.length < 5) {
+      toast({
+        title: 'Descrição muito curta',
+        description: 'Adicione uma descrição com mais detalhes do exame.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setUpdatingFromManual(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('update-laudo', {
+        body: {
+          laudo_id: laudoId,
+          additional_info: text,
+          source: 'manual_exam',
+        },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Laudo atualizado!',
+        description: data?.change_summary || 'A descrição foi incorporada ao laudo.',
+      });
+      setManualExamText('');
+      onExamsAnalyzed?.(text);
+    } catch (err: any) {
+      toast({
+        title: 'Não foi possível atualizar',
+        description: 'Seu laudo original foi preservado. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingFromManual(false);
+    }
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -404,6 +443,44 @@ export const ExamUploadSection = ({
             </div>
           </div>
         )}
+
+        {/* Manual exam description — separate block */}
+        <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 space-y-3 mt-2">
+          <div>
+            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Brain className="w-4 h-4 text-primary" />
+              Descrição manual de exames
+            </h4>
+            <p className="text-xs text-muted-foreground mt-1">
+              Use este campo para registrar achados de exames trazidos pelo paciente, imagens
+              visualizadas durante a consulta ou informações que não foram captadas no áudio.
+            </p>
+          </div>
+          <Textarea
+            value={manualExamText}
+            onChange={(e) => setManualExamText(e.target.value)}
+            placeholder="Exemplo: Paciente apresentou exame de imagem com presença de..., laudo laboratorial indicando..., radiografia demonstrando..."
+            className="min-h-[140px] text-sm bg-background"
+            disabled={updatingFromManual}
+          />
+          <Button
+            onClick={handleManualExamUpdate}
+            disabled={updatingFromManual || manualExamText.trim().length < 5}
+            className="w-full gap-2 bg-primary hover:bg-primary/90"
+          >
+            {updatingFromManual ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Atualizando laudo com novas informações...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                Atualizar Laudo
+              </>
+            )}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

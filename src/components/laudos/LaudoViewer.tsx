@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 import { useAppState } from "@/hooks/useAppState";
+import { buildCleanLaudoText } from "@/lib/laudo-clean-text";
 
 interface LaudoSectionConfig {
   key: string;
@@ -59,6 +60,229 @@ const SectionBlock = ({ num, icon: Icon, title, children, variant = 'default', d
     <div className="px-5 py-4">{children}</div>
   </div>
 );
+
+/* ── Premium Clean Clinical Laudo (copy-friendly) ── */
+const ClinicalSection = ({
+  title,
+  children,
+  number,
+}: {
+  title: string;
+  children: React.ReactNode;
+  number?: number;
+}) => (
+  <section className="border-b border-border/40 pb-5 last:border-0 last:pb-0">
+    <div className="flex items-baseline gap-2 mb-2.5">
+      {number !== undefined && (
+        <span className="text-[11px] font-bold text-primary/60 tabular-nums">
+          {String(number).padStart(2, "0")}
+        </span>
+      )}
+      <h3 className="text-[13px] font-bold uppercase tracking-[0.12em] text-foreground">
+        {title}
+      </h3>
+    </div>
+    <div className="text-[14.5px] leading-[1.7] text-foreground/90 font-normal whitespace-pre-wrap pl-0">
+      {children}
+    </div>
+  </section>
+);
+
+const CleanClinicalLaudo = ({
+  laudo,
+  onCopy,
+}: {
+  laudo: any;
+  onCopy: (text: string) => void;
+}) => {
+  const s = laudo.sections || {};
+  const h = laudo.hypotheses || {};
+  const p = laudo.patient_data || {};
+
+  const cleanText = buildCleanLaudoText({
+    patient_data: laudo.patient_data,
+    sections: laudo.sections,
+    hypotheses: laudo.hypotheses,
+    cid10_codes: laudo.cid10_codes,
+    conducts: laudo.conducts,
+    complementary_exams: laudo.complementary_exams,
+    red_flags: laudo.red_flags,
+    diagnosis_main: laudo.diagnosis_main,
+    diagnosis_diff: laudo.diagnosis_diff,
+    summary: laudo.summary,
+    created_at: laudo.created_at,
+    legal_disclaimer: laudo.legal_disclaimer,
+  });
+
+  const principal = s.hipoteses?.principal || h.mais_provavel?.descricao || laudo.diagnosis_main;
+  const diferencial = s.hipoteses?.diferencial || h.menos_provavel?.descricao || laudo.diagnosis_diff;
+  const hda = s.hda || laudo.summary?.resumo_clinico;
+  const conduta = s.conduta || (laudo.conducts && laudo.conducts.length > 0
+    ? (laudo.conducts as any[]).map((c, i) => `${i + 1}. ${typeof c === "string" ? c : JSON.stringify(c)}`).join("\n")
+    : "");
+  const examesComplementares = s.exames_complementares || (laudo.complementary_exams && laudo.complementary_exams.length > 0
+    ? (laudo.complementary_exams as any[]).map((e, i) => `${i + 1}. ${typeof e === "string" ? e : JSON.stringify(e)}`).join("\n")
+    : "");
+
+  let n = 0;
+  const next = () => ++n;
+
+  return (
+    <div className="relative">
+      {/* Sticky copy bar */}
+      <div className="sticky top-0 z-20 -mx-1 mb-4 flex items-center justify-between rounded-xl border border-border/60 bg-background/95 backdrop-blur-md px-4 py-2.5 shadow-sm">
+        <div className="flex items-center gap-2">
+          <FileText className="w-4 h-4 text-primary" />
+          <span className="text-sm font-semibold text-foreground">Laudo Clínico</span>
+          <Badge variant="outline" className="text-[10px] gap-1 ml-1">
+            <Sparkles className="w-2.5 h-2.5" /> Pronto para Ctrl+C / Ctrl+V
+          </Badge>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => onCopy(cleanText)}
+          className="gap-1.5 h-8 text-xs bg-primary hover:bg-primary/90"
+        >
+          <Copy className="w-3.5 h-3.5" /> Copiar Laudo
+        </Button>
+      </div>
+
+      {/* Document body */}
+      <article className="bg-card border border-border/60 rounded-2xl shadow-sm px-7 sm:px-10 py-8 max-w-[78ch] mx-auto">
+        {/* Title */}
+        <header className="text-center pb-5 mb-6 border-b-2 border-primary/20">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            LAUDO CLÍNICO
+          </h1>
+          <p className="text-xs text-muted-foreground mt-1">
+            {new Date(laudo.created_at).toLocaleDateString("pt-BR", {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            })}
+          </p>
+        </header>
+
+        <div className="space-y-6">
+          {/* Patient block */}
+          <ClinicalSection title="Dados do Paciente">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5">
+              <div><span className="font-semibold">Paciente:</span> {p.nome_completo || p.iniciais || "—"}</div>
+              {p.idade && <div><span className="font-semibold">Idade:</span> {p.idade}{typeof p.idade === "number" ? " anos" : ""}</div>}
+              {p.sexo && <div><span className="font-semibold">Sexo:</span> {p.sexo === "M" ? "Masculino" : p.sexo === "F" ? "Feminino" : p.sexo}</div>}
+              {p.queixa_principal && <div className="sm:col-span-2"><span className="font-semibold">Queixa principal:</span> {p.queixa_principal}</div>}
+            </div>
+          </ClinicalSection>
+
+          {(s.queixa || hda) && (
+            <ClinicalSection title="Anamnese" number={next()}>
+              {s.queixa && <p className="mb-2"><strong>Queixa principal:</strong> {s.queixa}</p>}
+              {hda && <p><strong>HDA:</strong> {hda}</p>}
+            </ClinicalSection>
+          )}
+
+          {(s.historico || p.historico) && (
+            <ClinicalSection title="Histórico Médico" number={next()}>
+              {s.historico || p.historico}
+            </ClinicalSection>
+          )}
+
+          {s.exame_fisico && (
+            <ClinicalSection title="Exame Físico" number={next()}>
+              {s.exame_fisico}
+            </ClinicalSection>
+          )}
+
+          {(principal || diferencial) && (
+            <ClinicalSection title="Hipóteses Diagnósticas" number={next()}>
+              {principal && (
+                <p className="mb-2">
+                  <strong>1. Hipótese mais provável:</strong> {principal}
+                </p>
+              )}
+              {diferencial && (
+                <p>
+                  <strong>2. Diagnóstico diferencial:</strong> {diferencial}
+                </p>
+              )}
+            </ClinicalSection>
+          )}
+
+          {laudo.cid10_codes && laudo.cid10_codes.length > 0 && (
+            <ClinicalSection title="CID-10" number={next()}>
+              <div className="flex flex-wrap gap-2">
+                {laudo.cid10_codes.map((c: string, i: number) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-primary/10 text-primary font-mono text-[13px] font-semibold"
+                  >
+                    {c}
+                  </span>
+                ))}
+              </div>
+            </ClinicalSection>
+          )}
+
+          {conduta && (
+            <ClinicalSection title="Conduta" number={next()}>
+              {conduta}
+            </ClinicalSection>
+          )}
+
+          {examesComplementares && (
+            <ClinicalSection title="Exames Complementares" number={next()}>
+              {examesComplementares}
+            </ClinicalSection>
+          )}
+
+          {laudo.red_flags && laudo.red_flags.length > 0 && (
+            <ClinicalSection title="Sinais de Alerta / Red Flags" number={next()}>
+              <ul className="space-y-1.5 list-none pl-0">
+                {laudo.red_flags.map((f: any, i: number) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                    <span>{typeof f === "string" ? f : f?.text || f?.description}</span>
+                  </li>
+                ))}
+              </ul>
+            </ClinicalSection>
+          )}
+
+          {(s.orientacoes || s.orientacoes_paciente) && (
+            <ClinicalSection title="Orientações ao Paciente" number={next()}>
+              {s.orientacoes || s.orientacoes_paciente}
+            </ClinicalSection>
+          )}
+
+          {(s.observacoes || s.observacoes_medicas || s.descricao_manual_exames) && (
+            <ClinicalSection title="Observações Médicas Adicionais" number={next()}>
+              {s.observacoes || s.observacoes_medicas || s.descricao_manual_exames}
+            </ClinicalSection>
+          )}
+        </div>
+
+        {laudo.legal_disclaimer && (
+          <footer className="mt-8 pt-5 border-t border-border/40">
+            <p className="text-xs text-muted-foreground italic leading-relaxed">
+              {laudo.legal_disclaimer}
+            </p>
+          </footer>
+        )}
+      </article>
+
+      {/* Bottom copy button (always reachable) */}
+      <div className="flex justify-center mt-5">
+        <Button
+          size="lg"
+          onClick={() => onCopy(cleanText)}
+          className="gap-2 px-6 bg-primary hover:bg-primary/90"
+        >
+          <Copy className="w-4 h-4" /> Copiar Laudo Completo
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }: LaudoViewerProps) => {
   const { toast } = useToast();
@@ -251,18 +475,27 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
       )}
 
       {/* ── Tabs ── */}
-      <Tabs defaultValue="resumo" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-11 bg-muted/50 rounded-xl p-1">
+      <Tabs defaultValue="clinico" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 h-11 bg-muted/50 rounded-xl p-1">
+          <TabsTrigger value="clinico" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <ClipboardList className="w-4 h-4" /> Laudo Clínico
+          </TabsTrigger>
           <TabsTrigger value="resumo" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <Brain className="w-4 h-4" /> Resumo Clínico
+            <Brain className="w-4 h-4" /> Resumo
           </TabsTrigger>
           <TabsTrigger value="laudo" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <FileText className="w-4 h-4" /> Laudo Completo
+            <FileText className="w-4 h-4" /> Markdown
           </TabsTrigger>
           <TabsTrigger value="paciente" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <User className="w-4 h-4" /> Paciente
           </TabsTrigger>
         </TabsList>
+
+        {/* ══════ TAB: LAUDO CLÍNICO (copy-friendly premium view) ══════ */}
+        <TabsContent value="clinico" className="mt-5">
+          <CleanClinicalLaudo laudo={laudo} onCopy={copyToClipboard} />
+        </TabsContent>
+
 
         {/* ══════ TAB: RESUMO ══════ */}
         <TabsContent value="resumo" className="space-y-4 mt-5">
