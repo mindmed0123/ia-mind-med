@@ -252,18 +252,27 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
       )}
 
       {/* ── Tabs ── */}
-      <Tabs defaultValue="resumo" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-11 bg-muted/50 rounded-xl p-1">
+      <Tabs defaultValue="clinico" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 h-11 bg-muted/50 rounded-xl p-1">
+          <TabsTrigger value="clinico" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <ClipboardList className="w-4 h-4" /> Laudo Clínico
+          </TabsTrigger>
           <TabsTrigger value="resumo" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <Brain className="w-4 h-4" /> Resumo Clínico
+            <Brain className="w-4 h-4" /> Resumo
           </TabsTrigger>
           <TabsTrigger value="laudo" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <FileText className="w-4 h-4" /> Laudo Completo
+            <FileText className="w-4 h-4" /> Markdown
           </TabsTrigger>
           <TabsTrigger value="paciente" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <User className="w-4 h-4" /> Paciente
           </TabsTrigger>
         </TabsList>
+
+        {/* ══════ TAB: LAUDO CLÍNICO (copy-friendly premium view) ══════ */}
+        <TabsContent value="clinico" className="mt-5">
+          <CleanClinicalLaudo laudo={laudo} onCopy={copyToClipboard} />
+        </TabsContent>
+
 
         {/* ══════ TAB: RESUMO ══════ */}
         <TabsContent value="resumo" className="space-y-4 mt-5">
