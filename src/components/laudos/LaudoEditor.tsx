@@ -65,6 +65,62 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
   const [wordCount, setWordCount] = useState(0);
   const [showTutorial, setShowTutorial] = useState(false);
   const [cid10Input, setCid10Input] = useState('');
+  const [aiComplementText, setAiComplementText] = useState('');
+  const [updatingWithAI, setUpdatingWithAI] = useState(false);
+
+  const handleAIComplement = async () => {
+    const text = aiComplementText.trim();
+    if (text.length < 5) {
+      toast({
+        title: 'Texto muito curto',
+        description: 'Adicione mais detalhes para a IA incorporar ao laudo.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setUpdatingWithAI(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('update-laudo', {
+        body: {
+          laudo_id: laudoId,
+          additional_info: text,
+          source: 'editor_edit',
+        },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Laudo atualizado com sucesso.',
+        description: data?.change_summary || 'A IA incorporou suas observações.',
+      });
+      setAiComplementText('');
+      // Reload laudo
+      const { data: refreshed } = await supabase
+        .from('laudos')
+        .select('*')
+        .eq('id', laudoId)
+        .single();
+      if (refreshed?.sections) {
+        const ls = refreshed.sections as any;
+        setSections({
+          identificacao: ls.identificacao || sections.identificacao,
+          queixa: ls.queixa || '',
+          hda: ls.hda || '',
+          exame_fisico: ls.exame_fisico || '',
+          hipoteses: ls.hipoteses || { principal: '', diferencial: '' },
+          conduta: ls.conduta || '',
+          cid10: refreshed.cid10_codes || ls.cid10 || [],
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Não foi possível atualizar o laudo agora',
+        description: 'Seu laudo original foi preservado.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingWithAI(false);
+    }
+  };
   
   const debouncedSections = useDebounce(sections, 5000);
   const hasLoadedInitialData = useRef(false);
