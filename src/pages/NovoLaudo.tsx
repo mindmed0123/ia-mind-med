@@ -1101,7 +1101,7 @@ const NovoLaudo = () => {
                     patientName={patientData?.iniciais || ''}
                     clinicalContext={typeof laudo?.clinical_context === 'string' ? laudo.clinical_context : (laudo?.clinical_context ? JSON.stringify(laudo.clinical_context) : '')}
                     transcriptText={typeof laudo?.transcript === 'string' ? laudo.transcript : (laudo?.transcript?.text || '')}
-                    onExamsAnalyzed={() => { toast({ title: "Exames integrados", description: "Seção de exames complementares atualizada" }); loadLaudoRef.current?.(); }}
+                    onExamsAnalyzed={() => { toast({ title: "Laudo atualizado", description: "As informações foram incorporadas ao laudo" }); loadLaudoRef.current?.(); setLaudoRefreshKey(k => k + 1); }}
                     onRegenerateWithExams={handleRegenerateWithExams}
                   />
                 </TabsContent>
