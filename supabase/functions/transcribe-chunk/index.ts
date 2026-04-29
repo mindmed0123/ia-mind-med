@@ -9,6 +9,11 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import {
+  CLINICAL_WHISPER_PROMPT_PT_BR,
+  processWhisperSegments,
+  transcriptFromSegments,
+} from "../_shared/clinical-transcription.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -95,6 +100,12 @@ serve(async (req) => {
     whisperForm.append("language", "pt");
     whisperForm.append("response_format", "verbose_json");
     whisperForm.append("timestamp_granularities[]", "segment");
+    // Deterministic output → same audio always produces same text (critical
+    // for medical record reproducibility). 0 = greedy decoding.
+    whisperForm.append("temperature", "0");
+    // Clinical priming — biases Whisper toward correct medical PT-BR spelling
+    // (medications, anatomy, CIDs, vitals, abbreviations).
+    whisperForm.append("prompt", CLINICAL_WHISPER_PROMPT_PT_BR);
 
     const ac = new AbortController();
     const timeoutId = setTimeout(() => ac.abort("timeout"), 90000);
@@ -134,15 +145,21 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const text = (data.text || "").trim();
-    const segments = (data.segments || []).map((seg: any) => ({
-      text: seg.text,
-      start: (seg.start || 0) + startSec,
-      end: (seg.end || 0) + startSec,
-      confidence: seg.no_speech_prob ? 1 - seg.no_speech_prob : 0.9,
-    }));
+    // Filter Whisper hallucinations + apply clinical text normalization
+    // (acronyms, units, BP format). Build the chunk text from the *cleaned*
+    // segments so the merged transcript is consistent.
+    const segments = processWhisperSegments(data.segments || [], startSec);
+    const text = transcriptFromSegments(
+      segments.map((s) => ({ ...s, start: s.start - startSec, end: s.end - startSec })),
+    );
+    const droppedCount = (data.segments?.length || 0) - segments.length;
 
-    log(cid, "chunk_done", { chunkIndex, latencyMs, segments: segments.length });
+    log(cid, "chunk_done", {
+      chunkIndex,
+      latencyMs,
+      segments: segments.length,
+      dropped_hallucinations: droppedCount,
+    });
 
     return new Response(
       JSON.stringify({

@@ -1,6 +1,11 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import {
+  CLINICAL_WHISPER_PROMPT_PT_BR,
+  processWhisperSegments,
+  transcriptFromSegments,
+} from "../_shared/clinical-transcription.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -205,6 +210,10 @@ serve(async (req) => {
     formData.append('language', 'pt');
     formData.append('response_format', 'verbose_json');
     formData.append('timestamp_granularities[]', 'segment');
+    // Greedy decoding for clinical reproducibility
+    formData.append('temperature', '0');
+    // Clinical priming for PT-BR medical vocabulary (meds, anatomy, CID-10, vitals)
+    formData.append('prompt', CLINICAL_WHISPER_PROMPT_PT_BR);
 
     const startTime = Date.now();
 
@@ -255,18 +264,22 @@ serve(async (req) => {
     }
 
     const transcriptionData = await transcribeResponse.json();
-    const transcriptText = transcriptionData.text || '';
-    
+    // Apply hallucination filter + clinical normalization. We rebuild the
+    // text from cleaned segments so the saved transcript matches what we
+    // actually consider valid speech.
+    const segments = processWhisperSegments(transcriptionData.segments || [], 0);
+    const transcriptText = transcriptFromSegments(segments) ||
+      (transcriptionData.text || "").trim();
+
     if (!transcriptText) {
       throw new Error('Transcrição vazia retornada pela API');
     }
 
-    const segments = (transcriptionData.segments || []).map((seg: any) => ({
-      text: seg.text,
-      start: seg.start,
-      end: seg.end,
-      confidence: seg.no_speech_prob ? 1 - seg.no_speech_prob : 0.9,
-    }));
+    log(correlationId, 'segments_processed', {
+      raw: transcriptionData.segments?.length || 0,
+      kept: segments.length,
+      dropped: (transcriptionData.segments?.length || 0) - segments.length,
+    });
 
     const fullTranscript = {
       text: transcriptText,
