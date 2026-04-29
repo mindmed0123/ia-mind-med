@@ -61,8 +61,8 @@ export function cleanClinicalTranscript(raw: string): string {
       return `${n} ${u2.toLowerCase() === "bpm" || u2.toLowerCase() === "irpm" ? u2.toLowerCase() : u2}`;
     });
 
-  // SatO2 normalization
-  text = text.replace(/\bsat(?:ura(?:ç|c)(?:ã|a)o)?\s*(?:de\s*)?o2?\b/gi, "SatO2");
+  // SatO2 normalization (also consumes optional "de" preposition that often follows)
+  text = text.replace(/\bsat(?:ura(?:ç|c)(?:ã|a)o)?\s*(?:de\s*)?o\s*2?\b\s*(?:de\s+)?/gi, "SatO2 ");
 
   // Re-uppercase common clinical acronyms when surrounded by spaces/punct
   const acronyms = [
