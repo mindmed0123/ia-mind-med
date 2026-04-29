@@ -38,8 +38,8 @@ export function cleanClinicalTranscript(raw: string): string {
 
   // Blood pressure: "120 por 80", "120 sobre 80", "120 / 80" → "120x80 mmHg"
   text = text.replace(
-    /\b(\d{2,3})\s*(?:por|sobre|\/|x|×)\s*(\d{2,3})\s*(?:mmHg|mm\s*Hg)?/gi,
-    (_m, a, b) => `${a}x${b} mmHg`,
+    /\b(\d{2,3})\s*(?:por|sobre|\/|x|×)\s*(\d{2,3})(\s*(?:mmHg|mm\s*Hg))?/gi,
+    (_m, a, b, _u) => `${a}x${b} mmHg`,
   );
 
   // Numeric units — ensure single space and lowercase unit consistently
