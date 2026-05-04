@@ -34,10 +34,16 @@ const UPDATE_TOOL = {
         sections: {
           type: "object",
           description:
-            "Seções atualizadas do laudo. Inclua APENAS as seções que mudaram. Use as mesmas chaves do laudo atual: queixa, hda, exame_fisico, hipoteses (com principal e diferencial), conduta, exames_complementares, observacoes, orientacoes.",
+            "Seções atualizadas do laudo. Inclua APENAS as seções que mudaram. Use as mesmas chaves do laudo atual: queixa, hda, isda, antecedentes_pessoais, antecedentes_familiares, habitos_de_vida, medicacoes_em_uso, sinais_vitais_texto, exame_fisico, hipoteses (com principal e diferencial), conduta, exames_complementares, observacoes, orientacoes.",
           properties: {
             queixa: { type: "string" },
             hda: { type: "string" },
+            isda: { type: "string" },
+            antecedentes_pessoais: { type: "string" },
+            antecedentes_familiares: { type: "string" },
+            habitos_de_vida: { type: "string" },
+            medicacoes_em_uso: { type: "string" },
+            sinais_vitais_texto: { type: "string" },
             exame_fisico: { type: "string" },
             hipoteses: {
               type: "object",
