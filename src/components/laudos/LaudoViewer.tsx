@@ -174,22 +174,28 @@ const CleanClinicalLaudo = ({
             </div>
           </ClinicalSection>
 
-          {(s.queixa || hda) && (
+          {(s.queixa || hda || s.isda || s.sinais_vitais_texto || s.medicacoes_em_uso || s.habitos_de_vida || s.antecedentes_pessoais || s.antecedentes_familiares) && (
             <ClinicalSection title="Anamnese" number={next()}>
               {s.queixa && <p className="mb-2"><strong>Queixa principal:</strong> {s.queixa}</p>}
-              {hda && <p><strong>HDA:</strong> {hda}</p>}
+              {hda && <p className="mb-2 whitespace-pre-wrap"><strong>História da doença atual:</strong> {hda}</p>}
+              {s.isda && <p className="mb-2 whitespace-pre-wrap"><strong>Interrogatório sistemático:</strong> {s.isda}</p>}
+              {s.antecedentes_pessoais && <p className="mb-2 whitespace-pre-wrap"><strong>Antecedentes pessoais:</strong> {s.antecedentes_pessoais}</p>}
+              {s.antecedentes_familiares && <p className="mb-2 whitespace-pre-wrap"><strong>Antecedentes familiares:</strong> {s.antecedentes_familiares}</p>}
+              {s.habitos_de_vida && <p className="mb-2 whitespace-pre-wrap"><strong>Hábitos de vida:</strong> {s.habitos_de_vida}</p>}
+              {s.medicacoes_em_uso && <p className="mb-2 whitespace-pre-wrap"><strong>Medicações em uso:</strong> {s.medicacoes_em_uso}</p>}
+              {s.sinais_vitais_texto && <p className="mb-0"><strong>Sinais vitais:</strong> {s.sinais_vitais_texto}</p>}
             </ClinicalSection>
           )}
 
-          {(s.historico || p.historico) && (
+          {(s.historico && s.historico !== s.antecedentes_pessoais) && (
             <ClinicalSection title="Histórico Médico" number={next()}>
-              {s.historico || p.historico}
+              {s.historico}
             </ClinicalSection>
           )}
 
           {s.exame_fisico && (
             <ClinicalSection title="Exame Físico" number={next()}>
-              {s.exame_fisico}
+              <p className="whitespace-pre-wrap">{s.exame_fisico}</p>
             </ClinicalSection>
           )}
 
