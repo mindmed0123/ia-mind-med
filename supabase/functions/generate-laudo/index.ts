@@ -22,7 +22,22 @@ const LAUDO_TOOL = {
     parameters: {
       type: "object",
       properties: {
-        resumo_clinico: { type: "string", description: "Resumo clínico em até 120 palavras" },
+        resumo_clinico: { type: "string", description: "Resumo executivo do caso em 80-150 palavras: paciente, queixa, achados-chave, hipótese e plano." },
+        anamnese: {
+          type: "object",
+          description: "Anamnese clínica COMPLETA e detalhada extraída de TUDO que foi falado na consulta. Não resuma demais — preserve sintomas, tempo, intensidade, fatores e contexto.",
+          properties: {
+            queixa_principal: { type: "string", description: "Queixa principal em 1 frase, com tempo de evolução. Ex.: 'Dor torácica há 3 dias'." },
+            hda: { type: "string", description: "História da Doença Atual DETALHADA (mínimo 80 palavras quando houver dados). Inclua: início, duração, localização, irradiação, qualidade, intensidade (0-10), fatores de melhora/piora, sintomas associados, evolução temporal, tratamentos já tentados. Use parágrafos." },
+            isda: { type: "string", description: "Interrogatório Sistemático (revisão de sistemas) — sintomas relatados ou negados por sistema (cardiovascular, respiratório, GI, GU, neuro, etc.). Vazio se nada relatado." },
+            antecedentes_pessoais: { type: "string", description: "Doenças prévias, cirurgias, internações, alergias relevantes em texto corrido." },
+            antecedentes_familiares: { type: "string", description: "História familiar relevante (DM, HAS, neoplasias, cardiopatias, etc.)." },
+            habitos_de_vida: { type: "string", description: "Tabagismo, etilismo, drogas, atividade física, alimentação, sono, ocupação." },
+            medicacoes_em_uso: { type: "string", description: "Lista textual de medicações em uso com dose/posologia quando citado." },
+            sinais_vitais_texto: { type: "string", description: "Sinais vitais em texto formatado: 'PA 120x80 mmHg, FC 80 bpm, FR 16 irpm, SatO2 98%, Tax 36,5°C, Glicemia 90 mg/dL'. Apenas os efetivamente medidos/citados." },
+            exame_fisico: { type: "string", description: "Exame físico DETALHADO por aparelhos/segmentos: estado geral, ectoscopia, ACV, AR, abdome, MMII, neuro, etc. Mínimo 60 palavras quando houver achados." },
+          },
+        },
         dados_paciente_extraidos: {
           type: "object",
           description: "Dados do paciente extraídos da transcrição/texto da consulta",
@@ -95,7 +110,7 @@ const LAUDO_TOOL = {
           additionalProperties: { type: "string" },
         },
       },
-      required: ["resumo_clinico", "dados_paciente_extraidos", "hipotese_principal", "hipotese_diferencial", "condutas", "exames", "red_flags", "cid10", "texto_laudo_md", "texto_paciente_md"],
+      required: ["resumo_clinico", "anamnese", "dados_paciente_extraidos", "hipotese_principal", "hipotese_diferencial", "condutas", "exames", "red_flags", "cid10", "texto_laudo_md", "texto_paciente_md"],
       additionalProperties: false,
     },
   },
@@ -268,8 +283,22 @@ serve(async (req) => {
 
     // ===== BUILD PROMPT =====
     // Use template system prompt if available, otherwise use default
-    const systemPrompt = templateData?.system_prompt || 
+    const baseSystemPrompt = templateData?.system_prompt ||
       `Assistente clínico PT-BR. Gere laudo estruturado. Regras: sem diagnóstico definitivo, 2 hipóteses, red flags, CID-10. Use iniciais/idade/sexo (LGPD). Disclaimer: "IA para apoio; não substitui avaliação clínica." Extraia dados do paciente e prescricoes_sugeridas da transcrição.`;
+
+    // Hard requirement: anamnese precisa ser COMPLETA, não um resumo curto.
+    const anamneseInstruction = `
+
+REGRAS CRÍTICAS PARA A ANAMNESE (campo "anamnese") — siga TODAS:
+1. Extraia TUDO o que foi falado na consulta. Não comprima a HDA em uma frase.
+2. anamnese.hda: parágrafo(s) DETALHADO(s) com início, duração, localização, irradiação, qualidade, intensidade, fatores de melhora/piora, sintomas associados, evolução, tratamentos prévios. Mínimo 80 palavras quando a transcrição permitir.
+3. anamnese.isda: revisão por sistemas (cardiovascular, respiratório, GI, GU, neurológico, musculoesquelético, pele) com sintomas relatados OU negados pelo paciente.
+4. anamnese.antecedentes_pessoais, antecedentes_familiares, habitos_de_vida, medicacoes_em_uso: capture cada item mencionado, mesmo que de passagem ("ex-tabagista 10 anos", "mãe diabética").
+5. anamnese.sinais_vitais_texto: APENAS valores realmente medidos/citados, no formato "PA 120x80 mmHg, FC 80 bpm, FR 16 irpm, SatO2 98%, Tax 36,5°C". Não invente. Vazio se nenhum vital foi citado.
+6. anamnese.exame_fisico: descreva por aparelhos/segmentos (EG, ectoscopia, ACV, AR, abdome, MMII, neuro). Mínimo 60 palavras quando houver achados.
+7. NUNCA invente dados que não estão na transcrição. Se uma informação não foi falada, deixe o campo vazio.
+8. resumo_clinico continua sendo executivo (80-150 palavras) — NÃO substitui a anamnese detalhada.`;
+const systemPrompt = baseSystemPrompt + anamneseInstruction;
 
     // Add template sections instruction if available
     let sectionsInstruction = '';
@@ -442,6 +471,30 @@ serve(async (req) => {
     const disclaimer = laudoData.avisos_legais || 'Conteúdo gerado por IA para apoio à decisão clínica. Não substitui julgamento médico.';
     const specialtySections = laudoData.specialty_sections || {};
 
+    // Anamnese estruturada — fallback para campos antigos quando o modelo não retornar o objeto
+    const anamnese = laudoData.anamnese || {};
+    const dp = laudoData.dados_paciente_extraidos || {};
+    const sinaisVitaisObj = dp.sinais_vitais || {};
+    const sinaisVitaisFormatted = anamnese.sinais_vitais_texto
+      || Object.entries(sinaisVitaisObj)
+        .filter(([, v]) => v != null && String(v).trim() !== '')
+        .map(([k, v]) => `${k} ${v}`)
+        .join(', ');
+
+    const anamneseSections = {
+      queixa: anamnese.queixa_principal || dp.queixa_principal || chief_complaint || '',
+      hda: anamnese.hda || resumo || '',
+      isda: anamnese.isda || '',
+      antecedentes_pessoais: anamnese.antecedentes_pessoais || dp.historico || '',
+      antecedentes_familiares: anamnese.antecedentes_familiares || dp.historico_familiar || '',
+      habitos_de_vida: anamnese.habitos_de_vida || '',
+      medicacoes_em_uso: anamnese.medicacoes_em_uso
+        || (Array.isArray(dp.medicacoes) ? dp.medicacoes.join(', ') : ''),
+      sinais_vitais_texto: sinaisVitaisFormatted,
+      historico: anamnese.antecedentes_pessoais || dp.historico || '',
+      exame_fisico: anamnese.exame_fisico || '',
+    };
+
     // ===== DB UPDATE =====
     const t7 = now();
     const { error: updateError } = await supabase
@@ -449,11 +502,12 @@ serve(async (req) => {
       .update({
         patient_data: laudoData.dados_paciente_extraidos || laudoData.dados_paciente || patient,
         clinical_context: { specialty, chief_complaint, vitals, meds, allergies, exam_findings, contexto_clinico, historico },
-        summary: { resumo_clinico: resumo },
+        summary: { resumo_clinico: resumo, anamnese },
         hypotheses: hipoteses,
         conducts: condutas,
-        sections: { 
-          ...(laudoData.sections || {}), 
+        sections: {
+          ...(laudoData.sections || {}),
+          ...anamneseSections,
           prescricoes_sugeridas: prescricoesSugeridas,
           specialty_sections: specialtySections,
           template_sections: templateData?.sections || [],

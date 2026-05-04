@@ -174,22 +174,28 @@ const CleanClinicalLaudo = ({
             </div>
           </ClinicalSection>
 
-          {(s.queixa || hda) && (
+          {(s.queixa || hda || s.isda || s.sinais_vitais_texto || s.medicacoes_em_uso || s.habitos_de_vida || s.antecedentes_pessoais || s.antecedentes_familiares) && (
             <ClinicalSection title="Anamnese" number={next()}>
               {s.queixa && <p className="mb-2"><strong>Queixa principal:</strong> {s.queixa}</p>}
-              {hda && <p><strong>HDA:</strong> {hda}</p>}
+              {hda && <p className="mb-2 whitespace-pre-wrap"><strong>História da doença atual:</strong> {hda}</p>}
+              {s.isda && <p className="mb-2 whitespace-pre-wrap"><strong>Interrogatório sistemático:</strong> {s.isda}</p>}
+              {s.antecedentes_pessoais && <p className="mb-2 whitespace-pre-wrap"><strong>Antecedentes pessoais:</strong> {s.antecedentes_pessoais}</p>}
+              {s.antecedentes_familiares && <p className="mb-2 whitespace-pre-wrap"><strong>Antecedentes familiares:</strong> {s.antecedentes_familiares}</p>}
+              {s.habitos_de_vida && <p className="mb-2 whitespace-pre-wrap"><strong>Hábitos de vida:</strong> {s.habitos_de_vida}</p>}
+              {s.medicacoes_em_uso && <p className="mb-2 whitespace-pre-wrap"><strong>Medicações em uso:</strong> {s.medicacoes_em_uso}</p>}
+              {s.sinais_vitais_texto && <p className="mb-0"><strong>Sinais vitais:</strong> {s.sinais_vitais_texto}</p>}
             </ClinicalSection>
           )}
 
-          {(s.historico || p.historico) && (
+          {(s.historico && s.historico !== s.antecedentes_pessoais) && (
             <ClinicalSection title="Histórico Médico" number={next()}>
-              {s.historico || p.historico}
+              {s.historico}
             </ClinicalSection>
           )}
 
           {s.exame_fisico && (
             <ClinicalSection title="Exame Físico" number={next()}>
-              {s.exame_fisico}
+              <p className="whitespace-pre-wrap">{s.exame_fisico}</p>
             </ClinicalSection>
           )}
 
@@ -529,7 +535,7 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
           )}
 
           {/* Anamnese */}
-          {isSectionVisible('anamnese') && (sections.queixa || sections.hda || laudo.summary?.resumo_clinico) && (
+          {isSectionVisible('anamnese') && (sections.queixa || sections.hda || sections.isda || sections.sinais_vitais_texto || sections.medicacoes_em_uso || sections.habitos_de_vida || sections.antecedentes_pessoais || sections.antecedentes_familiares || laudo.summary?.resumo_clinico) && (
             <SectionBlock num={nextNum()} icon={Stethoscope} title="Anamnese" delay={100}>
               <div className="space-y-4">
                 {sections.queixa && (
@@ -542,6 +548,48 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
                   <div>
                     <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">História da Doença Atual</h4>
                     <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{sections.hda || laudo.summary?.resumo_clinico}</p>
+                  </div>
+                )}
+                {sections.isda && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Interrogatório Sistemático</h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{sections.isda}</p>
+                  </div>
+                )}
+                {sections.antecedentes_pessoais && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Antecedentes Pessoais</h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{sections.antecedentes_pessoais}</p>
+                  </div>
+                )}
+                {sections.antecedentes_familiares && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Antecedentes Familiares</h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{sections.antecedentes_familiares}</p>
+                  </div>
+                )}
+                {sections.habitos_de_vida && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Hábitos de Vida</h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{sections.habitos_de_vida}</p>
+                  </div>
+                )}
+                {sections.medicacoes_em_uso && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Medicações em Uso</h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{sections.medicacoes_em_uso}</p>
+                  </div>
+                )}
+                {sections.sinais_vitais_texto && (
+                  <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
+                    <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Sinais Vitais</h4>
+                    <p className="text-sm font-medium text-foreground leading-relaxed">{sections.sinais_vitais_texto}</p>
+                  </div>
+                )}
+                {sections.exame_fisico && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Exame Físico</h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{sections.exame_fisico}</p>
                   </div>
                 )}
               </div>
