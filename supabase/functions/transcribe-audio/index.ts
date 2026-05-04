@@ -257,7 +257,8 @@ serve(async (req) => {
     const startTime = Date.now();
 
     const ac = new AbortController();
-    const timeoutId = setTimeout(() => ac.abort('timeout'), 120000);
+    // 5 min — Whisper can take longer for clinically dense audio close to the 25MB limit
+    const timeoutId = setTimeout(() => ac.abort('timeout'), 300000);
     let transcribeResponse: Response;
     try {
       transcribeResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
