@@ -22,7 +22,22 @@ const LAUDO_TOOL = {
     parameters: {
       type: "object",
       properties: {
-        resumo_clinico: { type: "string", description: "Resumo clínico em até 120 palavras" },
+        resumo_clinico: { type: "string", description: "Resumo executivo do caso em 80-150 palavras: paciente, queixa, achados-chave, hipótese e plano." },
+        anamnese: {
+          type: "object",
+          description: "Anamnese clínica COMPLETA e detalhada extraída de TUDO que foi falado na consulta. Não resuma demais — preserve sintomas, tempo, intensidade, fatores e contexto.",
+          properties: {
+            queixa_principal: { type: "string", description: "Queixa principal em 1 frase, com tempo de evolução. Ex.: 'Dor torácica há 3 dias'." },
+            hda: { type: "string", description: "História da Doença Atual DETALHADA (mínimo 80 palavras quando houver dados). Inclua: início, duração, localização, irradiação, qualidade, intensidade (0-10), fatores de melhora/piora, sintomas associados, evolução temporal, tratamentos já tentados. Use parágrafos." },
+            isda: { type: "string", description: "Interrogatório Sistemático (revisão de sistemas) — sintomas relatados ou negados por sistema (cardiovascular, respiratório, GI, GU, neuro, etc.). Vazio se nada relatado." },
+            antecedentes_pessoais: { type: "string", description: "Doenças prévias, cirurgias, internações, alergias relevantes em texto corrido." },
+            antecedentes_familiares: { type: "string", description: "História familiar relevante (DM, HAS, neoplasias, cardiopatias, etc.)." },
+            habitos_de_vida: { type: "string", description: "Tabagismo, etilismo, drogas, atividade física, alimentação, sono, ocupação." },
+            medicacoes_em_uso: { type: "string", description: "Lista textual de medicações em uso com dose/posologia quando citado." },
+            sinais_vitais_texto: { type: "string", description: "Sinais vitais em texto formatado: 'PA 120x80 mmHg, FC 80 bpm, FR 16 irpm, SatO2 98%, Tax 36,5°C, Glicemia 90 mg/dL'. Apenas os efetivamente medidos/citados." },
+            exame_fisico: { type: "string", description: "Exame físico DETALHADO por aparelhos/segmentos: estado geral, ectoscopia, ACV, AR, abdome, MMII, neuro, etc. Mínimo 60 palavras quando houver achados." },
+          },
+        },
         dados_paciente_extraidos: {
           type: "object",
           description: "Dados do paciente extraídos da transcrição/texto da consulta",
