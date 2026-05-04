@@ -119,6 +119,11 @@ export const AudioUploader = ({ onUploadComplete }: AudioUploaderProps) => {
                   <p className="text-sm font-medium truncate">{selectedFile.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    {selectedFile.size > 20 * 1024 * 1024 && (
+                      <span className="ml-2 text-primary font-medium">
+                        • Será processado em paralelo (modo otimizado)
+                      </span>
+                    )}
                   </p>
                 </div>
                 <Button
