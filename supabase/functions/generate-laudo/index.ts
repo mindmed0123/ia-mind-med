@@ -283,8 +283,22 @@ serve(async (req) => {
 
     // ===== BUILD PROMPT =====
     // Use template system prompt if available, otherwise use default
-    const systemPrompt = templateData?.system_prompt || 
+    const baseSystemPrompt = templateData?.system_prompt ||
       `Assistente clínico PT-BR. Gere laudo estruturado. Regras: sem diagnóstico definitivo, 2 hipóteses, red flags, CID-10. Use iniciais/idade/sexo (LGPD). Disclaimer: "IA para apoio; não substitui avaliação clínica." Extraia dados do paciente e prescricoes_sugeridas da transcrição.`;
+
+    // Hard requirement: anamnese precisa ser COMPLETA, não um resumo curto.
+    const anamneseInstruction = `
+
+REGRAS CRÍTICAS PARA A ANAMNESE (campo "anamnese") — siga TODAS:
+1. Extraia TUDO o que foi falado na consulta. Não comprima a HDA em uma frase.
+2. anamnese.hda: parágrafo(s) DETALHADO(s) com início, duração, localização, irradiação, qualidade, intensidade, fatores de melhora/piora, sintomas associados, evolução, tratamentos prévios. Mínimo 80 palavras quando a transcrição permitir.
+3. anamnese.isda: revisão por sistemas (cardiovascular, respiratório, GI, GU, neurológico, musculoesquelético, pele) com sintomas relatados OU negados pelo paciente.
+4. anamnese.antecedentes_pessoais, antecedentes_familiares, habitos_de_vida, medicacoes_em_uso: capture cada item mencionado, mesmo que de passagem ("ex-tabagista 10 anos", "mãe diabética").
+5. anamnese.sinais_vitais_texto: APENAS valores realmente medidos/citados, no formato "PA 120x80 mmHg, FC 80 bpm, FR 16 irpm, SatO2 98%, Tax 36,5°C". Não invente. Vazio se nenhum vital foi citado.
+6. anamnese.exame_fisico: descreva por aparelhos/segmentos (EG, ectoscopia, ACV, AR, abdome, MMII, neuro). Mínimo 60 palavras quando houver achados.
+7. NUNCA invente dados que não estão na transcrição. Se uma informação não foi falada, deixe o campo vazio.
+8. resumo_clinico continua sendo executivo (80-150 palavras) — NÃO substitui a anamnese detalhada.`;
+const systemPrompt = baseSystemPrompt + anamneseInstruction;
 
     // Add template sections instruction if available
     let sectionsInstruction = '';
