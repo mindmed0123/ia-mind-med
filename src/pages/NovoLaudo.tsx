@@ -620,18 +620,47 @@ const NovoLaudo = () => {
       const audioBlob = meta?.blob;
 
       // Decide between chunked and single-shot pipeline. Chunked is used for
-      // long consultations (>5 min) and parallelizes Whisper calls so a 1h+
+      // long consultations (>5 min) OR for files larger than ~20 MB (Whisper
+      // single-shot limit is 25 MB), parallelizing Whisper calls so a 1h+
       // recording finishes in a fraction of the time.
+      const SAFE_SINGLE_SHOT_BYTES = 20 * 1024 * 1024;
       let useChunking = false;
       if (audioBlob) {
-        // If we have a duration hint from the recorder, use it; otherwise we
-        // let the chunker probe and fall back if it's short.
-        if (typeof meta?.durationSec === 'number') {
+        if (audioBlob.size > SAFE_SINGLE_SHOT_BYTES) {
+          useChunking = true; // size alone forces chunking
+        } else if (typeof meta?.durationSec === 'number') {
           useChunking = meta.durationSec > 300;
         } else {
           useChunking = true; // probe inside the hook will short-circuit if short
         }
       }
+
+      // Helper: invoke single-shot transcribe-audio and, on 413/AUDIO_TOO_LARGE,
+      // automatically retry via the chunked pipeline if we have a blob.
+      const invokeSingleShot = async () => {
+        const { error } = await supabase.functions.invoke('transcribe-audio', {
+          body: {
+            audio_url: url,
+            audio_path: path,
+            laudo_id: newLaudo.id,
+            mode: 'complete',
+          },
+          headers,
+        });
+        const status = (error as any)?.context?.status;
+        if (error && status === 413 && audioBlob) {
+          toast({
+            title: 'Áudio grande detectado',
+            description: 'Reprocessando em paralelo (modo otimizado)...',
+          });
+          await chunkedTranscription.start({
+            blob: audioBlob,
+            laudoId: newLaudo.id,
+            accessToken: session?.access_token,
+            mode: 'complete',
+          });
+        }
+      };
 
       if (useChunking && audioBlob) {
         toast({
@@ -650,45 +679,22 @@ const NovoLaudo = () => {
             mode: 'complete',
           });
 
-          // If the audio was short, fall back to the legacy single-shot path
+          // If the audio was short and the chunker bailed out, fall back to
+          // the legacy single-shot path (which has its own 413 fallback).
           if (!result.chunked) {
-            supabase.functions.invoke('transcribe-audio', {
-              body: {
-                audio_url: url,
-                audio_path: path,
-                laudo_id: newLaudo.id,
-                mode: 'complete',
-              },
-              headers,
-            }).catch(() => { /* polling surfaces errors */ });
+            invokeSingleShot().catch(() => { /* polling surfaces errors */ });
           }
         } catch (err: any) {
           if (err?.message !== 'cancelled') {
             // Recover by trying the single-shot pipeline once
-            supabase.functions.invoke('transcribe-audio', {
-              body: {
-                audio_url: url,
-                audio_path: path,
-                laudo_id: newLaudo.id,
-                mode: 'complete',
-              },
-              headers,
-            }).catch(() => { /* polling surfaces errors */ });
+            invokeSingleShot().catch(() => { /* polling surfaces errors */ });
           }
         }
       } else {
         toast({ title: 'Processando áudio...', description: 'A transcrição e geração do laudo serão automáticas' });
         startPolling(newLaudo.id);
 
-        supabase.functions.invoke('transcribe-audio', {
-          body: {
-            audio_url: url,
-            audio_path: path,
-            laudo_id: newLaudo.id,
-            mode: 'complete',
-          },
-          headers,
-        }).catch(() => { /* polling surfaces errors */ });
+        invokeSingleShot().catch(() => { /* polling surfaces errors */ });
       }
     } catch (error: any) {
       setPipelineStage('error');
