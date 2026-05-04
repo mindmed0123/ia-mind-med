@@ -146,6 +146,9 @@ serve(async (req) => {
     let fileName = 'audio.webm';
     let mimeType = 'audio/webm';
 
+    // Whisper API hard limit per request
+    const WHISPER_MAX_BYTES = 25 * 1024 * 1024;
+
     if (audio_path) {
       const { data: blob, error: downloadError } = await supabase
         .storage
@@ -166,6 +169,24 @@ serve(async (req) => {
       mimeType = mimeMap[ext] || 'audio/webm';
       audioBlob = new Blob([blob], { type: mimeType });
       log(correlationId, 'audio_downloaded', { ext, size: blob.size });
+
+      if (blob.size > WHISPER_MAX_BYTES) {
+        log(correlationId, 'audio_too_large_for_single_shot', { size: blob.size, limit: WHISPER_MAX_BYTES });
+        await supabase
+          .from('laudos')
+          .update({ transcript_status: 'error', audio_processing_status: 'error' })
+          .eq('id', laudo_id)
+          .eq('user_id', user.id);
+        return new Response(JSON.stringify({
+          error: 'Arquivo de áudio muito grande para transcrição em uma única chamada. O cliente deve usar o pipeline em pedaços (chunked).',
+          code: 'AUDIO_TOO_LARGE',
+          size: blob.size,
+          limit: WHISPER_MAX_BYTES,
+        }), {
+          status: 413,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     } else if (audio_url) {
       const audioResponse = await fetch(audio_url);
       if (!audioResponse.ok) {
@@ -199,6 +220,24 @@ serve(async (req) => {
 
       audioBlob = new Blob([originalBlob], { type: mimeType });
       log(correlationId, 'audio_fetched_url', { ext, size: originalBlob.size });
+
+      if (originalBlob.size > WHISPER_MAX_BYTES) {
+        log(correlationId, 'audio_too_large_for_single_shot', { size: originalBlob.size, limit: WHISPER_MAX_BYTES });
+        await supabase
+          .from('laudos')
+          .update({ transcript_status: 'error', audio_processing_status: 'error' })
+          .eq('id', laudo_id)
+          .eq('user_id', user.id);
+        return new Response(JSON.stringify({
+          error: 'Arquivo de áudio muito grande para transcrição em uma única chamada. O cliente deve usar o pipeline em pedaços (chunked).',
+          code: 'AUDIO_TOO_LARGE',
+          size: originalBlob.size,
+          limit: WHISPER_MAX_BYTES,
+        }), {
+          status: 413,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     } else {
       throw new Error('Nenhuma fonte de áudio fornecida');
     }
@@ -218,7 +257,8 @@ serve(async (req) => {
     const startTime = Date.now();
 
     const ac = new AbortController();
-    const timeoutId = setTimeout(() => ac.abort('timeout'), 120000);
+    // 5 min — Whisper can take longer for clinically dense audio close to the 25MB limit
+    const timeoutId = setTimeout(() => ac.abort('timeout'), 300000);
     let transcribeResponse: Response;
     try {
       transcribeResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {

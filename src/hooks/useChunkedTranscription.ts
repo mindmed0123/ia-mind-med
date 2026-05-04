@@ -140,12 +140,17 @@ export function useChunkedTranscription() {
       duration = 0;
     }
 
-    const SAFE_SINGLE_SHOT_BYTES = 6 * 1024 * 1024; // ~6 MB
-    if (duration > 0 && !shouldChunkAudio(duration, chunkThresholdSec)) {
+    // Whisper hard limit is 25 MB per request. We use 20 MB as the safe ceiling
+    // so any larger upload ALWAYS goes through chunking, regardless of duration.
+    const SAFE_SINGLE_SHOT_BYTES = 20 * 1024 * 1024; // 20 MB
+    const exceedsSize = blob.size > SAFE_SINGLE_SHOT_BYTES;
+
+    if (!exceedsSize && duration > 0 && !shouldChunkAudio(duration, chunkThresholdSec)) {
       setState((prev) => ({ ...prev, phase: "idle" }));
       return { chunked: false, durationSec: duration };
     }
-    if (duration === 0 && blob.size <= SAFE_SINGLE_SHOT_BYTES) {
+    if (!exceedsSize && duration === 0 && blob.size <= 6 * 1024 * 1024) {
+      // Small blob with unknown duration — safe to single-shot
       setState((prev) => ({ ...prev, phase: "idle" }));
       return { chunked: false, durationSec: 0 };
     }
