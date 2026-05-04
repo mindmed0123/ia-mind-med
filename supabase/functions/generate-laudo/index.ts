@@ -471,6 +471,30 @@ const systemPrompt = baseSystemPrompt + anamneseInstruction;
     const disclaimer = laudoData.avisos_legais || 'Conteúdo gerado por IA para apoio à decisão clínica. Não substitui julgamento médico.';
     const specialtySections = laudoData.specialty_sections || {};
 
+    // Anamnese estruturada — fallback para campos antigos quando o modelo não retornar o objeto
+    const anamnese = laudoData.anamnese || {};
+    const dp = laudoData.dados_paciente_extraidos || {};
+    const sinaisVitaisObj = dp.sinais_vitais || {};
+    const sinaisVitaisFormatted = anamnese.sinais_vitais_texto
+      || Object.entries(sinaisVitaisObj)
+        .filter(([, v]) => v != null && String(v).trim() !== '')
+        .map(([k, v]) => `${k} ${v}`)
+        .join(', ');
+
+    const anamneseSections = {
+      queixa: anamnese.queixa_principal || dp.queixa_principal || chief_complaint || '',
+      hda: anamnese.hda || resumo || '',
+      isda: anamnese.isda || '',
+      antecedentes_pessoais: anamnese.antecedentes_pessoais || dp.historico || '',
+      antecedentes_familiares: anamnese.antecedentes_familiares || dp.historico_familiar || '',
+      habitos_de_vida: anamnese.habitos_de_vida || '',
+      medicacoes_em_uso: anamnese.medicacoes_em_uso
+        || (Array.isArray(dp.medicacoes) ? dp.medicacoes.join(', ') : ''),
+      sinais_vitais_texto: sinaisVitaisFormatted,
+      historico: anamnese.antecedentes_pessoais || dp.historico || '',
+      exame_fisico: anamnese.exame_fisico || '',
+    };
+
     // ===== DB UPDATE =====
     const t7 = now();
     const { error: updateError } = await supabase
@@ -478,11 +502,12 @@ const systemPrompt = baseSystemPrompt + anamneseInstruction;
       .update({
         patient_data: laudoData.dados_paciente_extraidos || laudoData.dados_paciente || patient,
         clinical_context: { specialty, chief_complaint, vitals, meds, allergies, exam_findings, contexto_clinico, historico },
-        summary: { resumo_clinico: resumo },
+        summary: { resumo_clinico: resumo, anamnese },
         hypotheses: hipoteses,
         conducts: condutas,
-        sections: { 
-          ...(laudoData.sections || {}), 
+        sections: {
+          ...(laudoData.sections || {}),
+          ...anamneseSections,
           prescricoes_sugeridas: prescricoesSugeridas,
           specialty_sections: specialtySections,
           template_sections: templateData?.sections || [],
