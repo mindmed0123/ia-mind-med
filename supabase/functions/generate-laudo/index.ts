@@ -110,7 +110,7 @@ const LAUDO_TOOL = {
           additionalProperties: { type: "string" },
         },
       },
-      required: ["resumo_clinico", "dados_paciente_extraidos", "hipotese_principal", "hipotese_diferencial", "condutas", "exames", "red_flags", "cid10", "texto_laudo_md", "texto_paciente_md"],
+      required: ["resumo_clinico", "anamnese", "dados_paciente_extraidos", "hipotese_principal", "hipotese_diferencial", "condutas", "exames", "red_flags", "cid10", "texto_laudo_md", "texto_paciente_md"],
       additionalProperties: false,
     },
   },
