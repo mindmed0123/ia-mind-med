@@ -75,18 +75,26 @@ export function buildCleanLaudoText(laudo: LaudoCleanInput): string {
 
   out.push(patientBlock(laudo.patient_data, laudo.created_at));
 
-  // Anamnese (queixa + HDA)
+  // Anamnese (queixa + HDA + ISDA + antecedentes + hábitos + medicações + vitais)
   const anamneseParts: string[] = [];
   if (s.queixa) anamneseParts.push(`Queixa principal: ${s.queixa}`);
   const hda = s.hda || laudo.summary?.resumo_clinico;
   if (hda) anamneseParts.push(`História da doença atual:\n${hda}`);
+  if (s.isda) anamneseParts.push(`Interrogatório sistemático:\n${s.isda}`);
+  if (s.antecedentes_pessoais) anamneseParts.push(`Antecedentes pessoais:\n${s.antecedentes_pessoais}`);
+  if (s.antecedentes_familiares) anamneseParts.push(`Antecedentes familiares:\n${s.antecedentes_familiares}`);
+  if (s.habitos_de_vida) anamneseParts.push(`Hábitos de vida:\n${s.habitos_de_vida}`);
+  if (s.medicacoes_em_uso) anamneseParts.push(`Medicações em uso:\n${s.medicacoes_em_uso}`);
+  if (s.sinais_vitais_texto) anamneseParts.push(`Sinais vitais: ${s.sinais_vitais_texto}`);
   out.push(section("Anamnese", anamneseParts.join("\n\n")));
 
-  // Histórico médico
+  // Histórico médico (apenas se diferente dos antecedentes já listados)
   const hist =
-    s.historico ||
-    laudo.patient_data?.historico ||
-    "";
+    (s.historico && s.historico !== s.antecedentes_pessoais)
+      ? s.historico
+      : (laudo.patient_data?.historico && laudo.patient_data?.historico !== s.antecedentes_pessoais
+        ? laudo.patient_data.historico
+        : "");
   out.push(section("Histórico médico", hist));
 
   // Exame físico
