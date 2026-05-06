@@ -13,11 +13,6 @@ import { Activity } from "lucide-react";
 import Auth from "./pages/Auth";
 
 // Lazy load all other pages
-const Home = lazy(() => import("./pages/Home"));
-const Produto = lazy(() => import("./pages/Produto"));
-const Precos = lazy(() => import("./pages/Precos"));
-const Integracoes = lazy(() => import("./pages/Integracoes"));
-const Contato = lazy(() => import("./pages/Contato"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const NovoLaudo = lazy(() => import("./pages/NovoLaudo"));
 const Perfil = lazy(() => import("./pages/Perfil"));
@@ -61,11 +56,6 @@ const App = () => (
               <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<Auth />} />
-                <Route path="/home" element={<Home />} />
-                <Route path="/produto" element={<Produto />} />
-                <Route path="/precos" element={<Precos />} />
-                <Route path="/integracoes" element={<Integracoes />} />
-                <Route path="/contato" element={<Contato />} />
                 <Route path="/medicos/teste-gratis" element={<MedicosTrial />} />
                 <Route path="/medicos/assinatura-expirada" element={<AssinaturaExpirada />} />
                 <Route path="/convite/trial-vip-2024" element={<TrialConvite />} />
