@@ -101,7 +101,7 @@ const Dashboard = () => {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate("/home");
+    navigate("/", { replace: true });
   };
 
   // Safety timeout for Dashboard loading
