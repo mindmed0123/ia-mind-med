@@ -214,8 +214,20 @@ export function NovaTeleconsultaModal({ open, onOpenChange, prefilledAppointment
             </div>
             <div className="space-y-2">
               <Label htmlFor="tc-cpf">CPF *</Label>
-              <Input id="tc-cpf" value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" />
-              <p className="text-xs text-muted-foreground">Obrigatório para identificação (CFM)</p>
+              <Input
+                id="tc-cpf"
+                value={cpf}
+                onChange={(e) => setCpf(maskCPF(e.target.value))}
+                placeholder="000.000.000-00"
+                inputMode="numeric"
+                maxLength={14}
+                className={cpf && !isValidCPF(cpf) ? "border-destructive" : ""}
+              />
+              {cpf && !isValidCPF(cpf) ? (
+                <p className="text-xs text-destructive">CPF inválido — verifique os dígitos.</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Obrigatório para identificação (CFM)</p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
