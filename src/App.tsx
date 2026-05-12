@@ -32,6 +32,9 @@ const Privacidade = lazy(() => import("./pages/Privacidade"));
 const Agendamentos = lazy(() => import("./pages/Agendamentos"));
 const Agendar = lazy(() => import("./pages/Agendar"));
 const AceitarConvite = lazy(() => import("./pages/AceitarConvite"));
+const Telemedicina = lazy(() => import("./pages/Telemedicina"));
+const Consulta = lazy(() => import("./pages/Consulta"));
+const SalaPaciente = lazy(() => import("./pages/SalaPaciente"));
 
 const queryClient = new QueryClient();
 
@@ -64,6 +67,7 @@ const App = () => (
                 <Route path="/privacidade" element={<Privacidade />} />
                 <Route path="/agendar" element={<Agendar />} />
                 <Route path="/aceitar-convite" element={<AceitarConvite />} />
+                <Route path="/sala/:id" element={<SalaPaciente />} />
                 
                 {/* Protected routes */}
                 <Route path="/dashboard" element={<SubscriptionGuard><Dashboard /></SubscriptionGuard>} />
@@ -76,6 +80,8 @@ const App = () => (
                 <Route path="/admin" element={<SubscriptionGuard><Admin /></SubscriptionGuard>} />
                 <Route path="/dav-chat" element={<SubscriptionGuard><DavChat /></SubscriptionGuard>} />
                 <Route path="/agendamentos" element={<SubscriptionGuard><Agendamentos /></SubscriptionGuard>} />
+                <Route path="/telemedicina" element={<SubscriptionGuard><Telemedicina /></SubscriptionGuard>} />
+                <Route path="/consulta/:id" element={<SubscriptionGuard><Consulta /></SubscriptionGuard>} />
                 
                 <Route path="*" element={<NotFound />} />
               </Routes>

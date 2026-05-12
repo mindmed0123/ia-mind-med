@@ -96,7 +96,7 @@ export default function SalaPaciente() {
                 Olá, <strong>{tc.patient_name}</strong>. Antes de entrar na sala com seu médico,
                 leia e aceite o termo de consentimento abaixo.
               </p>
-              <ConsentTermoTelemedicina onAccept={handleConsent} />
+              <ConsentTermoTelemedicina patientName={tc.patient_name} onAccept={handleConsent} />
             </CardContent>
           </Card>
         </div>
