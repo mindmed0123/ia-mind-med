@@ -65,20 +65,52 @@ export function NovaTeleconsultaModal({ open, onOpenChange, prefilledAppointment
     onOpenChange(v);
   };
 
+  const ensureOrganizationId = async (): Promise<string | null> => {
+    if (organization?.id) return organization.id;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    // Try existing membership
+    const { data: existing } = await supabase
+      .from("organization_members")
+      .select("organization_id")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .limit(1)
+      .maybeSingle();
+    if (existing?.organization_id) return existing.organization_id;
+    // Auto-create org
+    const orgName = (user.user_metadata?.full_name as string) || user.email?.split("@")[0] || "Minha Clínica";
+    const { data: newOrg, error: orgErr } = await supabase
+      .from("organizations")
+      .insert({ name: orgName, owner_id: user.id })
+      .select()
+      .single();
+    if (orgErr || !newOrg) return null;
+    await supabase.from("organization_members").insert({
+      organization_id: newOrg.id,
+      user_id: user.id,
+      role: "owner",
+      is_active: true,
+    });
+    return newOrg.id;
+  };
+
   const handleCreate = async () => {
-    if (!organization?.id) {
-      toast({ title: "Organização não encontrada", variant: "destructive" });
-      return;
-    }
     if (!consent) {
       toast({ title: "Consentimento obrigatório", description: "Confirme o consentimento do paciente.", variant: "destructive" });
       return;
     }
     setLoading(true);
+    const orgId = await ensureOrganizationId();
+    if (!orgId) {
+      setLoading(false);
+      toast({ title: "Não foi possível criar/identificar sua organização", variant: "destructive" });
+      return;
+    }
     try {
       const { data, error } = await supabase.functions.invoke("create-teleconsulta", {
         body: {
-          organization_id: organization.id,
+          organization_id: orgId,
           patient_name: name,
           patient_email: email || null,
           patient_phone: phone || null,
