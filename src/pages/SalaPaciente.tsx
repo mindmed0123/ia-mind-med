@@ -91,6 +91,28 @@ export default function SalaPaciente() {
     );
   }
 
+  if (ended) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-cyan-50">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-10 text-center space-y-4">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-100 mx-auto">
+              <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+            </div>
+            <div className="flex items-center gap-2 justify-center text-primary">
+              <Video className="w-5 h-5" />
+              <span className="text-lg font-semibold">MindMed</span>
+            </div>
+            <h1 className="text-xl font-semibold">Consulta encerrada</h1>
+            <p className="text-sm text-muted-foreground">
+              Obrigado pelo atendimento. Em caso de dúvidas, entre em contato com seu médico.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-background">
