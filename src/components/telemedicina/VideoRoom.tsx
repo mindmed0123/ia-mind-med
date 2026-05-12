@@ -128,7 +128,7 @@ export function VideoRoom({ teleconsulta: tc, role, onCallEnd }: Props) {
     }
     setEnding(true);
     try {
-      const { error } = await supabase.functions.invoke("finalize-teleconsulta", {
+      const { data, error } = await supabase.functions.invoke("finalize-teleconsulta", {
         body: {
           teleconsulta_id: tc.id,
           notes: endNotes || notes,
@@ -137,8 +137,13 @@ export function VideoRoom({ teleconsulta: tc, role, onCallEnd }: Props) {
         },
       });
       if (error) throw error;
-      toast({ title: "Consulta finalizada", description: "Notas registradas com sucesso" });
-      onCallEnd?.();
+      const laudoId = (data as { laudo_id?: string } | null)?.laudo_id;
+      toast({ title: "Consulta finalizada", description: genLaudo ? "Gerando laudo com IA…" : "Notas registradas com sucesso" });
+      if (genLaudo && laudoId) {
+        navigate(`/novo-laudo?id=${laudoId}`);
+      } else {
+        onCallEnd?.();
+      }
     } catch (err) {
       toast({ title: "Erro ao finalizar", description: (err as Error).message, variant: "destructive" });
     } finally {
