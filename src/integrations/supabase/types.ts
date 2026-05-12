@@ -1632,6 +1632,10 @@ export type Database = {
           read_ct: number
         }[]
       }
+      register_patient_consent: {
+        Args: { p_consent_at?: string; p_consent_ip?: string; p_id: string }
+        Returns: boolean
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
