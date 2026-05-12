@@ -3,9 +3,12 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoRoom } from "@/components/telemedicina/VideoRoom";
 import { ConsentTermoTelemedicina } from "@/components/telemedicina/ConsentTermoTelemedicina";
-import { Activity, ShieldCheck, Video } from "lucide-react";
+import { Activity, ShieldCheck, Video, CheckCircle2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Teleconsulta } from "@/types/teleconsulta";
+
+const PATIENT_SAFE_FIELDS =
+  "id, patient_name, patient_email, room_url, patient_token, status, scheduled_at, chief_complaint, doctor_consent_at, patient_consent_at";
 
 export default function SalaPaciente() {
   const { id } = useParams<{ id: string }>();
@@ -15,12 +18,13 @@ export default function SalaPaciente() {
   const [loading, setLoading] = useState(true);
   const [consented, setConsented] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ended, setEnded] = useState(false);
 
   const load = async () => {
     if (!id) return;
     const { data, error } = await supabase
       .from("teleconsultas" as any)
-      .select("*")
+      .select(PATIENT_SAFE_FIELDS)
       .eq("id", id)
       .maybeSingle();
     if (error || !data) {
@@ -35,7 +39,7 @@ export default function SalaPaciente() {
       return;
     }
     if (t.status === "concluida" || t.status === "cancelada") {
-      setError("Esta consulta já foi encerrada.");
+      setEnded(true);
       setLoading(false);
       return;
     }
@@ -49,12 +53,33 @@ export default function SalaPaciente() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Realtime: quando o médico encerra a consulta, redireciona para tela de fim
+  useEffect(() => {
+    if (!id) return;
+    const channel = supabase
+      .channel(`sala-paciente-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "teleconsultas", filter: `id=eq.${id}` },
+        (payload: any) => {
+          const newStatus = payload?.new?.status;
+          if (newStatus === "concluida" || newStatus === "cancelada") {
+            setEnded(true);
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id]);
+
   const handleConsent = async () => {
     if (!tc) return;
-    await supabase
-      .from("teleconsultas" as any)
-      .update({ patient_consent_at: new Date().toISOString() })
-      .eq("id", tc.id);
+    await supabase.rpc("register_patient_consent" as any, {
+      p_id: tc.id,
+      p_consent_at: new Date().toISOString(),
+    });
     setConsented(true);
   };
 
@@ -62,6 +87,28 @@ export default function SalaPaciente() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Activity className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (ended) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-cyan-50">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-10 text-center space-y-4">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-100 mx-auto">
+              <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+            </div>
+            <div className="flex items-center gap-2 justify-center text-primary">
+              <Video className="w-5 h-5" />
+              <span className="text-lg font-semibold">MindMed</span>
+            </div>
+            <h1 className="text-xl font-semibold">Consulta encerrada</h1>
+            <p className="text-sm text-muted-foreground">
+              Obrigado pelo atendimento. Em caso de dúvidas, entre em contato com seu médico.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }

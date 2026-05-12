@@ -4,12 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { VideoRoom } from "@/components/telemedicina/VideoRoom";
 import { Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Teleconsulta } from "@/types/teleconsulta";
 
 export default function Consulta() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [tc, setTc] = useState<Teleconsulta | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,10 +28,16 @@ export default function Consulta() {
         navigate("/telemedicina");
         return;
       }
-      setTc(data as unknown as Teleconsulta);
+      const t = data as unknown as Teleconsulta;
+      if (!user || t.doctor_id !== user.id) {
+        toast({ title: "Acesso não autorizado", variant: "destructive" });
+        navigate("/telemedicina");
+        return;
+      }
+      setTc(t);
       setLoading(false);
     })();
-  }, [id, navigate, toast]);
+  }, [id, navigate, toast, user]);
 
   if (loading || !tc) {
     return (

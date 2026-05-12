@@ -25,6 +25,31 @@ interface Props {
   onCreated?: (teleconsultaId: string) => void;
 }
 
+// CPF: máscara + validação dos dígitos verificadores
+const maskCPF = (v: string) => {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  return d
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2");
+};
+
+const isValidCPF = (raw: string): boolean => {
+  const cpf = raw.replace(/\D/g, "");
+  if (cpf.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(cpf[i]) * (10 - i);
+  let d1 = (sum * 10) % 11;
+  if (d1 === 10) d1 = 0;
+  if (d1 !== parseInt(cpf[9])) return false;
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(cpf[i]) * (11 - i);
+  let d2 = (sum * 10) % 11;
+  if (d2 === 10) d2 = 0;
+  return d2 === parseInt(cpf[10]);
+};
+
 export function NovaTeleconsultaModal({ open, onOpenChange, prefilledAppointmentId, prefilledPatient, onCreated }: Props) {
   const { toast } = useToast();
   const { organization } = useOrganization();
@@ -189,8 +214,20 @@ export function NovaTeleconsultaModal({ open, onOpenChange, prefilledAppointment
             </div>
             <div className="space-y-2">
               <Label htmlFor="tc-cpf">CPF *</Label>
-              <Input id="tc-cpf" value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" />
-              <p className="text-xs text-muted-foreground">Obrigatório para identificação (CFM)</p>
+              <Input
+                id="tc-cpf"
+                value={cpf}
+                onChange={(e) => setCpf(maskCPF(e.target.value))}
+                placeholder="000.000.000-00"
+                inputMode="numeric"
+                maxLength={14}
+                className={cpf && !isValidCPF(cpf) ? "border-destructive" : ""}
+              />
+              {cpf && !isValidCPF(cpf) ? (
+                <p className="text-xs text-destructive">CPF inválido — verifique os dígitos.</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Obrigatório para identificação (CFM)</p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
@@ -213,7 +250,7 @@ export function NovaTeleconsultaModal({ open, onOpenChange, prefilledAppointment
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => handleClose(false)}>Cancelar</Button>
-              <Button onClick={() => setStep(2)} disabled={!name || !cpf}>
+              <Button onClick={() => setStep(2)} disabled={!name || !isValidCPF(cpf)}>
                 Próximo <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
