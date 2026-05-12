@@ -168,6 +168,15 @@ export function VideoRoom({ teleconsulta: tc, role, onCallEnd }: Props) {
             <p className="font-medium text-sm truncate">{tc.patient_name}</p>
             <p className="text-xs text-slate-400 font-mono">{formatTime(elapsed)}</p>
           </div>
+          {role === "doctor" && (
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-400/30 rounded-full">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+              </span>
+              <span className="text-xs font-medium text-emerald-200">MindMed escutando tudo</span>
+            </div>
+          )}
         </div>
         <Button
           variant="destructive"
