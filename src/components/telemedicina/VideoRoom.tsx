@@ -21,6 +21,7 @@ interface Props {
 
 export function VideoRoom({ teleconsulta: tc, role, onCallEnd }: Props) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [elapsed, setElapsed] = useState(0);
   const [notes, setNotes] = useState(tc.notes_during_call ?? "");
   const [messages, setMessages] = useState<TeleconsultaMessage[]>([]);
