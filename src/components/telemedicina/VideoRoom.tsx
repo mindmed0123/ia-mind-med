@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,6 +21,7 @@ interface Props {
 
 export function VideoRoom({ teleconsulta: tc, role, onCallEnd }: Props) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [elapsed, setElapsed] = useState(0);
   const [notes, setNotes] = useState(tc.notes_during_call ?? "");
   const [messages, setMessages] = useState<TeleconsultaMessage[]>([]);
@@ -126,7 +128,7 @@ export function VideoRoom({ teleconsulta: tc, role, onCallEnd }: Props) {
     }
     setEnding(true);
     try {
-      const { error } = await supabase.functions.invoke("finalize-teleconsulta", {
+      const { data, error } = await supabase.functions.invoke("finalize-teleconsulta", {
         body: {
           teleconsulta_id: tc.id,
           notes: endNotes || notes,
@@ -135,8 +137,13 @@ export function VideoRoom({ teleconsulta: tc, role, onCallEnd }: Props) {
         },
       });
       if (error) throw error;
-      toast({ title: "Consulta finalizada", description: "Notas registradas com sucesso" });
-      onCallEnd?.();
+      const laudoId = (data as { laudo_id?: string } | null)?.laudo_id;
+      toast({ title: "Consulta finalizada", description: genLaudo ? "Gerando laudo com IA…" : "Notas registradas com sucesso" });
+      if (genLaudo && laudoId) {
+        navigate(`/novo-laudo?id=${laudoId}`);
+      } else {
+        onCallEnd?.();
+      }
     } catch (err) {
       toast({ title: "Erro ao finalizar", description: (err as Error).message, variant: "destructive" });
     } finally {
@@ -161,6 +168,15 @@ export function VideoRoom({ teleconsulta: tc, role, onCallEnd }: Props) {
             <p className="font-medium text-sm truncate">{tc.patient_name}</p>
             <p className="text-xs text-slate-400 font-mono">{formatTime(elapsed)}</p>
           </div>
+          {role === "doctor" && (
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-400/30 rounded-full">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+              </span>
+              <span className="text-xs font-medium text-emerald-200">MindMed escutando tudo</span>
+            </div>
+          )}
         </div>
         <Button
           variant="destructive"

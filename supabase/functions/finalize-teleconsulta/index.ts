@@ -103,6 +103,7 @@ serve(async (req) => {
               phone: tc.patient_phone,
             },
             transcript: { text: sourceText },
+            transcript_status: "completed",
             status: "draft",
           })
           .select()
