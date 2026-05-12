@@ -140,7 +140,7 @@ export function NovaTeleconsultaModal({ open, onOpenChange, prefilledAppointment
           body: {
             teleconsulta_id: tcId,
             patient_link: link,
-            doctor_name: organization.name,
+            doctor_name: organization?.name ?? "MindMed",
             scheduled_at: scheduledAt || null,
           },
         }).catch(() => {});
