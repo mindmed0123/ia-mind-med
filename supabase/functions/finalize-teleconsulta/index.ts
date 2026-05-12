@@ -115,6 +115,21 @@ serve(async (req) => {
             .from("teleconsultas")
             .update({ laudo_id: laudoId })
             .eq("id", teleconsulta_id);
+
+          // Dispara geração de IA do laudo (não bloqueante)
+          try {
+            await fetch(`${SUPABASE_URL}/functions/v1/generate-laudo`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                apikey: SUPABASE_SERVICE_ROLE_KEY,
+              },
+              body: JSON.stringify({ laudo_id: laudoId }),
+            });
+          } catch (genErr) {
+            console.error("generate-laudo dispatch error:", genErr);
+          }
         }
       } catch (e) {
         console.error("Laudo creation error:", e);
