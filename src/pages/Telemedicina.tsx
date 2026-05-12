@@ -1,10 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Video } from "lucide-react";
+import { ArrowLeft, Video, Loader2 } from "lucide-react";
 import { TelemedicinaDashboard } from "@/components/telemedicina/TelemedicinaDashboard";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { ProFeatureGate } from "@/components/pro/ProFeatureGate";
 
 export default function Telemedicina() {
   const navigate = useNavigate();
+  const { hasAccess, loading } = useFeatureAccess("telemedicina");
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card sticky top-0 z-30">
@@ -21,7 +25,17 @@ export default function Telemedicina() {
         </div>
       </header>
       <main className="container mx-auto px-4 py-6">
-        <TelemedicinaDashboard />
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        ) : !hasAccess ? (
+          <ProFeatureGate feature="Telemedicina">
+            <TelemedicinaDashboard />
+          </ProFeatureGate>
+        ) : (
+          <TelemedicinaDashboard />
+        )}
       </main>
     </div>
   );
