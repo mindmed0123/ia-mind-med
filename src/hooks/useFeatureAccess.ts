@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-export type FeatureKey = "appointments";
+export type FeatureKey = "appointments" | "telemedicina";
 
 const cache = new Map<string, { value: boolean; ts: number }>();
 const TTL = 30_000;
