@@ -1358,6 +1358,181 @@ export type Database = {
         }
         Relationships: []
       }
+      teleconsulta_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          participant_role: string
+          payload: Json | null
+          teleconsulta_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          participant_role: string
+          payload?: Json | null
+          teleconsulta_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          participant_role?: string
+          payload?: Json | null
+          teleconsulta_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teleconsulta_events_teleconsulta_id_fkey"
+            columns: ["teleconsulta_id"]
+            isOneToOne: false
+            referencedRelation: "teleconsultas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teleconsulta_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          sender_name: string
+          sender_role: string
+          teleconsulta_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          sender_name: string
+          sender_role: string
+          teleconsulta_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          sender_name?: string
+          sender_role?: string
+          teleconsulta_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teleconsulta_messages_teleconsulta_id_fkey"
+            columns: ["teleconsulta_id"]
+            isOneToOne: false
+            referencedRelation: "teleconsultas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teleconsultas: {
+        Row: {
+          appointment_id: string | null
+          chief_complaint: string | null
+          created_at: string
+          created_by: string
+          daily_room_id: string | null
+          diagnosis_summary: string | null
+          doctor_consent_at: string | null
+          doctor_id: string
+          doctor_token: string | null
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          laudo_id: string | null
+          notes_during_call: string | null
+          organization_id: string
+          patient_consent_at: string | null
+          patient_consent_ip: string | null
+          patient_cpf: string | null
+          patient_email: string | null
+          patient_id: string | null
+          patient_name: string
+          patient_phone: string | null
+          patient_token: string | null
+          prescription_during_call: Json | null
+          room_name: string
+          room_opened_at: string | null
+          room_url: string
+          scheduled_at: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["teleconsulta_status"]
+          transcript_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          chief_complaint?: string | null
+          created_at?: string
+          created_by: string
+          daily_room_id?: string | null
+          diagnosis_summary?: string | null
+          doctor_consent_at?: string | null
+          doctor_id: string
+          doctor_token?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          laudo_id?: string | null
+          notes_during_call?: string | null
+          organization_id: string
+          patient_consent_at?: string | null
+          patient_consent_ip?: string | null
+          patient_cpf?: string | null
+          patient_email?: string | null
+          patient_id?: string | null
+          patient_name: string
+          patient_phone?: string | null
+          patient_token?: string | null
+          prescription_during_call?: Json | null
+          room_name: string
+          room_opened_at?: string | null
+          room_url: string
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["teleconsulta_status"]
+          transcript_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          chief_complaint?: string | null
+          created_at?: string
+          created_by?: string
+          daily_room_id?: string | null
+          diagnosis_summary?: string | null
+          doctor_consent_at?: string | null
+          doctor_id?: string
+          doctor_token?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          laudo_id?: string | null
+          notes_during_call?: string | null
+          organization_id?: string
+          patient_consent_at?: string | null
+          patient_consent_ip?: string | null
+          patient_cpf?: string | null
+          patient_email?: string | null
+          patient_id?: string | null
+          patient_name?: string
+          patient_phone?: string | null
+          patient_token?: string | null
+          prescription_during_call?: Json | null
+          room_name?: string
+          room_opened_at?: string | null
+          room_url?: string
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["teleconsulta_status"]
+          transcript_text?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -1480,6 +1655,13 @@ export type Database = {
         | "PENDING_CHECKOUT"
         | "INACTIVE"
         | "EXPIRED"
+      teleconsulta_status:
+        | "agendada"
+        | "sala_aberta"
+        | "em_andamento"
+        | "concluida"
+        | "cancelada"
+        | "nao_compareceu"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1627,6 +1809,14 @@ export const Constants = {
         "PENDING_CHECKOUT",
         "INACTIVE",
         "EXPIRED",
+      ],
+      teleconsulta_status: [
+        "agendada",
+        "sala_aberta",
+        "em_andamento",
+        "concluida",
+        "cancelada",
+        "nao_compareceu",
       ],
     },
   },
