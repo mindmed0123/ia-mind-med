@@ -250,7 +250,7 @@ export function NovaTeleconsultaModal({ open, onOpenChange, prefilledAppointment
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => handleClose(false)}>Cancelar</Button>
-              <Button onClick={() => setStep(2)} disabled={!name || !cpf}>
+              <Button onClick={() => setStep(2)} disabled={!name || !isValidCPF(cpf)}>
                 Próximo <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
