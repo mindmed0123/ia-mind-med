@@ -201,6 +201,11 @@ const Dashboard = () => {
           </p>
         </div>
 
+        {/* Alerta Hantavírus */}
+        <div className="mb-6">
+          <HantavirusButton variant="alert" />
+        </div>
+
         {/* Upgrade Banner */}
         <div className="mb-6">
           <UpgradeBanner />
