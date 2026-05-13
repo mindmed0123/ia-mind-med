@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   Camera, X, AlertTriangle, ShieldAlert, Loader2, ArrowLeft, ArrowRight,
-  CheckCircle2, FileText, Save, RefreshCw,
+  CheckCircle2, FileText, Save, RefreshCw, Download,
 } from "lucide-react";
 import {
   SINTOMAS_LABELS, FATORES_LABELS,
@@ -22,6 +22,10 @@ import { useHantavirusTriagem } from "@/hooks/useHantavirusTriagem";
 import { ProbabilityGauge } from "./ProbabilityGauge";
 import { VoiceRecorder } from "./VoiceRecorder";
 import { useToast } from "@/hooks/use-toast";
+import { maskCpf, isValidCpf, unmaskCpf } from "@/lib/cpf";
+import { gerarLaudoHantavirusPdf } from "@/lib/gerarLaudoHantavirusPdf";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const SINTOMAS_GERAIS: (keyof SintomasHantavirus)[] = [
   "febre", "cefaleia", "mialgia", "dor_lombar",
@@ -48,9 +52,37 @@ interface Props {
 
 export function HantavirusModal({ open, onOpenChange }: Props) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const t = useHantavirusTriagem();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [loadingIdx, setLoadingIdx] = useState(0);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+  const nomeCompletoOk = t.patientName.trim().split(/\s+/).length >= 2;
+  const cpfOk = isValidCpf(unmaskCpf(t.patientCpf));
+
+  const handleDownloadLaudo = async () => {
+    if (!t.resultado || !user) return;
+    setDownloadingPdf(true);
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, crm, crm_uf, specialty, clinic_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      await gerarLaudoHantavirusPdf(t.resultado as any, (profile || {}) as any);
+      toast({ title: "Laudo gerado", description: "PDF baixado com sucesso." });
+    } catch (err) {
+      toast({
+        title: "Erro ao gerar PDF",
+        description: (err as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
 
   useEffect(() => {
     if (!open) { setStep(1); t.resetar(); }
@@ -106,16 +138,41 @@ export function HantavirusModal({ open, onOpenChange }: Props) {
         {step === 1 && (
           <div className="space-y-6">
             <Card>
-              <CardContent className="pt-5 space-y-3">
-                <h3 className="text-sm font-semibold uppercase text-muted-foreground">Paciente</h3>
+              <CardContent className="pt-5 space-y-4">
+                <h3 className="text-sm font-semibold uppercase text-muted-foreground">
+                  Identificação do Paciente <span className="text-red-600">*</span>
+                </h3>
+                <p className="text-[11px] text-muted-foreground -mt-2">
+                  Obrigatório para vincular ao prontuário e gerar o laudo final.
+                </p>
                 <div className="grid gap-2">
-                  <Label htmlFor="pname">Nome do paciente *</Label>
+                  <Label htmlFor="pname">Nome completo *</Label>
                   <Input
                     id="pname"
                     value={t.patientName}
                     onChange={(e) => t.setPatientName(e.target.value)}
-                    placeholder="Nome completo"
+                    placeholder="Ex: Maria Silva Santos"
                   />
+                  {t.patientName.trim() && !nomeCompletoOk && (
+                    <p className="text-[11px] text-red-600">Informe nome e sobrenome.</p>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="pcpf">CPF *</Label>
+                  <Input
+                    id="pcpf"
+                    inputMode="numeric"
+                    value={t.patientCpf}
+                    onChange={(e) => t.setPatientCpf(maskCpf(e.target.value))}
+                    placeholder="000.000.000-00"
+                    maxLength={14}
+                  />
+                  {t.patientCpf && !cpfOk && (
+                    <p className="text-[11px] text-red-600">CPF inválido.</p>
+                  )}
+                  {cpfOk && (
+                    <p className="text-[11px] text-emerald-600">✓ CPF válido — paciente será criado/vinculado automaticamente.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -202,7 +259,7 @@ export function HantavirusModal({ open, onOpenChange }: Props) {
             </Card>
 
             <div className="flex justify-end">
-              <Button onClick={() => setStep(2)} disabled={!t.patientName.trim()}>
+              <Button onClick={() => setStep(2)} disabled={!nomeCompletoOk || !cpfOk}>
                 Próxima etapa <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
@@ -413,11 +470,23 @@ export function HantavirusModal({ open, onOpenChange }: Props) {
                 <RefreshCw className="w-4 h-4 mr-2" /> Nova Triagem
               </Button>
               <Button
+                onClick={handleDownloadLaudo}
+                disabled={downloadingPdf}
+                className="bg-gradient-to-r from-blue-700 to-blue-500 text-white hover:opacity-90"
+              >
+                {downloadingPdf ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Gerando PDF...</>
+                ) : (
+                  <><Download className="w-4 h-4 mr-2" /> Baixar Laudo PDF</>
+                )}
+              </Button>
+              <Button
                 onClick={async () => {
                   await t.salvarProntuario();
                   toast({ title: "Salvo no prontuário do paciente" });
                 }}
                 disabled={t.resultado.status === "salvo_prontuario"}
+                variant="outline"
               >
                 <Save className="w-4 h-4 mr-2" />
                 {t.resultado.status === "salvo_prontuario" ? "Salvo" : "Salvar no Prontuário"}

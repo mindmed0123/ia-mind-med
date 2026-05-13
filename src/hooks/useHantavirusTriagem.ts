@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/hooks/useOrganization";
+import { unmaskCpf, isValidCpf } from "@/lib/cpf";
 import {
   TriagemHantavirus,
   SintomasHantavirus,
@@ -19,6 +20,7 @@ export function useHantavirusTriagem() {
   const [descricaoSintomas, setDescricaoSintomas] = useState("");
   const [imagens, setImagens] = useState<File[]>([]);
   const [patientName, setPatientName] = useState("");
+  const [patientCpf, setPatientCpf] = useState("");
   const [patientId, setPatientId] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -44,7 +46,7 @@ export function useHantavirusTriagem() {
       if (!upErr) {
         const { data: signed } = await supabase.storage
           .from("hantavirus-imagens")
-          .createSignedUrl(path, 3600);
+          .createSignedUrl(path, 60 * 60 * 24 * 7);
         if (signed?.signedUrl) urls.push(signed.signedUrl);
       }
     }
@@ -62,13 +64,60 @@ export function useHantavirusTriagem() {
     return (data as any)?.transcricao || "";
   };
 
+  /**
+   * Localiza paciente existente pelo CPF do médico ou cria novo registro.
+   * Garante que toda triagem fica vinculada à seção Pacientes.
+   */
+  const upsertPaciente = async (cpfDigits: string): Promise<string> => {
+    if (!user) throw new Error("Usuário não autenticado");
+
+    const { data: existente } = await (supabase as any)
+      .from("patients")
+      .select("id, name")
+      .eq("user_id", user.id)
+      .eq("cpf", cpfDigits)
+      .maybeSingle();
+
+    if (existente?.id) {
+      // atualiza nome se mudou
+      if (existente.name !== patientName.trim()) {
+        await supabase
+          .from("patients")
+          .update({ name: patientName.trim() })
+          .eq("id", existente.id);
+      }
+      return existente.id;
+    }
+
+    const { data: novo, error: insErr } = await supabase
+      .from("patients")
+      .insert({
+        user_id: user.id,
+        organization_id: organization?.id ?? null,
+        name: patientName.trim(),
+        cpf: cpfDigits,
+        clinical_notes: "Cadastrado via Triagem Hantavírus",
+      } as any)
+      .select("id")
+      .single();
+    if (insErr) throw insErr;
+    return novo!.id;
+  };
+
   const analisar = async () => {
+    setError(null);
     if (!user || !organization) {
       setError("Usuário ou organização não encontrados.");
       return;
     }
-    if (!patientName.trim()) {
-      setError("Informe o nome do paciente.");
+    const nomeOk = patientName.trim().split(/\s+/).length >= 2;
+    if (!nomeOk) {
+      setError("Informe o nome completo do paciente (nome e sobrenome).");
+      return;
+    }
+    const cpfDigits = unmaskCpf(patientCpf);
+    if (!isValidCpf(cpfDigits)) {
+      setError("CPF inválido. Verifique os 11 dígitos.");
       return;
     }
     const sintomasCount = Object.values(sintomas).filter(Boolean).length;
@@ -78,10 +127,15 @@ export function useHantavirusTriagem() {
     }
 
     setIsAnalyzing(true);
-    setError(null);
     try {
+      // 1) Vincula/cria paciente
+      const pid = await upsertPaciente(cpfDigits);
+      setPatientId(pid);
+
+      // 2) Upload de imagens
       const imageUrls = await uploadImagens();
 
+      // 3) Análise IA
       const { data, error: fnErr } = await supabase.functions.invoke(
         "analisar-hantavirus",
         {
@@ -97,13 +151,15 @@ export function useHantavirusTriagem() {
       if (fnErr) throw new Error(fnErr.message);
       const r = data as any;
 
+      // 4) Persiste triagem
       const { data: triagem, error: dbErr } = await supabase
         .from("triagens_hantavirus" as any)
         .insert({
           organization_id: organization.id,
           doctor_id: user.id,
-          patient_id: patientId,
-          patient_name: patientName,
+          patient_id: pid,
+          patient_name: patientName.trim(),
+          patient_cpf: cpfDigits,
           sintomas,
           fatores_epidemiologicos: fatores,
           descricao_sintomas: descricaoSintomas || null,
@@ -143,6 +199,7 @@ export function useHantavirusTriagem() {
     setDescricaoSintomas("");
     setImagens([]);
     setPatientName("");
+    setPatientCpf("");
     setPatientId(null);
     setResultado(null);
     setError(null);
@@ -154,6 +211,7 @@ export function useHantavirusTriagem() {
     descricaoSintomas, setDescricaoSintomas,
     imagens, setImagens,
     patientName, setPatientName,
+    patientCpf, setPatientCpf,
     patientId, setPatientId,
     isAnalyzing, isRecording, setIsRecording,
     resultado, error,

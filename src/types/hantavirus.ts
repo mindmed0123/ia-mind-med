@@ -33,6 +33,7 @@ export interface TriagemHantavirus {
   doctor_id: string;
   patient_id: string | null;
   patient_name: string;
+  patient_cpf: string | null;
   sintomas: SintomasHantavirus;
   fatores_epidemiologicos: FatoresEpidemiologicos;
   descricao_sintomas: string | null;
