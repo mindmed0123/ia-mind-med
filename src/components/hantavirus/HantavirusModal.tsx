@@ -24,7 +24,8 @@ import { VoiceRecorder } from "./VoiceRecorder";
 import { useToast } from "@/hooks/use-toast";
 import { maskCpf, isValidCpf, unmaskCpf } from "@/lib/cpf";
 import { gerarLaudoHantavirusPdf } from "@/lib/gerarLaudoHantavirusPdf";
-import { useProfile } from "@/hooks/useProfile";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const SINTOMAS_GERAIS: (keyof SintomasHantavirus)[] = [
   "febre", "cefaleia", "mialgia", "dor_lombar",
