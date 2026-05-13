@@ -470,11 +470,23 @@ export function HantavirusModal({ open, onOpenChange }: Props) {
                 <RefreshCw className="w-4 h-4 mr-2" /> Nova Triagem
               </Button>
               <Button
+                onClick={handleDownloadLaudo}
+                disabled={downloadingPdf}
+                className="bg-gradient-to-r from-blue-700 to-blue-500 text-white hover:opacity-90"
+              >
+                {downloadingPdf ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Gerando PDF...</>
+                ) : (
+                  <><Download className="w-4 h-4 mr-2" /> Baixar Laudo PDF</>
+                )}
+              </Button>
+              <Button
                 onClick={async () => {
                   await t.salvarProntuario();
                   toast({ title: "Salvo no prontuário do paciente" });
                 }}
                 disabled={t.resultado.status === "salvo_prontuario"}
+                variant="outline"
               >
                 <Save className="w-4 h-4 mr-2" />
                 {t.resultado.status === "salvo_prontuario" ? "Salvo" : "Salvar no Prontuário"}
