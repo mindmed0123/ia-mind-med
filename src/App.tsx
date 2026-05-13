@@ -35,6 +35,7 @@ const AceitarConvite = lazy(() => import("./pages/AceitarConvite"));
 const Telemedicina = lazy(() => import("./pages/Telemedicina"));
 const Consulta = lazy(() => import("./pages/Consulta"));
 const SalaPaciente = lazy(() => import("./pages/SalaPaciente"));
+const HantavirusPage = lazy(() => import("./pages/HantavirusPage"));
 
 const queryClient = new QueryClient();
 
@@ -82,7 +83,8 @@ const App = () => (
                 <Route path="/agendamentos" element={<SubscriptionGuard><Agendamentos /></SubscriptionGuard>} />
                 <Route path="/telemedicina" element={<SubscriptionGuard><Telemedicina /></SubscriptionGuard>} />
                 <Route path="/consulta/:id" element={<SubscriptionGuard><Consulta /></SubscriptionGuard>} />
-                
+                <Route path="/hantavirus" element={<SubscriptionGuard><HantavirusPage /></SubscriptionGuard>} />
+
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
