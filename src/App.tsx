@@ -83,7 +83,8 @@ const App = () => (
                 <Route path="/agendamentos" element={<SubscriptionGuard><Agendamentos /></SubscriptionGuard>} />
                 <Route path="/telemedicina" element={<SubscriptionGuard><Telemedicina /></SubscriptionGuard>} />
                 <Route path="/consulta/:id" element={<SubscriptionGuard><Consulta /></SubscriptionGuard>} />
-                
+                <Route path="/hantavirus" element={<SubscriptionGuard><HantavirusPage /></SubscriptionGuard>} />
+
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
