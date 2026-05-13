@@ -277,6 +277,9 @@ const Dashboard = () => {
                     <Video className="w-5 h-5 mr-2" />
                     Telemedicina
                   </Button>
+                  <div className="col-span-2">
+                    <HantavirusButton variant="full" className="w-full" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
