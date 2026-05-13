@@ -262,7 +262,6 @@ export function HantavirusModal({ open, onOpenChange }: Props) {
               <Button onClick={() => setStep(2)} disabled={!nomeCompletoOk || !cpfOk}>
                 Próxima etapa <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
-              </Button>
             </div>
           </div>
         )}
