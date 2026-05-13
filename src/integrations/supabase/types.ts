@@ -1533,6 +1533,87 @@ export type Database = {
         }
         Relationships: []
       }
+      triagens_hantavirus: {
+        Row: {
+          analise_ia: string | null
+          analise_imagem_ia: string | null
+          classificacao_risco: string | null
+          created_at: string
+          created_by: string
+          descricao_sintomas: string | null
+          diferenciais_ia: string[] | null
+          doctor_id: string
+          fatores_epidemiologicos: Json
+          id: string
+          imagens_manchas: string[]
+          organization_id: string
+          patient_id: string | null
+          patient_name: string
+          probabilidade_hantavirus: number | null
+          recomendacoes_ia: string[] | null
+          sintomas: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          analise_ia?: string | null
+          analise_imagem_ia?: string | null
+          classificacao_risco?: string | null
+          created_at?: string
+          created_by: string
+          descricao_sintomas?: string | null
+          diferenciais_ia?: string[] | null
+          doctor_id: string
+          fatores_epidemiologicos?: Json
+          id?: string
+          imagens_manchas?: string[]
+          organization_id: string
+          patient_id?: string | null
+          patient_name: string
+          probabilidade_hantavirus?: number | null
+          recomendacoes_ia?: string[] | null
+          sintomas?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          analise_ia?: string | null
+          analise_imagem_ia?: string | null
+          classificacao_risco?: string | null
+          created_at?: string
+          created_by?: string
+          descricao_sintomas?: string | null
+          diferenciais_ia?: string[] | null
+          doctor_id?: string
+          fatores_epidemiologicos?: Json
+          id?: string
+          imagens_manchas?: string[]
+          organization_id?: string
+          patient_id?: string | null
+          patient_name?: string
+          probabilidade_hantavirus?: number | null
+          recomendacoes_ia?: string[] | null
+          sintomas?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triagens_hantavirus_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triagens_hantavirus_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
