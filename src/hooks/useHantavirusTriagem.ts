@@ -71,11 +71,11 @@ export function useHantavirusTriagem() {
   const upsertPaciente = async (cpfDigits: string): Promise<string> => {
     if (!user) throw new Error("Usuário não autenticado");
 
-    const { data: existente } = await supabase
+    const { data: existente } = await (supabase as any)
       .from("patients")
       .select("id, name")
       .eq("user_id", user.id)
-      .eq("cpf" as any, cpfDigits)
+      .eq("cpf", cpfDigits)
       .maybeSingle();
 
     if (existente?.id) {
