@@ -1049,6 +1049,7 @@ export type Database = {
           clinical_history: string | null
           clinical_notes: string | null
           comorbidities: string[] | null
+          cpf: string | null
           created_at: string
           email: string | null
           external_id: string | null
@@ -1073,6 +1074,7 @@ export type Database = {
           clinical_history?: string | null
           clinical_notes?: string | null
           comorbidities?: string[] | null
+          cpf?: string | null
           created_at?: string
           email?: string | null
           external_id?: string | null
@@ -1097,6 +1099,7 @@ export type Database = {
           clinical_history?: string | null
           clinical_notes?: string | null
           comorbidities?: string[] | null
+          cpf?: string | null
           created_at?: string
           email?: string | null
           external_id?: string | null
@@ -1547,6 +1550,7 @@ export type Database = {
           id: string
           imagens_manchas: string[]
           organization_id: string
+          patient_cpf: string | null
           patient_id: string | null
           patient_name: string
           probabilidade_hantavirus: number | null
@@ -1568,6 +1572,7 @@ export type Database = {
           id?: string
           imagens_manchas?: string[]
           organization_id: string
+          patient_cpf?: string | null
           patient_id?: string | null
           patient_name: string
           probabilidade_hantavirus?: number | null
@@ -1589,6 +1594,7 @@ export type Database = {
           id?: string
           imagens_manchas?: string[]
           organization_id?: string
+          patient_cpf?: string | null
           patient_id?: string | null
           patient_name?: string
           probabilidade_hantavirus?: number | null
