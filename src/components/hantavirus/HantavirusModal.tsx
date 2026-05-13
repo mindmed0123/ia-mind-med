@@ -52,9 +52,37 @@ interface Props {
 
 export function HantavirusModal({ open, onOpenChange }: Props) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const t = useHantavirusTriagem();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [loadingIdx, setLoadingIdx] = useState(0);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+  const nomeCompletoOk = t.patientName.trim().split(/\s+/).length >= 2;
+  const cpfOk = isValidCpf(unmaskCpf(t.patientCpf));
+
+  const handleDownloadLaudo = async () => {
+    if (!t.resultado || !user) return;
+    setDownloadingPdf(true);
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, crm, crm_uf, specialty, clinic_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      await gerarLaudoHantavirusPdf(t.resultado as any, (profile || {}) as any);
+      toast({ title: "Laudo gerado", description: "PDF baixado com sucesso." });
+    } catch (err) {
+      toast({
+        title: "Erro ao gerar PDF",
+        description: (err as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
 
   useEffect(() => {
     if (!open) { setStep(1); t.resetar(); }
