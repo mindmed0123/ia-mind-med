@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Activity, ArrowLeft, FileText, Pill, Calendar, 
   Download, User, ExternalLink, Image as ImageIcon,
-  TrendingUp, GitCompare
+  TrendingUp, GitCompare, Microscope
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +15,7 @@ import { PatientDocuments } from '@/components/patient/PatientDocuments';
 import { PatientTimeline } from '@/components/patient/PatientTimeline';
 import { ImageComparison } from '@/components/patient/ImageComparison';
 import { PatientClinicalProfile } from '@/components/patient/PatientClinicalProfile';
+import { PatientHantavirusTriagens } from '@/components/patient/PatientHantavirusTriagens';
 import { useSubscription } from '@/hooks/useSubscription';
 
 interface Patient {
@@ -226,7 +227,7 @@ export default function HistoricoPaciente() {
         </div>
 
         <Tabs defaultValue="perfil" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="perfil">
               <User className="w-4 h-4 mr-2" />
               Perfil Clínico
@@ -246,6 +247,10 @@ export default function HistoricoPaciente() {
             <TabsTrigger value="prescricoes">
               <Pill className="w-4 h-4 mr-2" />
               Receitas ({prescriptions.length})
+            </TabsTrigger>
+            <TabsTrigger value="hantavirus">
+              <Microscope className="w-4 h-4 mr-2" />
+              Hantavírus
             </TabsTrigger>
           </TabsList>
 
