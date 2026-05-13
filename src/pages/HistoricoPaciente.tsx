@@ -404,6 +404,10 @@ export default function HistoricoPaciente() {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="hantavirus" className="mt-6">
+            <PatientHantavirusTriagens patientId={patient.id} />
+          </TabsContent>
         </Tabs>
       </main>
 
