@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   Camera, X, AlertTriangle, ShieldAlert, Loader2, ArrowLeft, ArrowRight,
-  CheckCircle2, FileText, Save, RefreshCw,
+  CheckCircle2, FileText, Save, RefreshCw, Download,
 } from "lucide-react";
 import {
   SINTOMAS_LABELS, FATORES_LABELS,
@@ -22,6 +22,9 @@ import { useHantavirusTriagem } from "@/hooks/useHantavirusTriagem";
 import { ProbabilityGauge } from "./ProbabilityGauge";
 import { VoiceRecorder } from "./VoiceRecorder";
 import { useToast } from "@/hooks/use-toast";
+import { maskCpf, isValidCpf, unmaskCpf } from "@/lib/cpf";
+import { gerarLaudoHantavirusPdf } from "@/lib/gerarLaudoHantavirusPdf";
+import { useProfile } from "@/hooks/useProfile";
 
 const SINTOMAS_GERAIS: (keyof SintomasHantavirus)[] = [
   "febre", "cefaleia", "mialgia", "dor_lombar",
