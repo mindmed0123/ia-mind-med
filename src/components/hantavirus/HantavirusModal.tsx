@@ -138,16 +138,41 @@ export function HantavirusModal({ open, onOpenChange }: Props) {
         {step === 1 && (
           <div className="space-y-6">
             <Card>
-              <CardContent className="pt-5 space-y-3">
-                <h3 className="text-sm font-semibold uppercase text-muted-foreground">Paciente</h3>
+              <CardContent className="pt-5 space-y-4">
+                <h3 className="text-sm font-semibold uppercase text-muted-foreground">
+                  Identificação do Paciente <span className="text-red-600">*</span>
+                </h3>
+                <p className="text-[11px] text-muted-foreground -mt-2">
+                  Obrigatório para vincular ao prontuário e gerar o laudo final.
+                </p>
                 <div className="grid gap-2">
-                  <Label htmlFor="pname">Nome do paciente *</Label>
+                  <Label htmlFor="pname">Nome completo *</Label>
                   <Input
                     id="pname"
                     value={t.patientName}
                     onChange={(e) => t.setPatientName(e.target.value)}
-                    placeholder="Nome completo"
+                    placeholder="Ex: Maria Silva Santos"
                   />
+                  {t.patientName.trim() && !nomeCompletoOk && (
+                    <p className="text-[11px] text-red-600">Informe nome e sobrenome.</p>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="pcpf">CPF *</Label>
+                  <Input
+                    id="pcpf"
+                    inputMode="numeric"
+                    value={t.patientCpf}
+                    onChange={(e) => t.setPatientCpf(maskCpf(e.target.value))}
+                    placeholder="000.000.000-00"
+                    maxLength={14}
+                  />
+                  {t.patientCpf && !cpfOk && (
+                    <p className="text-[11px] text-red-600">CPF inválido.</p>
+                  )}
+                  {cpfOk && (
+                    <p className="text-[11px] text-emerald-600">✓ CPF válido — paciente será criado/vinculado automaticamente.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
