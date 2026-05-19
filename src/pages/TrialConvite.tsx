@@ -91,6 +91,10 @@ const TrialConvite = () => {
           toast.error("Erro ao criar conta");
         }
       } else {
+        // Meta Pixel: Lead event on successful new doctor signup
+        if (typeof (window as any).fbq !== 'undefined') {
+          (window as any).fbq('track', 'Lead');
+        }
         toast.success("Conta criada com sucesso! Redirecionando...");
         navigate("/dashboard");
       }

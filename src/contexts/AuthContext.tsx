@@ -56,6 +56,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       // Send welcome email (fire-and-forget)
       if (!error && data?.user) {
+        // Meta Pixel: Lead event on successful new doctor signup
+        if (typeof (window as any).fbq !== 'undefined') {
+          (window as any).fbq('track', 'Lead');
+        }
         supabase.functions.invoke('send-transactional-email', {
           body: {
             templateName: 'welcome',
