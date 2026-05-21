@@ -30,25 +30,52 @@ serve(async (req) => {
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    
+
+    // Require authenticated caller
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false },
+    });
+    const jwt = authHeader.replace("Bearer ", "");
+    const { data: claims, error: authErr } = await userClient.auth.getClaims(jwt);
+    if (authErr || !claims?.claims?.sub) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+    const authedUserId = claims.claims.sub as string;
+    const authedEmail = (claims.claims.email as string | undefined) ?? null;
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false }
     });
 
     const body = await req.json();
-    const { userId, email, name, whatsapp, plan = "mindmed_pro" } = body;
-    
+    const { name, whatsapp, plan = "mindmed_pro" } = body;
+
+    // Never trust client-supplied user identity
+    const userId = authedUserId;
+    const email = authedEmail ?? body.email;
+
     logStep("Received request", { userId, email, plan });
 
     if (!userId || !email) {
-      throw new Error("userId and email are required");
+      throw new Error("Authenticated user has no email");
     }
 
     const priceId = PRICES[plan as keyof typeof PRICES];
     if (!priceId) {
       throw new Error(`Invalid plan: ${plan}`);
     }
+
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 

@@ -1672,6 +1672,25 @@ export type Database = {
       get_quota_status:
         | { Args: never; Returns: Json }
         | { Args: { p_user_id: string }; Returns: Json }
+      get_teleconsulta_for_patient: {
+        Args: { p_id: string; p_token: string }
+        Returns: {
+          chief_complaint: string
+          doctor_consent_at: string
+          id: string
+          patient_consent_at: string
+          patient_email: string
+          patient_name: string
+          patient_token: string
+          room_url: string
+          scheduled_at: string
+          status: Database["public"]["Enums"]["teleconsulta_status"]
+        }[]
+      }
+      get_teleconsulta_status_for_patient: {
+        Args: { p_id: string; p_token: string }
+        Returns: Database["public"]["Enums"]["teleconsulta_status"]
+      }
       get_user_organizations: { Args: { _user_id: string }; Returns: string[] }
       has_feature_access: {
         Args: { _feature_key: string; _user_id: string }
@@ -1710,6 +1729,21 @@ export type Database = {
           source_queue: string
         }
         Returns: number
+      }
+      patient_list_teleconsulta_messages: {
+        Args: { p_id: string; p_token: string }
+        Returns: {
+          content: string
+          created_at: string
+          id: string
+          sender_name: string
+          sender_role: string
+          teleconsulta_id: string
+        }[]
+      }
+      patient_send_teleconsulta_message: {
+        Args: { p_content: string; p_id: string; p_token: string }
+        Returns: string
       }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }

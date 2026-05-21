@@ -12,36 +12,51 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    const userClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
+        global: { headers: { Authorization: authHeader } },
+        auth: { autoRefreshToken: false, persistSession: false },
+      },
     );
+    const jwt = authHeader.replace('Bearer ', '');
+    const { data: claims, error: authErr } = await userClient.auth.getClaims(jwt);
+    if (authErr || !claims?.claims?.sub) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    const userId = claims.claims.sub as string;
 
     const { prescription_id } = await req.json();
 
-    // Buscar receituário
-    const { data: prescription, error: prescError } = await supabase
+    // Fetch through user client so RLS enforces ownership
+    const { data: prescription, error: prescError } = await userClient
       .from('prescriptions')
       .select('*')
       .eq('id', prescription_id)
-      .single();
+      .maybeSingle();
 
-    if (prescError || !prescription) {
-      throw new Error('Receituário não encontrado');
+    if (prescError || !prescription || prescription.user_id !== userId) {
+      return new Response(JSON.stringify({ error: 'Receituário não encontrado' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    // Buscar perfil do médico
-    const { data: profile, error: profileError } = await supabase
+    // Doctor profile through user client (RLS allows reading own profile)
+    const { data: profile, error: profileError } = await userClient
       .from('profiles')
       .select('*')
       .eq('id', prescription.user_id)
-      .single();
+      .maybeSingle();
+
 
     if (profileError) {
       console.error('Erro ao buscar perfil:', profileError);

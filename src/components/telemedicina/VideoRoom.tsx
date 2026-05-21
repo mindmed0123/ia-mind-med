@@ -63,9 +63,29 @@ export function VideoRoom({ teleconsulta: tc, role, onCallEnd }: Props) {
     }, 1500);
   };
 
-  // Carrega + realtime mensagens
+  // Carrega + realtime mensagens (médico) ou polling com RPC (paciente anônimo)
   useEffect(() => {
     let mounted = true;
+
+    if (role === "patient") {
+      const patientToken = tc.patient_token ?? "";
+      const fetchMsgs = async () => {
+        const { data } = await supabase.rpc(
+          "patient_list_teleconsulta_messages" as any,
+          { p_id: tc.id, p_token: patientToken }
+        );
+        if (mounted && Array.isArray(data)) {
+          setMessages(data as unknown as TeleconsultaMessage[]);
+        }
+      };
+      fetchMsgs();
+      const interval = setInterval(fetchMsgs, 3000);
+      return () => {
+        mounted = false;
+        clearInterval(interval);
+      };
+    }
+
     supabase
       .from("teleconsulta_messages" as any)
       .select("*")
@@ -90,7 +110,7 @@ export function VideoRoom({ teleconsulta: tc, role, onCallEnd }: Props) {
       mounted = false;
       supabase.removeChannel(ch);
     };
-  }, [tc.id]);
+  }, [tc.id, role, tc.patient_token]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -102,13 +122,34 @@ export function VideoRoom({ teleconsulta: tc, role, onCallEnd }: Props) {
     if (!chatInput.trim()) return;
     const content = chatInput.trim();
     setChatInput("");
+    if (role === "patient") {
+      await supabase.rpc("patient_send_teleconsulta_message" as any, {
+        p_id: tc.id,
+        p_token: tc.patient_token ?? "",
+        p_content: content,
+      });
+      // Optimistic append
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          teleconsulta_id: tc.id,
+          sender_role: "patient",
+          sender_name: tc.patient_name,
+          content,
+          created_at: new Date().toISOString(),
+        } as unknown as TeleconsultaMessage,
+      ]);
+      return;
+    }
     await supabase.from("teleconsulta_messages" as any).insert({
       teleconsulta_id: tc.id,
       sender_role: role,
-      sender_name: role === "doctor" ? "Médico" : tc.patient_name,
+      sender_name: "Médico",
       content,
     });
   };
+
 
   const formatTime = (s: number) => {
     const h = Math.floor(s / 3600);
