@@ -25,6 +25,55 @@ interface LaudoViewerProps {
   laudoData?: any;
 }
 
+/* ── Visual Vital Signs Grid ── */
+const VITAL_CONFIG: Record<string, { label: string; unit: string }> = {
+  PA:       { label: 'PA',      unit: 'mmHg' },
+  FC:       { label: 'FC',      unit: 'bpm'  },
+  FR:       { label: 'FR',      unit: 'irpm' },
+  SpO2:     { label: 'SpO₂',   unit: '%'    },
+  Temp:     { label: 'Temp',    unit: '°C'   },
+  Glicemia: { label: 'Glicemia',unit: 'mg/dL'},
+  Peso:     { label: 'Peso',    unit: 'kg'   },
+  Altura:   { label: 'Altura',  unit: 'm'    },
+  IMC:      { label: 'IMC',     unit: 'kg/m²'},
+  FC_ritmo: { label: 'Ritmo',   unit: ''     },
+};
+
+const VitalsGrid = ({ vitals, sinaisVitaisTexto }: { vitals?: any; sinaisVitaisTexto?: string }) => {
+  const items: { label: string; value: string; unit: string }[] = [];
+
+  if (vitals) {
+    Object.entries(VITAL_CONFIG).forEach(([key, cfg]) => {
+      const val = vitals[key];
+      if (val != null && String(val).trim() !== '') {
+        items.push({ label: cfg.label, value: String(val), unit: cfg.unit });
+      }
+    });
+  }
+
+  if (items.length === 0 && sinaisVitaisTexto) {
+    return (
+      <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
+        <p className="text-sm font-medium text-foreground leading-relaxed">{sinaisVitaisTexto}</p>
+      </div>
+    );
+  }
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2 mt-1">
+      {items.map((item, i) => (
+        <div key={i} className="flex flex-col items-center justify-center rounded-xl bg-primary/8 border border-primary/20 px-3 py-3 text-center min-w-0">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-primary/70 mb-1 truncate w-full text-center">{item.label}</span>
+          <span className="text-base font-bold text-foreground leading-none">{item.value}</span>
+          {item.unit && <span className="text-[10px] text-muted-foreground mt-0.5">{item.unit}</span>}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 /* ── Reusable Section Block with entrance animation ── */
 const SectionBlock = ({ num, icon: Icon, title, children, variant = 'default', delay = 0 }: {
   num?: string;
