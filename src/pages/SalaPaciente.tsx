@@ -22,22 +22,22 @@ export default function SalaPaciente() {
 
   const load = async () => {
     if (!id) return;
-    const { data, error } = await supabase
-      .from("teleconsultas" as any)
-      .select(PATIENT_SAFE_FIELDS)
-      .eq("id", id)
-      .maybeSingle();
-    if (error || !data) {
-      setError("Sala não encontrada ou expirada.");
-      setLoading(false);
-      return;
-    }
-    const t = data as unknown as Teleconsulta;
-    if (token && t.patient_token && token !== t.patient_token) {
+    if (!token) {
       setError("Link inválido. Solicite um novo ao seu médico.");
       setLoading(false);
       return;
     }
+    const { data, error } = await supabase.rpc("get_teleconsulta_for_patient" as any, {
+      p_id: id,
+      p_token: token,
+    });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (error || !row) {
+      setError("Sala não encontrada, link inválido ou expirado.");
+      setLoading(false);
+      return;
+    }
+    const t = row as unknown as Teleconsulta;
     if (t.status === "concluida" || t.status === "cancelada") {
       setEnded(true);
       setLoading(false);
@@ -51,28 +51,25 @@ export default function SalaPaciente() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, token]);
 
-  // Realtime: quando o médico encerra a consulta, redireciona para tela de fim
+  // Polling: anonymous patient cannot subscribe to private realtime channels,
+  // so we poll the status every 4s to detect when the doctor ends the call.
   useEffect(() => {
-    if (!id) return;
-    const channel = supabase
-      .channel(`sala-paciente-${id}`)
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "teleconsultas", filter: `id=eq.${id}` },
-        (payload: any) => {
-          const newStatus = payload?.new?.status;
-          if (newStatus === "concluida" || newStatus === "cancelada") {
-            setEnded(true);
-          }
-        }
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [id]);
+    if (!id || !token) return;
+    const interval = setInterval(async () => {
+      const { data } = await supabase.rpc(
+        "get_teleconsulta_status_for_patient" as any,
+        { p_id: id, p_token: token }
+      );
+      const status = data as unknown as string | null;
+      if (status === "concluida" || status === "cancelada") {
+        setEnded(true);
+      }
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [id, token]);
+
 
   const handleConsent = async () => {
     if (!tc) return;
