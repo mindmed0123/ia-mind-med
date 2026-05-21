@@ -25,6 +25,55 @@ interface LaudoViewerProps {
   laudoData?: any;
 }
 
+/* ── Visual Vital Signs Grid ── */
+const VITAL_CONFIG: Record<string, { label: string; unit: string }> = {
+  PA:       { label: 'PA',      unit: 'mmHg' },
+  FC:       { label: 'FC',      unit: 'bpm'  },
+  FR:       { label: 'FR',      unit: 'irpm' },
+  SpO2:     { label: 'SpO₂',   unit: '%'    },
+  Temp:     { label: 'Temp',    unit: '°C'   },
+  Glicemia: { label: 'Glicemia',unit: 'mg/dL'},
+  Peso:     { label: 'Peso',    unit: 'kg'   },
+  Altura:   { label: 'Altura',  unit: 'm'    },
+  IMC:      { label: 'IMC',     unit: 'kg/m²'},
+  FC_ritmo: { label: 'Ritmo',   unit: ''     },
+};
+
+const VitalsGrid = ({ vitals, sinaisVitaisTexto }: { vitals?: any; sinaisVitaisTexto?: string }) => {
+  const items: { label: string; value: string; unit: string }[] = [];
+
+  if (vitals) {
+    Object.entries(VITAL_CONFIG).forEach(([key, cfg]) => {
+      const val = vitals[key];
+      if (val != null && String(val).trim() !== '') {
+        items.push({ label: cfg.label, value: String(val), unit: cfg.unit });
+      }
+    });
+  }
+
+  if (items.length === 0 && sinaisVitaisTexto) {
+    return (
+      <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
+        <p className="text-sm font-medium text-foreground leading-relaxed">{sinaisVitaisTexto}</p>
+      </div>
+    );
+  }
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2 mt-1">
+      {items.map((item, i) => (
+        <div key={i} className="flex flex-col items-center justify-center rounded-xl bg-primary/8 border border-primary/20 px-3 py-3 text-center min-w-0">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-primary/70 mb-1 truncate w-full text-center">{item.label}</span>
+          <span className="text-base font-bold text-foreground leading-none">{item.value}</span>
+          {item.unit && <span className="text-[10px] text-muted-foreground mt-0.5">{item.unit}</span>}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 /* ── Reusable Section Block with entrance animation ── */
 const SectionBlock = ({ num, icon: Icon, title, children, variant = 'default', delay = 0 }: {
   num?: string;
@@ -183,7 +232,12 @@ const CleanClinicalLaudo = ({
               {s.antecedentes_familiares && <p className="mb-2 whitespace-pre-wrap"><strong>Antecedentes familiares:</strong> {s.antecedentes_familiares}</p>}
               {s.habitos_de_vida && <p className="mb-2 whitespace-pre-wrap"><strong>Hábitos de vida:</strong> {s.habitos_de_vida}</p>}
               {s.medicacoes_em_uso && <p className="mb-2 whitespace-pre-wrap"><strong>Medicações em uso:</strong> {s.medicacoes_em_uso}</p>}
-              {s.sinais_vitais_texto && <p className="mb-0"><strong>Sinais vitais:</strong> {s.sinais_vitais_texto}</p>}
+              {((p.sinais_vitais && Object.keys(p.sinais_vitais).filter(k => p.sinais_vitais[k]).length > 0) || s.sinais_vitais_texto) && (
+                <div className="mb-0">
+                  <strong className="block mb-2 text-[14.5px]">Sinais vitais:</strong>
+                  <VitalsGrid vitals={p.sinais_vitais} sinaisVitaisTexto={s.sinais_vitais_texto} />
+                </div>
+              )}
             </ClinicalSection>
           )}
 
@@ -580,10 +634,10 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
                     <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{sections.medicacoes_em_uso}</p>
                   </div>
                 )}
-                {sections.sinais_vitais_texto && (
-                  <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
-                    <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Sinais Vitais</h4>
-                    <p className="text-sm font-medium text-foreground leading-relaxed">{sections.sinais_vitais_texto}</p>
+                {((patientData?.sinais_vitais && Object.keys(patientData.sinais_vitais).filter(k => patientData.sinais_vitais[k]).length > 0) || sections.sinais_vitais_texto) && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Sinais Vitais</h4>
+                    <VitalsGrid vitals={patientData?.sinais_vitais} sinaisVitaisTexto={sections.sinais_vitais_texto} />
                   </div>
                 )}
                 {sections.exame_fisico && (
@@ -687,6 +741,33 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
                   ))}
                 </ul>
               )}
+            </SectionBlock>
+          )}
+
+          {/* ── Prescrições Sugeridas ── */}
+          {sections.prescricoes_sugeridas && sections.prescricoes_sugeridas.length > 0 && (
+            <SectionBlock num={nextNum()} icon={Pill} title="Prescrições Sugeridas" variant="highlight" delay={420}>
+              <div className="space-y-3">
+                {(sections.prescricoes_sugeridas as any[]).map((rx: any, idx: number) => (
+                  <div key={idx} className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-foreground">{rx.medicamento}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {[rx.dosagem, rx.posologia].filter(Boolean).join(' — ')}
+                        </p>
+                        {rx.duracao && (
+                          <p className="text-xs text-muted-foreground">Duração: {rx.duracao}</p>
+                        )}
+                        {rx.observacoes && (
+                          <p className="text-xs text-foreground/70 italic mt-1">{rx.observacoes}</p>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-bold uppercase bg-primary/15 text-primary px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5">Rx</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </SectionBlock>
           )}
 
