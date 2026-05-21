@@ -42,6 +42,10 @@ const LAUDO_TOOL = {
           type: "object",
           description: "Dados do paciente extraídos da transcrição/texto da consulta",
           properties: {
+            nome_completo: {
+              type: "string",
+              description: "Nome completo do paciente exatamente como mencionado pelo médico na consulta. Deixe vazio se o nome não foi citado em nenhum momento — não invente."
+            },
             iniciais: { type: "string" },
             idade: { type: "string" },
             sexo: { type: "string" },
@@ -58,7 +62,12 @@ const LAUDO_TOOL = {
               type: "object",
               properties: {
                 PA: { type: "string" }, FC: { type: "string" },
-                FR: { type: "string" }, Temp: { type: "string" }, SpO2: { type: "string" }
+                FR: { type: "string" }, Temp: { type: "string" }, SpO2: { type: "string" },
+                Glicemia: { type: "string", description: "Glicemia capilar ou venosa. Ex: '95 mg/dL' ou '95'. Somente se citado." },
+                Peso: { type: "string", description: "Peso corporal. Ex: '70 kg'. Somente se citado." },
+                Altura: { type: "string", description: "Altura. Ex: '1,70 m'. Somente se citado." },
+                IMC: { type: "string", description: "IMC em kg/m². Calcule se peso e altura foram informados. Ex: '24,2'." },
+                FC_ritmo: { type: "string", description: "Ritmo cardíaco se mencionado. Ex: 'sinusal', 'fibrilação atrial', 'irregular'." }
               }
             }
           }
