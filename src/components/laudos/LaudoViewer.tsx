@@ -232,7 +232,12 @@ const CleanClinicalLaudo = ({
               {s.antecedentes_familiares && <p className="mb-2 whitespace-pre-wrap"><strong>Antecedentes familiares:</strong> {s.antecedentes_familiares}</p>}
               {s.habitos_de_vida && <p className="mb-2 whitespace-pre-wrap"><strong>Hábitos de vida:</strong> {s.habitos_de_vida}</p>}
               {s.medicacoes_em_uso && <p className="mb-2 whitespace-pre-wrap"><strong>Medicações em uso:</strong> {s.medicacoes_em_uso}</p>}
-              {s.sinais_vitais_texto && <p className="mb-0"><strong>Sinais vitais:</strong> {s.sinais_vitais_texto}</p>}
+              {((p.sinais_vitais && Object.keys(p.sinais_vitais).filter(k => p.sinais_vitais[k]).length > 0) || s.sinais_vitais_texto) && (
+                <div className="mb-0">
+                  <strong className="block mb-2 text-[14.5px]">Sinais vitais:</strong>
+                  <VitalsGrid vitals={p.sinais_vitais} sinaisVitaisTexto={s.sinais_vitais_texto} />
+                </div>
+              )}
             </ClinicalSection>
           )}
 
