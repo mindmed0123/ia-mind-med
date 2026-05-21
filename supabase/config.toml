@@ -12,9 +12,9 @@ project_id = "zwebwrbbrcmajkuptpwq"
   [functions.compare-images]
     verify_jwt = true
   [functions.create-checkout-session]
-    verify_jwt = false
+    verify_jwt = true
   [functions.customer-portal]
-    verify_jwt = false
+    verify_jwt = true
   [functions.dav-chat]
     verify_jwt = true
   [functions.export-pdf]
