@@ -1050,6 +1050,7 @@ export type Database = {
           clinical_notes: string | null
           comorbidities: string[] | null
           cpf: string | null
+          cpf_hash: string | null
           created_at: string
           email: string | null
           external_id: string | null
@@ -1075,6 +1076,7 @@ export type Database = {
           clinical_notes?: string | null
           comorbidities?: string[] | null
           cpf?: string | null
+          cpf_hash?: string | null
           created_at?: string
           email?: string | null
           external_id?: string | null
@@ -1100,6 +1102,7 @@ export type Database = {
           clinical_notes?: string | null
           comorbidities?: string[] | null
           cpf?: string | null
+          cpf_hash?: string | null
           created_at?: string
           email?: string | null
           external_id?: string | null
@@ -1451,6 +1454,7 @@ export type Database = {
           patient_consent_at: string | null
           patient_consent_ip: string | null
           patient_cpf: string | null
+          patient_cpf_hash: string | null
           patient_email: string | null
           patient_id: string | null
           patient_name: string
@@ -1485,6 +1489,7 @@ export type Database = {
           patient_consent_at?: string | null
           patient_consent_ip?: string | null
           patient_cpf?: string | null
+          patient_cpf_hash?: string | null
           patient_email?: string | null
           patient_id?: string | null
           patient_name: string
@@ -1519,6 +1524,7 @@ export type Database = {
           patient_consent_at?: string | null
           patient_consent_ip?: string | null
           patient_cpf?: string | null
+          patient_cpf_hash?: string | null
           patient_email?: string | null
           patient_id?: string | null
           patient_name?: string
@@ -1655,6 +1661,7 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      encrypt_cpf: { Args: { cpf_plain: string }; Returns: string }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
