@@ -293,7 +293,7 @@ serve(async (req) => {
     // ===== BUILD PROMPT =====
     // Use template system prompt if available, otherwise use default
     const baseSystemPrompt = templateData?.system_prompt ||
-      `Assistente clínico PT-BR. Gere laudo estruturado. Regras: sem diagnóstico definitivo, 2 hipóteses, red flags, CID-10. Use iniciais/idade/sexo (LGPD). Disclaimer: "IA para apoio; não substitui avaliação clínica." Extraia dados do paciente e prescricoes_sugeridas da transcrição.`;
+      `Assistente clínico PT-BR. Gere laudo estruturado. Regras: sem diagnóstico definitivo, 2 hipóteses, red flags, CID-10. Disclaimer: "IA para apoio; não substitui avaliação clínica." Extraia TODOS os dados da transcrição: nome completo do paciente se mencionado, todos os sinais vitais citados, medicações, diagnóstico, conduta e prescricoes_sugeridas.`;
 
     // Hard requirement: anamnese precisa ser COMPLETA, não um resumo curto.
     const anamneseInstruction = `
@@ -306,7 +306,11 @@ REGRAS CRÍTICAS PARA A ANAMNESE (campo "anamnese") — siga TODAS:
 5. anamnese.sinais_vitais_texto: APENAS valores realmente medidos/citados, no formato "PA 120x80 mmHg, FC 80 bpm, FR 16 irpm, SatO2 98%, Tax 36,5°C". Não invente. Vazio se nenhum vital foi citado.
 6. anamnese.exame_fisico: descreva por aparelhos/segmentos (EG, ectoscopia, ACV, AR, abdome, MMII, neuro). Mínimo 60 palavras quando houver achados.
 7. NUNCA invente dados que não estão na transcrição. Se uma informação não foi falada, deixe o campo vazio.
-8. resumo_clinico continua sendo executivo (80-150 palavras) — NÃO substitui a anamnese detalhada.`;
+8. resumo_clinico continua sendo executivo (80-150 palavras) — NÃO substitui a anamnese detalhada.
+9. NOME DO PACIENTE: se o médico mencionar o nome do paciente em qualquer momento da consulta, capture EXATAMENTE em dados_paciente_extraidos.nome_completo. Não use "Paciente" ou "N/I" como valor — deixe o campo vazio se o nome realmente não foi dito.
+10. SINAIS VITAIS COMPLETOS: capture em dados_paciente_extraidos.sinais_vitais CADA valor citado — PA, FC, FR, SpO2, temperatura, glicemia, peso, altura, IMC, ritmo. Preencha também anamnese.sinais_vitais_texto com todos os vitais em formato "PA 120x80 mmHg, FC 80 bpm, Glicemia 95 mg/dL, Peso 70 kg" etc. Não invente — registre apenas o que foi dito. Se Glicemia, Peso ou Altura foram mencionados, eles OBRIGATORIAMENTE devem aparecer nesses campos.
+11. PRESCRIÇÕES SUGERIDAS: se o médico mencionar qualquer medicamento que pretende receitar (não os que o paciente já usa), capture em prescricoes_sugeridas com medicamento, dosagem, posologia e duração conforme mencionado.
+12. CONDUTA COMPLETA: capture TODA a conduta mencionada — solicitação de exames, encaminhamentos, orientações ao paciente, retorno, prescrições. Nada pode ficar de fora dos campos condutas e prescricoes_sugeridas.`;
 const systemPrompt = baseSystemPrompt + anamneseInstruction;
 
     // Add template sections instruction if available
