@@ -15,19 +15,48 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Método não permitido" }, 405);
 
   try {
-    const { organization_id, owner_id, seats } = await req.json();
-    if (!organization_id || !owner_id || !seats) {
-      return json({ error: "Dados incompletos" }, 400);
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return json({ error: "Unauthorized" }, 401);
     }
 
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) return json({ error: "Stripe não configurado" }, 500);
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
+    );
+    const jwt = authHeader.replace("Bearer ", "");
+    const { data: claims, error: authErr } = await userClient.auth.getClaims(jwt);
+    if (authErr || !claims?.claims?.sub) {
+      return json({ error: "Unauthorized" }, 401);
+    }
+    const callerId = claims.claims.sub as string;
+
+    const { organization_id, seats } = await req.json();
+    if (!organization_id || !seats) {
+      return json({ error: "Dados incompletos" }, 400);
+    }
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { persistSession: false } },
     );
+
+    // Caller must be the org owner
+    const { data: org } = await admin
+      .from("organizations")
+      .select("owner_id")
+      .eq("id", organization_id)
+      .maybeSingle();
+    if (!org || org.owner_id !== callerId) {
+      return json({ error: "Forbidden" }, 403);
+    }
+    const owner_id = org.owner_id;
+
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) return json({ error: "Stripe não configurado" }, 500);
+
 
     // Get owner's stripe subscription
     const { data: sub } = await admin
