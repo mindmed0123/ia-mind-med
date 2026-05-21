@@ -634,10 +634,10 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
                     <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{sections.medicacoes_em_uso}</p>
                   </div>
                 )}
-                {sections.sinais_vitais_texto && (
-                  <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
-                    <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Sinais Vitais</h4>
-                    <p className="text-sm font-medium text-foreground leading-relaxed">{sections.sinais_vitais_texto}</p>
+                {((patientData?.sinais_vitais && Object.keys(patientData.sinais_vitais).filter(k => patientData.sinais_vitais[k]).length > 0) || sections.sinais_vitais_texto) && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Sinais Vitais</h4>
+                    <VitalsGrid vitals={patientData?.sinais_vitais} sinaisVitaisTexto={sections.sinais_vitais_texto} />
                   </div>
                 )}
                 {sections.exame_fisico && (
