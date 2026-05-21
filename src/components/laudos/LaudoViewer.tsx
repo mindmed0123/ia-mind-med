@@ -744,6 +744,33 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
             </SectionBlock>
           )}
 
+          {/* ── Prescrições Sugeridas ── */}
+          {sections.prescricoes_sugeridas && sections.prescricoes_sugeridas.length > 0 && (
+            <SectionBlock num={nextNum()} icon={Pill} title="Prescrições Sugeridas" variant="highlight" delay={420}>
+              <div className="space-y-3">
+                {(sections.prescricoes_sugeridas as any[]).map((rx: any, idx: number) => (
+                  <div key={idx} className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-foreground">{rx.medicamento}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {[rx.dosagem, rx.posologia].filter(Boolean).join(' — ')}
+                        </p>
+                        {rx.duracao && (
+                          <p className="text-xs text-muted-foreground">Duração: {rx.duracao}</p>
+                        )}
+                        {rx.observacoes && (
+                          <p className="text-xs text-foreground/70 italic mt-1">{rx.observacoes}</p>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-bold uppercase bg-primary/15 text-primary px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5">Rx</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </SectionBlock>
+          )}
+
           {/* Embasamento Científico (PRO, RAG PubMed) */}
           {isSectionVisible('scientific_basis') !== false && (
             <SectionBlock icon={BookOpen} title="Embasamento Científico" variant="highlight" delay={450}>
