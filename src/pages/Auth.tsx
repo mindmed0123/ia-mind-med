@@ -235,7 +235,7 @@ const Auth = () => {
                     <Link to="/privacidade" className="text-primary hover:underline">Política de Privacidade</Link>
                   </p>
 
-                  <Button type="submit" className="w-full gradient-primary" disabled={isLoading}>
+                  <Button type="submit" className="w-full gradient-primary" disabled={isLoading} onClick={() => trackSignupIntent('free')}>
                     {isLoading ? "Criando conta..." : "Criar conta grátis"}
                   </Button>
                 </form>

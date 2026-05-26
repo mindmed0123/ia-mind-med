@@ -207,7 +207,7 @@ const TrialConvite = () => {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full gradient-primary" disabled={isLoading}>
+              <Button type="submit" className="w-full gradient-primary" disabled={isLoading} onClick={() => trackSignupIntent('trial_15d')}>
                 {isLoading ? "Criando conta..." : "Começar meu trial de 15 dias"}
               </Button>
             </form>
