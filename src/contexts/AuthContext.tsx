@@ -56,16 +56,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       // Send welcome email (fire-and-forget)
       if (!error && data?.user) {
-        // Meta Pixel: Lead + Purchase event on successful new doctor signup
-        if (typeof (window as any).fbq !== 'undefined') {
-          (window as any).fbq('track', 'Lead');
-          (window as any).fbq('track', 'Purchase', {
-            value: 0,
-            currency: 'BRL',
-            content_name: 'Cadastro Médico - Conta Grátis',
-            content_category: 'signup',
-          });
-        }
+        // Meta Pixel: dispara Lead + Purchase em cadastro de novo médico
+        trackSignupPurchase('free');
         supabase.functions.invoke('send-transactional-email', {
           body: {
             templateName: 'welcome',

@@ -91,16 +91,8 @@ const TrialConvite = () => {
           toast.error("Erro ao criar conta");
         }
       } else {
-        // Meta Pixel: Lead + Purchase event on successful new doctor signup
-        if (typeof (window as any).fbq !== 'undefined') {
-          (window as any).fbq('track', 'Lead');
-          (window as any).fbq('track', 'Purchase', {
-            value: 0,
-            currency: 'BRL',
-            content_name: 'Cadastro Médico - Trial 15 dias',
-            content_category: 'signup_trial',
-          });
-        }
+        // Meta Pixel: dispara Lead + Purchase em cadastro de novo médico (trial 15d)
+        trackSignupPurchase('trial_15d');
         toast.success("Conta criada com sucesso! Redirecionando...");
         navigate("/dashboard");
       }
