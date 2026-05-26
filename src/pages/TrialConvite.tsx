@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+import { trackSignupPurchase } from "@/lib/metaPixel";
 
 const emailSchema = z.string().email({ message: "Email inválido" }).max(255).trim().toLowerCase();
 const passwordSchema = z.string().min(8, { message: "Senha deve ter no mínimo 8 caracteres" }).max(128).regex(/[A-Z]/, { message: "Precisa de letra maiúscula" }).regex(/[a-z]/, { message: "Precisa de letra minúscula" }).regex(/[0-9]/, { message: "Precisa de número" });
@@ -91,16 +92,8 @@ const TrialConvite = () => {
           toast.error("Erro ao criar conta");
         }
       } else {
-        // Meta Pixel: Lead + Purchase event on successful new doctor signup
-        if (typeof (window as any).fbq !== 'undefined') {
-          (window as any).fbq('track', 'Lead');
-          (window as any).fbq('track', 'Purchase', {
-            value: 0,
-            currency: 'BRL',
-            content_name: 'Cadastro Médico - Trial 15 dias',
-            content_category: 'signup_trial',
-          });
-        }
+        // Meta Pixel: dispara Lead + Purchase em cadastro de novo médico (trial 15d)
+        trackSignupPurchase('trial_15d');
         toast.success("Conta criada com sucesso! Redirecionando...");
         navigate("/dashboard");
       }
