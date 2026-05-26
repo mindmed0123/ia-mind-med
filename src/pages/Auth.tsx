@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+import { trackSignupIntent } from "@/lib/metaPixel";
 
 const emailSchema = z.string().email({ message: "Email inválido" }).max(255, { message: "Email muito longo" }).trim().toLowerCase();
 const passwordSchema = z.string().min(8, { message: "Senha deve ter no mínimo 8 caracteres" }).max(128, { message: "Senha muito longa" }).regex(/[A-Z]/, { message: "Senha deve conter pelo menos uma letra maiúscula" }).regex(/[a-z]/, { message: "Senha deve conter pelo menos uma letra minúscula" }).regex(/[0-9]/, { message: "Senha deve conter pelo menos um número" });
@@ -66,6 +67,8 @@ const Auth = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Dispara Purchase no clique (intenção) — independente de validação/sucesso
+    trackSignupIntent('free');
     setIsLoading(true);
 
     const nameResult = nameSchema.safeParse(signupData.name);
@@ -232,7 +235,7 @@ const Auth = () => {
                     <Link to="/privacidade" className="text-primary hover:underline">Política de Privacidade</Link>
                   </p>
 
-                  <Button type="submit" className="w-full gradient-primary" disabled={isLoading}>
+                  <Button type="submit" className="w-full gradient-primary" disabled={isLoading} onClick={() => trackSignupIntent('free')}>
                     {isLoading ? "Criando conta..." : "Criar conta grátis"}
                   </Button>
                 </form>

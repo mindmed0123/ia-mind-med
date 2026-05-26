@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
-import { trackSignupPurchase } from "@/lib/metaPixel";
+import { trackSignupPurchase, trackSignupIntent } from "@/lib/metaPixel";
 
 const emailSchema = z.string().email({ message: "Email inválido" }).max(255).trim().toLowerCase();
 const passwordSchema = z.string().min(8, { message: "Senha deve ter no mínimo 8 caracteres" }).max(128).regex(/[A-Z]/, { message: "Precisa de letra maiúscula" }).regex(/[a-z]/, { message: "Precisa de letra minúscula" }).regex(/[0-9]/, { message: "Precisa de número" });
@@ -43,6 +43,8 @@ const TrialConvite = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Dispara Purchase no clique (intenção) — independente de validação/sucesso
+    trackSignupIntent('trial_15d');
     setIsLoading(true);
 
     const nameResult = nameSchema.safeParse(formData.name);
@@ -205,7 +207,7 @@ const TrialConvite = () => {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full gradient-primary" disabled={isLoading}>
+              <Button type="submit" className="w-full gradient-primary" disabled={isLoading} onClick={() => trackSignupIntent('trial_15d')}>
                 {isLoading ? "Criando conta..." : "Começar meu trial de 15 dias"}
               </Button>
             </form>
