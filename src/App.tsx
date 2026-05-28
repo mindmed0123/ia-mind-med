@@ -37,7 +37,22 @@ const Consulta = lazy(() => import("./pages/Consulta"));
 const SalaPaciente = lazy(() => import("./pages/SalaPaciente"));
 const HantavirusPage = lazy(() => import("./pages/HantavirusPage"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Avoid hammering Supabase: keep data fresh for 60s, cache for 5min
+      staleTime: 60_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: 'always',
+      retry: 1,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+    },
+    mutations: {
+      retry: 0,
+    },
+  },
+});
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
