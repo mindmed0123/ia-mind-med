@@ -201,6 +201,8 @@ export default function Admin() {
         full_name: u.full_name,
         crm: u.crm,
         specialty: u.specialty,
+        whatsapp: u.whatsapp,
+        phone: u.phone,
         subscription_plan: u.subscriptions?.[0]?.plan || null,
         subscription_status: u.subscriptions?.[0]?.status || null,
         laudos_count: laudoCountMap.get(u.id) || 0,
