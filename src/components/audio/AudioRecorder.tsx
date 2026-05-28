@@ -339,20 +339,44 @@ export const AudioRecorder = ({ onRecordingComplete }: AudioRecorderProps) => {
     }
   };
 
+  const uploadLockRef = useRef(false);
   const handleUpload = async () => {
     if (!audioBlob) return;
-    const allowed = await consumeQuota();
-    if (!allowed) return;
+    // Lock síncrono: bloqueia múltiplos cliques rápidos antes do React re-renderizar
+    if (uploadLockRef.current || uploading || autoUploading) {
+      toast({
+        title: "Já estamos processando seu laudo",
+        description: "Aguarde alguns instantes, não é necessário clicar novamente.",
+      });
+      return;
+    }
+    uploadLockRef.current = true;
+    toast({
+      title: "Laudo sendo enviado...",
+      description: "Estamos processando seu áudio. Aguarde — não clique novamente.",
+    });
+    try {
+      const allowed = await consumeQuota();
+      if (!allowed) {
+        uploadLockRef.current = false;
+        return;
+      }
 
-    const file = new File([audioBlob], `recording-${Date.now()}.webm`, { type: "audio/webm" });
-    const result = await uploadAudio(file);
-    if (result) {
-      if (recordingIdRef.current) await clearRecording(recordingIdRef.current);
-      onRecordingComplete?.(result.url, result.path, { blob: audioBlob, durationSec: recordingTime });
-      setAudioBlob(null);
-      setAudioUrl(null);
-      setRecordingTime(0);
-      setReachedLimit(false);
+      const file = new File([audioBlob], `recording-${Date.now()}.webm`, { type: "audio/webm" });
+      const result = await uploadAudio(file);
+      if (result) {
+        if (recordingIdRef.current) await clearRecording(recordingIdRef.current);
+        onRecordingComplete?.(result.url, result.path, { blob: audioBlob, durationSec: recordingTime });
+        setAudioBlob(null);
+        setAudioUrl(null);
+        setRecordingTime(0);
+        setReachedLimit(false);
+      } else {
+        uploadLockRef.current = false;
+      }
+    } catch (err) {
+      uploadLockRef.current = false;
+      throw err;
     }
   };
 
