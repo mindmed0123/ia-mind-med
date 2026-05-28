@@ -2,11 +2,12 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileAudio, X } from "lucide-react";
+import { Upload, FileAudio, X, Loader2 } from "lucide-react";
 import { useAudioUpload } from "@/hooks/useAudioUpload";
 import { AudioConsentDialog } from "@/components/consent/AudioConsentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuota } from "@/hooks/useQuota";
+import { useToast } from "@/hooks/use-toast";
 
 interface AudioUploaderProps {
   onUploadComplete?: (url: string, path: string, meta?: { blob?: Blob; durationSec?: number }) => void;
@@ -18,8 +19,10 @@ export const AudioUploader = ({ onUploadComplete }: AudioUploaderProps) => {
   const [showConsentDialog, setShowConsentDialog] = useState(false);
   const [hasConsent, setHasConsent] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadLockRef = useRef(false);
   const { uploadAudio, uploading, progress } = useAudioUpload();
   const { consumeQuota } = useQuota();
+  const { toast } = useToast();
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
