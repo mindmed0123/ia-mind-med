@@ -518,6 +518,33 @@ export type Database = {
         }
         Relationships: []
       }
+      email_sent_log: {
+        Row: {
+          id: string
+          metadata: Json | null
+          recipient_email: string
+          sent_at: string
+          template_name: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          metadata?: Json | null
+          recipient_email: string
+          sent_at?: string
+          template_name: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          metadata?: Json | null
+          recipient_email?: string
+          sent_at?: string
+          template_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_unsubscribe_tokens: {
         Row: {
           created_at: string
