@@ -706,6 +706,7 @@ const NovoLaudo = () => {
         invokeSingleShot().catch(() => { /* polling surfaces errors */ });
       }
     } catch (error: any) {
+      submitLockRef.current = false;
       setPipelineStage('error');
       setIsSubmitting(false);
       toast({ title: 'Erro ao processar', description: error.message || 'Tente novamente', variant: 'destructive' });
