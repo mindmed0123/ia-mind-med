@@ -199,13 +199,12 @@ const FinancialCalculator = () => {
                   </p>
                 </div>
               </div>
-
               <div className="mt-6 p-4 bg-secondary/10 rounded-lg text-center">
                 <p className="text-sm text-muted-foreground">
                   A MindMed custa{" "}
-                  <strong className="text-foreground">R$ 99,90/mês</strong>. O retorno é imediato — ROI de{" "}
+                  <strong className="text-foreground">R$ 149,00/mês</strong>. O retorno é imediato — ROI de{" "}
                   <strong className="text-success">
-                    {((result.monthlyRevenue / 99.9 - 1) * 100).toFixed(0)}%
+                    {((result.monthlyRevenue / 149 - 1) * 100).toFixed(0)}%
                   </strong>
                   .
                 </p>
