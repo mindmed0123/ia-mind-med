@@ -2,11 +2,12 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileAudio, X } from "lucide-react";
+import { Upload, FileAudio, X, Loader2 } from "lucide-react";
 import { useAudioUpload } from "@/hooks/useAudioUpload";
 import { AudioConsentDialog } from "@/components/consent/AudioConsentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuota } from "@/hooks/useQuota";
+import { useToast } from "@/hooks/use-toast";
 
 interface AudioUploaderProps {
   onUploadComplete?: (url: string, path: string, meta?: { blob?: Blob; durationSec?: number }) => void;
@@ -18,8 +19,10 @@ export const AudioUploader = ({ onUploadComplete }: AudioUploaderProps) => {
   const [showConsentDialog, setShowConsentDialog] = useState(false);
   const [hasConsent, setHasConsent] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadLockRef = useRef(false);
   const { uploadAudio, uploading, progress } = useAudioUpload();
   const { consumeQuota } = useQuota();
+  const { toast } = useToast();
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -49,14 +52,35 @@ export const AudioUploader = ({ onUploadComplete }: AudioUploaderProps) => {
 
   const handleUpload = async () => {
     if (!selectedFile) return;
+    // Lock síncrono: ignora cliques rápidos antes do React desabilitar o botão
+    if (uploadLockRef.current || uploading) {
+      toast({
+        title: "Já estamos processando seu laudo",
+        description: "Aguarde alguns instantes, não é necessário clicar novamente.",
+      });
+      return;
+    }
+    uploadLockRef.current = true;
+    toast({
+      title: "Laudo sendo enviado...",
+      description: "Estamos processando seu áudio. Aguarde — não clique novamente.",
+    });
+    try {
+      const allowed = await consumeQuota();
+      if (!allowed) {
+        uploadLockRef.current = false;
+        return;
+      }
 
-    // Verificar e consumir quota
-    const allowed = await consumeQuota();
-    if (!allowed) return;
-
-    const result = await uploadAudio(selectedFile);
-    if (result) {
-      onUploadComplete?.(result.url, result.path, { blob: selectedFile });
+      const result = await uploadAudio(selectedFile);
+      if (result) {
+        onUploadComplete?.(result.url, result.path, { blob: selectedFile });
+      } else {
+        uploadLockRef.current = false;
+      }
+    } catch (err) {
+      uploadLockRef.current = false;
+      throw err;
     }
   };
 
@@ -154,14 +178,20 @@ export const AudioUploader = ({ onUploadComplete }: AudioUploaderProps) => {
                 </div>
               )}
 
-              {!uploading && (
-                <Button
-                  onClick={handleUpload}
-                  className="w-full gradient-primary"
-                >
-                  Enviar para transcrição
-                </Button>
-              )}
+              <Button
+                onClick={handleUpload}
+                disabled={uploading || uploadLockRef.current}
+                className="w-full gradient-primary"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Enviando, aguarde...
+                  </>
+                ) : (
+                  "Enviar para transcrição"
+                )}
+              </Button>
             </div>
           )}
 

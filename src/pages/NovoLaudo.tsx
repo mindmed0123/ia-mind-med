@@ -586,12 +586,21 @@ const NovoLaudo = () => {
     }
   };
 
+  const submitLockRef = useRef(false);
   const handleAudioUploadComplete = async (
     url: string,
     path: string,
     meta?: { blob?: Blob; durationSec?: number },
   ) => {
-    if (isSubmitting) return;
+    // Lock síncrono — evita race com múltiplos cliques rápidos
+    if (submitLockRef.current || isSubmitting) {
+      toast({
+        title: "Já estamos processando seu laudo",
+        description: "Aguarde, não é necessário enviar novamente.",
+      });
+      return;
+    }
+    submitLockRef.current = true;
     setIsSubmitting(true);
     setPipelineStage('uploading');
 
@@ -697,6 +706,7 @@ const NovoLaudo = () => {
         invokeSingleShot().catch(() => { /* polling surfaces errors */ });
       }
     } catch (error: any) {
+      submitLockRef.current = false;
       setPipelineStage('error');
       setIsSubmitting(false);
       toast({ title: 'Erro ao processar', description: error.message || 'Tente novamente', variant: 'destructive' });
