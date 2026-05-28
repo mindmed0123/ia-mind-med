@@ -178,14 +178,20 @@ export const AudioUploader = ({ onUploadComplete }: AudioUploaderProps) => {
                 </div>
               )}
 
-              {!uploading && (
-                <Button
-                  onClick={handleUpload}
-                  className="w-full gradient-primary"
-                >
-                  Enviar para transcrição
-                </Button>
-              )}
+              <Button
+                onClick={handleUpload}
+                disabled={uploading || uploadLockRef.current}
+                className="w-full gradient-primary"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Enviando, aguarde...
+                  </>
+                ) : (
+                  "Enviar para transcrição"
+                )}
+              </Button>
             </div>
           )}
 
