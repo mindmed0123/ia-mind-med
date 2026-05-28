@@ -99,7 +99,7 @@ export default function Admin() {
         supabase.from("prescriptions").select("id", { count: "exact", head: true }),
         supabase.from("subscriptions").select("status, plan"),
         supabase.from("onboarding_progress").select("completed, first_laudo_id"),
-        supabase.from("profiles").select("id, email, full_name, crm, specialty, lgpd_consent_given, created_at, subscriptions(plan, status)").order("created_at", { ascending: false }).limit(50),
+        supabase.from("profiles").select("id, email, full_name, crm, specialty, whatsapp, phone, lgpd_consent_given, created_at, subscriptions(plan, status)").order("created_at", { ascending: false }).limit(50),
         supabase.from("laudos").select("title, status, created_at, profiles!inner(email)").order("created_at", { ascending: false }).limit(20),
       ]);
 
