@@ -173,8 +173,9 @@ serve(async (req) => {
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
         const subscriptionId = invoice.subscription as string;
+        const customerId = invoice.customer as string;
 
-        logStep("Invoice payment failed", { subscriptionId });
+        logStep("Invoice payment failed", { subscriptionId, customerId });
 
         if (subscriptionId) {
           const { error } = await supabase
@@ -186,6 +187,56 @@ serve(async (req) => {
             logStep("Error updating to INACTIVE", { error });
           } else {
             logStep("Subscription updated to INACTIVE");
+          }
+        }
+
+        // Send payment-failed transactional email with Stripe billing portal URL
+        if (customerId) {
+          try {
+            const { data: subRow } = await supabase
+              .from("subscriptions")
+              .select("user_id")
+              .eq("stripe_customer_id", customerId)
+              .maybeSingle();
+
+            if (subRow?.user_id) {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("email, full_name")
+                .eq("id", subRow.user_id)
+                .maybeSingle();
+
+              if (profile?.email) {
+                let portalUrl = "https://acesso.mindmed.online";
+                try {
+                  const portalSession = await stripe.billingPortal.sessions.create({
+                    customer: customerId,
+                    return_url: "https://acesso.mindmed.online",
+                  });
+                  portalUrl = portalSession.url;
+                } catch (portalErr) {
+                  logStep("Failed to create billing portal session", { error: portalErr });
+                }
+
+                const firstName = (profile.full_name || "").trim().split(/\s+/)[0] || undefined;
+                // Idempotency includes invoice.id + attempt_count so repeated failures
+                // (e.g. Stripe Smart Retries) send up to one email per attempt.
+                const attempt = (invoice as any).attempt_count ?? 1;
+                await supabase.functions.invoke("send-transactional-email", {
+                  body: {
+                    templateName: "payment-failed",
+                    recipientEmail: profile.email,
+                    idempotencyKey: `payment-failed-${invoice.id}-${attempt}`,
+                    templateData: {
+                      firstName,
+                      stripeCustomerPortalUrl: portalUrl,
+                    },
+                  },
+                }).catch((err: any) => logStep("payment-failed email failed", { error: err }));
+              }
+            }
+          } catch (err) {
+            logStep("Error dispatching payment-failed email", { error: err });
           }
         }
         break;
