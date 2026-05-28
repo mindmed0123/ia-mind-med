@@ -21,6 +21,8 @@ interface UserData {
   full_name: string | null;
   crm: string | null;
   specialty: string | null;
+  whatsapp: string | null;
+  phone: string | null;
   subscription_plan: string | null;
   subscription_status: string | null;
   laudos_count: number;
@@ -97,7 +99,7 @@ export default function Admin() {
         supabase.from("prescriptions").select("id", { count: "exact", head: true }),
         supabase.from("subscriptions").select("status, plan"),
         supabase.from("onboarding_progress").select("completed, first_laudo_id"),
-        supabase.from("profiles").select("id, email, full_name, crm, specialty, lgpd_consent_given, created_at, subscriptions(plan, status)").order("created_at", { ascending: false }).limit(50),
+        supabase.from("profiles").select("id, email, full_name, crm, specialty, whatsapp, phone, lgpd_consent_given, created_at, subscriptions(plan, status)").order("created_at", { ascending: false }).limit(50),
         supabase.from("laudos").select("title, status, created_at, profiles!inner(email)").order("created_at", { ascending: false }).limit(20),
       ]);
 
@@ -199,6 +201,8 @@ export default function Admin() {
         full_name: u.full_name,
         crm: u.crm,
         specialty: u.specialty,
+        whatsapp: u.whatsapp,
+        phone: u.phone,
         subscription_plan: u.subscriptions?.[0]?.plan || null,
         subscription_status: u.subscriptions?.[0]?.status || null,
         laudos_count: laudoCountMap.get(u.id) || 0,
