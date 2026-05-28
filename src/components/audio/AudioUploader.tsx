@@ -52,14 +52,35 @@ export const AudioUploader = ({ onUploadComplete }: AudioUploaderProps) => {
 
   const handleUpload = async () => {
     if (!selectedFile) return;
+    // Lock síncrono: ignora cliques rápidos antes do React desabilitar o botão
+    if (uploadLockRef.current || uploading) {
+      toast({
+        title: "Já estamos processando seu laudo",
+        description: "Aguarde alguns instantes, não é necessário clicar novamente.",
+      });
+      return;
+    }
+    uploadLockRef.current = true;
+    toast({
+      title: "Laudo sendo enviado...",
+      description: "Estamos processando seu áudio. Aguarde — não clique novamente.",
+    });
+    try {
+      const allowed = await consumeQuota();
+      if (!allowed) {
+        uploadLockRef.current = false;
+        return;
+      }
 
-    // Verificar e consumir quota
-    const allowed = await consumeQuota();
-    if (!allowed) return;
-
-    const result = await uploadAudio(selectedFile);
-    if (result) {
-      onUploadComplete?.(result.url, result.path, { blob: selectedFile });
+      const result = await uploadAudio(selectedFile);
+      if (result) {
+        onUploadComplete?.(result.url, result.path, { blob: selectedFile });
+      } else {
+        uploadLockRef.current = false;
+      }
+    } catch (err) {
+      uploadLockRef.current = false;
+      throw err;
     }
   };
 
