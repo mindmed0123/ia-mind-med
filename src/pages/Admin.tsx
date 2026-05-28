@@ -21,6 +21,8 @@ interface UserData {
   full_name: string | null;
   crm: string | null;
   specialty: string | null;
+  whatsapp: string | null;
+  phone: string | null;
   subscription_plan: string | null;
   subscription_status: string | null;
   laudos_count: number;
