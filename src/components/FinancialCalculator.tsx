@@ -209,7 +209,6 @@ const FinancialCalculator = () => {
                   .
                 </p>
               </div>
-              </div>
             </div>
           )}
         </div>
