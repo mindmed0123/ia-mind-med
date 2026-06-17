@@ -70,7 +70,7 @@ export const AdminUserTableServer = () => {
       if (error) {
         setRows([]); setTotal(0);
       } else {
-        const payload = (data ?? { rows: [], total: 0 }) as { rows: UserRow[]; total: number };
+        const payload = (data ?? { rows: [], total: 0 }) as unknown as { rows: UserRow[]; total: number };
         setRows(payload.rows ?? []);
         setTotal(payload.total ?? 0);
       }
