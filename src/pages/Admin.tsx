@@ -83,7 +83,7 @@ export default function Admin() {
       const fromIso = range.from.toISOString();
       const toIso = range.to.toISOString();
 
-      const [metricsRes, breakdownRes, signupRes, onboardingRes, lgpdRes, laudosRes] = await Promise.all([
+      const [metricsRes, breakdownRes, signupRes, onboardingRes, lgpdRes, laudosRes, laudosCountRes, prescriptionsCountRes] = await Promise.all([
         canManageBilling
           ? supabase.rpc("admin_business_metrics", { p_from: fromIso, p_to: toIso })
           : Promise.resolve({ data: null, error: null }),
@@ -92,6 +92,8 @@ export default function Admin() {
         supabase.from("onboarding_progress").select("completed, first_laudo_id"),
         supabase.from("profiles").select("lgpd_consent_given", { count: "exact", head: false }),
         supabase.from("laudos").select("title, status, created_at, profiles!inner(email)").order("created_at", { ascending: false }).limit(20),
+        supabase.from("laudos").select("id", { count: "exact", head: true }),
+        supabase.from("prescriptions").select("id", { count: "exact", head: true }),
       ]);
 
       if (metricsRes.data) setMetrics(metricsRes.data as unknown as BusinessMetrics);
