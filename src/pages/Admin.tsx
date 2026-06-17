@@ -183,8 +183,8 @@ export default function Admin() {
 
   const kpiData = {
     totalUsers: metrics?.total_users ?? 0,
-    totalLaudos: 0, // computed inside AdminKPICards via existing props; keep 0 if not used
-    totalPrescriptions: 0,
+    totalLaudos: counts.laudos,
+    totalPrescriptions: counts.prescriptions,
     activeSubscriptions: metrics?.active ?? 0,
     trialingUsers: metrics?.trialing ?? 0,
     churned: metrics?.churned_period ?? 0,
