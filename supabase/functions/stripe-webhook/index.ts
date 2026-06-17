@@ -146,13 +146,20 @@ serve(async (req) => {
             .single();
 
           if (subData?.user_id) {
+            const price = subscription.items?.data?.[0]?.price;
+            const updatePayload: Record<string, unknown> = {
+              status: "ACTIVE",
+              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            };
+            if (price?.unit_amount) {
+              updatePayload.amount_cents = price.unit_amount;
+              updatePayload.currency = price.currency;
+              updatePayload.billing_interval = price.recurring?.interval ?? "month";
+            }
             const { error } = await supabase
               .from("subscriptions")
-              .update({
-                status: "ACTIVE",
-                current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-                current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-              })
+              .update(updatePayload)
               .eq("user_id", subData.user_id);
 
             if (error) {
