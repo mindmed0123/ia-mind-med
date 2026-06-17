@@ -23,7 +23,7 @@ export const AdminKPICards = ({ data }: AdminKPICardsProps) => {
     { title: "Em Trial", value: data.trialingUsers, icon: TrendingUp, color: "text-amber-500" },
     { title: "Churn (cancelados)", value: data.churned, icon: UserX, color: "text-destructive" },
     { title: "Taxa Conversão", value: `${data.conversionRate.toFixed(1)}%`, icon: TrendingUp, color: "text-accent" },
-    { title: "MRR Estimado", value: `R$ ${data.mrr.toLocaleString('pt-BR')}`, icon: CreditCard, color: "text-primary" },
+    { title: "MRR (Stripe)", value: `R$ ${data.mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: CreditCard, color: "text-primary" },
     { title: "Total Laudos", value: data.totalLaudos, icon: FileText, color: "text-primary" },
     { title: "Total Receituários", value: data.totalPrescriptions, icon: Pill, color: "text-primary" },
   ];
