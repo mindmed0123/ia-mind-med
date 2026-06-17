@@ -78,6 +78,24 @@ serve(async (req) => {
           const now = new Date();
           const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
+          // Fetch price details from Stripe so MRR is accurate
+          let amount_cents: number | null = null;
+          let currency: string | null = null;
+          let billing_interval: string | null = null;
+          try {
+            if (subscriptionId) {
+              const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
+              const price = stripeSub.items?.data?.[0]?.price;
+              if (price?.unit_amount) {
+                amount_cents = price.unit_amount;
+                currency = price.currency;
+                billing_interval = price.recurring?.interval ?? "month";
+              }
+            }
+          } catch (e) {
+            logStep("Failed to load price from Stripe", { error: e instanceof Error ? e.message : String(e) });
+          }
+
           const { error } = await supabase
             .from("subscriptions")
             .upsert({
@@ -93,6 +111,7 @@ serve(async (req) => {
               payment_provider: "stripe",
               remaining_starter_credits: plan === "mindmed_starter" ? 10 : null,
               quota_used: 0,
+              ...(amount_cents != null ? { amount_cents, currency, billing_interval } : {}),
             }, {
               onConflict: "user_id",
               ignoreDuplicates: false,
@@ -127,13 +146,20 @@ serve(async (req) => {
             .single();
 
           if (subData?.user_id) {
+            const price = subscription.items?.data?.[0]?.price;
+            const updatePayload: Record<string, unknown> = {
+              status: "ACTIVE",
+              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            };
+            if (price?.unit_amount) {
+              updatePayload.amount_cents = price.unit_amount;
+              updatePayload.currency = price.currency;
+              updatePayload.billing_interval = price.recurring?.interval ?? "month";
+            }
             const { error } = await supabase
               .from("subscriptions")
-              .update({
-                status: "ACTIVE",
-                current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-                current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-              })
+              .update(updatePayload)
               .eq("user_id", subData.user_id);
 
             if (error) {
@@ -289,13 +315,20 @@ serve(async (req) => {
             dbStatus = "INACTIVE";
         }
 
+        const updPayload: Record<string, unknown> = {
+          status: dbStatus,
+          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+        };
+        const subPrice = subscription.items?.data?.[0]?.price;
+        if (subPrice?.unit_amount) {
+          updPayload.amount_cents = subPrice.unit_amount;
+          updPayload.currency = subPrice.currency;
+          updPayload.billing_interval = subPrice.recurring?.interval ?? "month";
+        }
         const { error } = await supabase
           .from("subscriptions")
-          .update({
-            status: dbStatus,
-            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-          })
+          .update(updPayload)
           .eq("stripe_subscription_id", subscriptionId);
 
         if (error) {

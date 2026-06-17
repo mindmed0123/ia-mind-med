@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useAdminRole } from "@/hooks/useAdminRole";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, BarChart3, Users, Mail, Activity, Calendar } from "lucide-react";
+import { Loader2, ArrowLeft, BarChart3, Users, Mail, Activity, Calendar, RefreshCw } from "lucide-react";
 import { AdminFeatureAccess } from "@/components/admin/AdminFeatureAccess";
 import { toast } from "sonner";
 import { AdminKPICards } from "@/components/admin/AdminKPICards";
@@ -12,22 +13,9 @@ import { AdminConversionFunnel } from "@/components/admin/AdminConversionFunnel"
 import { AdminSubscriptionBreakdown } from "@/components/admin/AdminSubscriptionBreakdown";
 import { AdminSignupChart } from "@/components/admin/AdminSignupChart";
 import { AdminEmailMonitor } from "@/components/admin/AdminEmailMonitor";
-import { AdminUserTable } from "@/components/admin/AdminUserTable";
+import { AdminUserTableServer } from "@/components/admin/AdminUserTableServer";
 import { AdminRecentActivity } from "@/components/admin/AdminRecentActivity";
-
-interface UserData {
-  id: string;
-  email: string;
-  full_name: string | null;
-  crm: string | null;
-  specialty: string | null;
-  whatsapp: string | null;
-  phone: string | null;
-  subscription_plan: string | null;
-  subscription_status: string | null;
-  laudos_count: number;
-  created_at: string;
-}
+import { PeriodSelector, type PeriodPreset, computeRange } from "@/components/admin/PeriodSelector";
 
 interface LaudoData {
   title: string;
@@ -36,270 +24,255 @@ interface LaudoData {
   created_at: string;
 }
 
+interface BusinessMetrics {
+  mrr: number;
+  arr: number;
+  active: number;
+  trialing: number;
+  churned_period: number;
+  new_signups: number;
+  total_users: number;
+  trial_conversion: number;
+  avg_ticket: number;
+}
+
+interface FunnelData {
+  totalSignups: number;
+  lgpdConsent: number;
+  onboardingCompleted: number;
+  firstLaudo: number;
+  activePaid: number;
+}
+
 export default function Admin() {
   const navigate = useNavigate();
   const { isAdmin, loading: adminLoading } = useAdmin();
+  const { canManageBilling, loading: roleLoading } = useAdminRole();
+
+  const [period, setPeriod] = useState<PeriodPreset>("30d");
+  const range = useMemo(() => computeRange(period), [period]);
+
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // KPI data
-  const [kpiData, setKpiData] = useState({
-    totalUsers: 0,
-    totalLaudos: 0,
-    totalPrescriptions: 0,
-    activeSubscriptions: 0,
-    trialingUsers: 0,
-    churned: 0,
-    conversionRate: 0,
-    mrr: 0,
+  const [metrics, setMetrics] = useState<BusinessMetrics | null>(null);
+  const [funnelData, setFunnelData] = useState<FunnelData>({
+    totalSignups: 0, lgpdConsent: 0, onboardingCompleted: 0, firstLaudo: 0, activePaid: 0,
   });
-
-  // Funnel data
-  const [funnelData, setFunnelData] = useState({
-    totalSignups: 0,
-    lgpdConsent: 0,
-    onboardingCompleted: 0,
-    firstLaudo: 0,
-    activePaid: 0,
-  });
-
-  // Subscription breakdown
   const [subBreakdown, setSubBreakdown] = useState<{ status: string; plan: string; count: number }[]>([]);
-
-  // Signup chart
   const [signupChart, setSignupChart] = useState<{ day: string; count: number }[]>([]);
-
-  // Users & Activity
-  const [users, setUsers] = useState<UserData[]>([]);
   const [recentLaudos, setRecentLaudos] = useState<LaudoData[]>([]);
+  const [counts, setCounts] = useState<{ laudos: number; prescriptions: number }>({ laudos: 0, prescriptions: 0 });
+  const [backfilling, setBackfilling] = useState(false);
 
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
       toast.error("Acesso negado");
       navigate("/dashboard");
-      return;
     }
-    if (isAdmin) loadAllData();
   }, [isAdmin, adminLoading, navigate]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    loadAllData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, period, refreshKey]);
 
   const loadAllData = async () => {
     try {
       setLoading(true);
+      const fromIso = range.from.toISOString();
+      const toIso = range.to.toISOString();
 
-      const [
-        usersRes,
-        laudosRes,
-        prescriptionsRes,
-        subsRes,
-        onboardingRes,
-        profilesRes,
-        laudosDetailRes,
-      ] = await Promise.all([
-        supabase.from("profiles").select("id", { count: "exact", head: true }),
+      const [metricsRes, breakdownRes, signupRes, onboardingRes, lgpdRes, laudosRes, laudosCountRes, prescriptionsCountRes] = await Promise.all([
+        canManageBilling
+          ? supabase.rpc("admin_business_metrics", { p_from: fromIso, p_to: toIso })
+          : Promise.resolve({ data: null, error: null }),
+        supabase.rpc("admin_subscription_breakdown"),
+        supabase.rpc("admin_signup_series", { p_from: fromIso, p_to: toIso, p_granularity: "day" }),
+        supabase.from("onboarding_progress").select("completed, first_laudo_id"),
+        supabase.from("profiles").select("lgpd_consent_given", { count: "exact", head: false }),
+        supabase.from("laudos").select("title, status, created_at, profiles!inner(email)").order("created_at", { ascending: false }).limit(20),
         supabase.from("laudos").select("id", { count: "exact", head: true }),
         supabase.from("prescriptions").select("id", { count: "exact", head: true }),
-        supabase.from("subscriptions").select("status, plan"),
-        supabase.from("onboarding_progress").select("completed, first_laudo_id"),
-        supabase.from("profiles").select("id, email, full_name, crm, specialty, whatsapp, phone, lgpd_consent_given, created_at, subscriptions(plan, status)").order("created_at", { ascending: false }).limit(50),
-        supabase.from("laudos").select("title, status, created_at, profiles!inner(email)").order("created_at", { ascending: false }).limit(20),
       ]);
 
-      const totalUsers = usersRes.count || 0;
-      const totalLaudos = laudosRes.count || 0;
-      const totalPrescriptions = prescriptionsRes.count || 0;
-      const subs = (subsRes.data || []) as { status: string; plan: string }[];
+      if (metricsRes.data) setMetrics(metricsRes.data as unknown as BusinessMetrics);
 
-      // Subscription breakdown
-      const breakdownMap = new Map<string, number>();
-      let activeCount = 0;
-      let trialingCount = 0;
-      let canceledCount = 0;
-      let activePaidCount = 0;
-
-      for (const s of subs) {
-        const key = `${s.status}|${s.plan}`;
-        breakdownMap.set(key, (breakdownMap.get(key) || 0) + 1);
-        if (s.status === "ACTIVE") { activeCount++; activePaidCount++; }
-        if (s.status === "TRIALING") trialingCount++;
-        if (s.status === "CANCELED" || s.status === "EXPIRED") canceledCount++;
+      if (breakdownRes.data) {
+        setSubBreakdown((breakdownRes.data as unknown as { status: string; plan: string; count: number }[]) ?? []);
       }
 
-      const breakdown = Array.from(breakdownMap.entries()).map(([key, count]) => {
-        const [status, plan] = key.split("|");
-        return { status, plan, count };
-      });
-
-      // MRR estimate
-      const mrrStarter = subs.filter(s => s.status === "ACTIVE" && s.plan === "STARTER").length * 99.9;
-      const mrrPro = subs.filter(s => s.status === "ACTIVE" && s.plan === "PRO").length * 299;
-      const mrr = mrrStarter + mrrPro;
-
-      // Conversion rate
-      const conversionRate = totalUsers > 0 ? (activePaidCount / totalUsers) * 100 : 0;
-
-      setKpiData({
-        totalUsers,
-        totalLaudos,
-        totalPrescriptions,
-        activeSubscriptions: activeCount,
-        trialingUsers: trialingCount,
-        churned: canceledCount,
-        conversionRate,
-        mrr,
-      });
-
-      setSubBreakdown(breakdown);
+      if (signupRes.data) {
+        const series = (signupRes.data as unknown as { bucket: string; count: number }[]) ?? [];
+        const map = new Map(series.map(s => [s.bucket, s.count]));
+        const chart: { day: string; count: number }[] = [];
+        const cursor = new Date(range.from);
+        const end = new Date(range.to);
+        // cap iterations to keep chart sane
+        const maxDays = 120;
+        let i = 0;
+        while (cursor <= end && i < maxDays) {
+          const key = cursor.toISOString().split("T")[0];
+          chart.push({ day: key, count: map.get(key) ?? 0 });
+          cursor.setDate(cursor.getDate() + 1);
+          i++;
+        }
+        setSignupChart(chart);
+      }
 
       // Funnel
-      const onboardingData = (onboardingRes.data || []) as { completed: boolean; first_laudo_id: string | null }[];
-      const profilesData = (profilesRes.data || []) as any[];
-      const lgpdConsentCount = profilesData.filter((p: any) => p.lgpd_consent_given).length;
+      const onboardingData = (onboardingRes.data ?? []) as { completed: boolean; first_laudo_id: string | null }[];
+      const lgpdData = (lgpdRes.data ?? []) as { lgpd_consent_given: boolean | null }[];
+      const lgpdCount = lgpdData.filter(p => p.lgpd_consent_given).length;
       const onboardingCompleted = onboardingData.filter(o => o.completed).length;
-      const firstLaudoCount = onboardingData.filter(o => o.first_laudo_id).length;
+      const firstLaudo = onboardingData.filter(o => o.first_laudo_id).length;
+
+      const freshMetrics = (metricsRes.data ?? null) as unknown as BusinessMetrics | null;
+      const totalUsers = freshMetrics?.total_users ?? lgpdData.length;
+      const activePaid = freshMetrics?.active ?? 0;
 
       setFunnelData({
         totalSignups: totalUsers,
-        lgpdConsent: lgpdConsentCount,
+        lgpdConsent: lgpdCount,
         onboardingCompleted,
-        firstLaudo: firstLaudoCount,
-        activePaid: activePaidCount,
+        firstLaudo,
+        activePaid,
       });
 
-      // Signup chart (from profiles created_at)
-      const dayMap = new Map<string, number>();
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      for (const p of profilesData) {
-        const day = new Date(p.created_at).toISOString().split("T")[0];
-        if (new Date(p.created_at) >= thirtyDaysAgo) {
-          dayMap.set(day, (dayMap.get(day) || 0) + 1);
-        }
-      }
-
-      // Fill missing days
-      const chartData: { day: string; count: number }[] = [];
-      for (let d = new Date(thirtyDaysAgo); d <= new Date(); d.setDate(d.getDate() + 1)) {
-        const key = d.toISOString().split("T")[0];
-        chartData.push({ day: key, count: dayMap.get(key) || 0 });
-      }
-      setSignupChart(chartData);
-
-      // Users table with laudo counts
-      const laudoCountMap = new Map<string, number>();
-      // Get laudo counts per user
-      const { data: laudosByUser } = await supabase
-        .from("laudos")
-        .select("user_id");
-
-      for (const l of (laudosByUser || [])) {
-        laudoCountMap.set(l.user_id, (laudoCountMap.get(l.user_id) || 0) + 1);
-      }
-
-      const formattedUsers: UserData[] = profilesData.map((u: any) => ({
-        id: u.id,
-        email: u.email,
-        full_name: u.full_name,
-        crm: u.crm,
-        specialty: u.specialty,
-        whatsapp: u.whatsapp,
-        phone: u.phone,
-        subscription_plan: u.subscriptions?.[0]?.plan || null,
-        subscription_status: u.subscriptions?.[0]?.status || null,
-        laudos_count: laudoCountMap.get(u.id) || 0,
-        created_at: u.created_at,
-      }));
-
-      setUsers(formattedUsers);
-
-      // Recent laudos
-      const formattedLaudos: LaudoData[] = ((laudosDetailRes.data || []) as any[]).map((l: any) => ({
+      const formattedLaudos: LaudoData[] = ((laudosRes.data ?? []) as any[]).map((l: any) => ({
         title: l.title,
         user_email: l.profiles?.email || "—",
         status: l.status || "draft",
         created_at: l.created_at,
       }));
-
       setRecentLaudos(formattedLaudos);
-
-    } catch (error) {
+      setCounts({
+        laudos: laudosCountRes.count ?? 0,
+        prescriptions: prescriptionsCountRes.count ?? 0,
+      });
+    } catch {
       toast.error("Erro ao carregar dados");
     } finally {
       setLoading(false);
     }
   };
 
-  if (adminLoading || loading) {
+  const runBackfill = async () => {
+    setBackfilling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-backfill-subscription-amounts");
+      if (error) throw error;
+      const r = data as { updated: number; skipped: number; failed: number; total: number };
+      toast.success(`Backfill: ${r.updated} atualizadas, ${r.skipped} sem preço, ${r.failed} falharam (de ${r.total})`);
+      setRefreshKey(k => k + 1);
+    } catch (e) {
+      toast.error(`Backfill falhou: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBackfilling(false);
+    }
+  };
+
+  if (adminLoading || roleLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
-
   if (!isAdmin) return null;
+
+  const kpiData = {
+    totalUsers: metrics?.total_users ?? 0,
+    totalLaudos: counts.laudos,
+    totalPrescriptions: counts.prescriptions,
+    activeSubscriptions: metrics?.active ?? 0,
+    trialingUsers: metrics?.trialing ?? 0,
+    churned: metrics?.churned_period ?? 0,
+    conversionRate: metrics?.trial_conversion ?? 0,
+    mrr: metrics?.mrr ?? 0,
+  };
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <header className="bg-background/80 backdrop-blur-lg border-b border-border sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
+        <div className="container mx-auto px-4 py-4 flex items-center gap-4 flex-wrap">
           <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div>
+          <div className="flex-1 min-w-[200px]">
             <h1 className="text-xl font-bold">Dashboard Administrativa</h1>
-            <p className="text-sm text-muted-foreground">Visão completa da MindMed</p>
+            <p className="text-sm text-muted-foreground">
+              Período: {range.from.toLocaleDateString("pt-BR")} – {range.to.toLocaleDateString("pt-BR")}
+            </p>
           </div>
+          <PeriodSelector value={period} onChange={setPeriod} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setRefreshKey(k => k + 1)}
+            disabled={loading}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
+          {canManageBilling && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={runBackfill}
+              disabled={backfilling}
+              title="Sincroniza os valores cobrados de cada assinatura do Stripe"
+            >
+              {backfilling ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Sync MRR (Stripe)
+            </Button>
+          )}
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid w-full grid-cols-5 mb-8">
-            <TabsTrigger value="overview">
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Visão Geral
-            </TabsTrigger>
-            <TabsTrigger value="users">
-              <Users className="w-4 h-4 mr-2" />
-              Usuários
-            </TabsTrigger>
-            <TabsTrigger value="emails">
-              <Mail className="w-4 h-4 mr-2" />
-              Emails
-            </TabsTrigger>
-            <TabsTrigger value="activity">
-              <Activity className="w-4 h-4 mr-2" />
-              Atividade
-            </TabsTrigger>
-            <TabsTrigger value="modules">
-              <Calendar className="w-4 h-4 mr-2" />
-              Módulos
-            </TabsTrigger>
+            <TabsTrigger value="overview"><BarChart3 className="w-4 h-4 mr-2" />Visão Geral</TabsTrigger>
+            <TabsTrigger value="users"><Users className="w-4 h-4 mr-2" />Usuários</TabsTrigger>
+            <TabsTrigger value="emails"><Mail className="w-4 h-4 mr-2" />Emails</TabsTrigger>
+            <TabsTrigger value="activity"><Activity className="w-4 h-4 mr-2" />Atividade</TabsTrigger>
+            <TabsTrigger value="modules"><Calendar className="w-4 h-4 mr-2" />Módulos</TabsTrigger>
           </TabsList>
 
-          {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
-            <AdminKPICards data={kpiData} />
-
-            <div className="grid lg:grid-cols-2 gap-6">
-              <AdminConversionFunnel data={funnelData} />
-              <AdminSubscriptionBreakdown data={subBreakdown} />
-            </div>
-
-            <AdminSignupChart data={signupChart} />
+            {loading && !metrics ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : (
+              <>
+                <AdminKPICards data={kpiData} />
+                {canManageBilling && metrics && (
+                  <div className="text-xs text-muted-foreground">
+                    ARR: R$ {metrics.arr.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} ·
+                    Ticket médio: R$ {metrics.avg_ticket.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} ·
+                    Novos cadastros no período: {metrics.new_signups}
+                  </div>
+                )}
+                <div className="grid lg:grid-cols-2 gap-6">
+                  <AdminConversionFunnel data={funnelData} />
+                  <AdminSubscriptionBreakdown data={subBreakdown} />
+                </div>
+                <AdminSignupChart data={signupChart} />
+              </>
+            )}
           </TabsContent>
 
-          {/* Users Tab */}
           <TabsContent value="users">
-            <AdminUserTable users={users} />
+            <AdminUserTableServer />
           </TabsContent>
 
-          {/* Emails Tab */}
           <TabsContent value="emails">
             <AdminEmailMonitor />
           </TabsContent>
 
-          {/* Activity Tab */}
           <TabsContent value="activity">
             <AdminRecentActivity laudos={recentLaudos} />
           </TabsContent>

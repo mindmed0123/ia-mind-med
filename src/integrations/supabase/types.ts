@@ -1304,7 +1304,10 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          amount_cents: number | null
+          billing_interval: string | null
           created_at: string
+          currency: string | null
           current_period_end: string
           current_period_start: string
           external_payment_id: string | null
@@ -1322,7 +1325,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          amount_cents?: number | null
+          billing_interval?: string | null
           created_at?: string
+          currency?: string | null
           current_period_end?: string
           current_period_start?: string
           external_payment_id?: string | null
@@ -1340,7 +1346,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          amount_cents?: number | null
+          billing_interval?: string | null
           created_at?: string
+          currency?: string | null
           current_period_end?: string
           current_period_start?: string
           external_payment_id?: string | null
@@ -1680,6 +1689,31 @@ export type Database = {
     }
     Functions: {
       accept_organization_invite: { Args: { _token: string }; Returns: Json }
+      admin_business_metrics: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
+      admin_calc_mrr: { Args: never; Returns: number }
+      admin_list_users: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_plan?: string
+          p_search?: string
+          p_sort?: string
+          p_status?: string
+        }
+        Returns: Json
+      }
+      admin_signup_series: {
+        Args: { p_from: string; p_granularity?: string; p_to: string }
+        Returns: Json
+      }
+      admin_subscription_breakdown: { Args: never; Returns: Json }
+      admin_trial_conversion: {
+        Args: { p_from: string; p_to: string }
+        Returns: number
+      }
       check_and_consume_quota:
         | { Args: never; Returns: Json }
         | { Args: { p_user_id: string }; Returns: Json }
@@ -1737,6 +1771,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin_user: { Args: { _user_id: string }; Returns: boolean }
+      is_billing_admin: { Args: { _user_id: string }; Returns: boolean }
       is_invited_doctor: { Args: { _user_id: string }; Returns: boolean }
       is_org_member: {
         Args: { _org_id: string; _user_id: string }
@@ -1795,7 +1831,13 @@ export type Database = {
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role:
+        | "admin"
+        | "user"
+        | "super_admin"
+        | "finance"
+        | "support"
+        | "sales"
       appointment_source: "internal" | "online"
       appointment_status:
         | "scheduled"
@@ -1948,7 +1990,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "super_admin", "finance", "support", "sales"],
       appointment_source: ["internal", "online"],
       appointment_status: [
         "scheduled",
