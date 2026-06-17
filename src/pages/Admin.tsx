@@ -146,6 +146,10 @@ export default function Admin() {
         created_at: l.created_at,
       }));
       setRecentLaudos(formattedLaudos);
+      setCounts({
+        laudos: laudosCountRes.count ?? 0,
+        prescriptions: prescriptionsCountRes.count ?? 0,
+      });
     } catch {
       toast.error("Erro ao carregar dados");
     } finally {
