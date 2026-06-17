@@ -128,8 +128,9 @@ export default function Admin() {
       const onboardingCompleted = onboardingData.filter(o => o.completed).length;
       const firstLaudo = onboardingData.filter(o => o.first_laudo_id).length;
 
-      const totalUsers = metrics?.total_users ?? lgpdData.length;
-      const activePaid = metrics?.active ?? 0;
+      const freshMetrics = (metricsRes.data ?? null) as unknown as BusinessMetrics | null;
+      const totalUsers = freshMetrics?.total_users ?? lgpdData.length;
+      const activePaid = freshMetrics?.active ?? 0;
 
       setFunnelData({
         totalSignups: totalUsers,
