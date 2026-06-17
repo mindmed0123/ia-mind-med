@@ -62,6 +62,7 @@ export default function Admin() {
   const [subBreakdown, setSubBreakdown] = useState<{ status: string; plan: string; count: number }[]>([]);
   const [signupChart, setSignupChart] = useState<{ day: string; count: number }[]>([]);
   const [recentLaudos, setRecentLaudos] = useState<LaudoData[]>([]);
+  const [counts, setCounts] = useState<{ laudos: number; prescriptions: number }>({ laudos: 0, prescriptions: 0 });
   const [backfilling, setBackfilling] = useState(false);
 
   useEffect(() => {
