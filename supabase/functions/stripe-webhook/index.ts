@@ -315,13 +315,20 @@ serve(async (req) => {
             dbStatus = "INACTIVE";
         }
 
+        const updPayload: Record<string, unknown> = {
+          status: dbStatus,
+          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+        };
+        const subPrice = subscription.items?.data?.[0]?.price;
+        if (subPrice?.unit_amount) {
+          updPayload.amount_cents = subPrice.unit_amount;
+          updPayload.currency = subPrice.currency;
+          updPayload.billing_interval = subPrice.recurring?.interval ?? "month";
+        }
         const { error } = await supabase
           .from("subscriptions")
-          .update({
-            status: dbStatus,
-            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-          })
+          .update(updPayload)
           .eq("stripe_subscription_id", subscriptionId);
 
         if (error) {
