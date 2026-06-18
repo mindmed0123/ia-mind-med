@@ -1694,6 +1694,23 @@ export type Database = {
         Returns: Json
       }
       admin_calc_mrr: { Args: never; Returns: number }
+      admin_change_plan: {
+        Args: { p_actor: string; p_plan: string; p_user_id: string }
+        Returns: Json
+      }
+      admin_extend_trial: {
+        Args: { p_actor: string; p_days: number; p_user_id: string }
+        Returns: Json
+      }
+      admin_grant_courtesy: {
+        Args: {
+          p_actor: string
+          p_days: number
+          p_plan: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       admin_list_users: {
         Args: {
           p_limit?: number
@@ -1702,6 +1719,26 @@ export type Database = {
           p_search?: string
           p_sort?: string
           p_status?: string
+        }
+        Returns: Json
+      }
+      admin_log_action: {
+        Args: {
+          p_action: string
+          p_diff?: Json
+          p_entity: string
+          p_entity_id: string
+          p_ip?: string
+          p_user_agent?: string
+        }
+        Returns: string
+      }
+      admin_set_subscription_status: {
+        Args: {
+          p_actor: string
+          p_reason: string
+          p_status: string
+          p_user_id: string
         }
         Returns: Json
       }
@@ -1714,6 +1751,7 @@ export type Database = {
         Args: { p_from: string; p_to: string }
         Returns: number
       }
+      admin_user_360: { Args: { p_user_id: string }; Returns: Json }
       check_and_consume_quota:
         | { Args: never; Returns: Json }
         | { Args: { p_user_id: string }; Returns: Json }
