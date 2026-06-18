@@ -1689,6 +1689,24 @@ export type Database = {
     }
     Functions: {
       accept_organization_invite: { Args: { _token: string }; Returns: Json }
+      admin_audit_actions: {
+        Args: never
+        Returns: {
+          action: string
+          entity: string
+        }[]
+      }
+      admin_audit_feed: {
+        Args: {
+          p_action?: string
+          p_entity?: string
+          p_from?: string
+          p_limit?: number
+          p_offset?: number
+          p_to?: string
+        }
+        Returns: Json
+      }
       admin_business_metrics: {
         Args: { p_from: string; p_to: string }
         Returns: Json
@@ -1700,6 +1718,10 @@ export type Database = {
       }
       admin_extend_trial: {
         Args: { p_actor: string; p_days: number; p_user_id: string }
+        Returns: Json
+      }
+      admin_financial_summary: {
+        Args: { p_from: string; p_to: string }
         Returns: Json
       }
       admin_grant_courtesy: {
@@ -1732,6 +1754,15 @@ export type Database = {
           p_user_agent?: string
         }
         Returns: string
+      }
+      admin_revenue_series: {
+        Args: { p_from: string; p_granularity?: string; p_to: string }
+        Returns: {
+          active_subs: number
+          bucket: string
+          mrr: number
+          new_subs: number
+        }[]
       }
       admin_set_subscription_status: {
         Args: {

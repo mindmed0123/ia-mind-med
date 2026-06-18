@@ -5,7 +5,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, BarChart3, Users, Mail, Activity, Calendar, RefreshCw } from "lucide-react";
+import { Loader2, ArrowLeft, BarChart3, Users, Mail, Activity, Calendar, RefreshCw, DollarSign, ShieldCheck } from "lucide-react";
 import { AdminFeatureAccess } from "@/components/admin/AdminFeatureAccess";
 import { toast } from "sonner";
 import { AdminKPICards } from "@/components/admin/AdminKPICards";
@@ -15,6 +15,8 @@ import { AdminSignupChart } from "@/components/admin/AdminSignupChart";
 import { AdminEmailMonitor } from "@/components/admin/AdminEmailMonitor";
 import { AdminUserTableServer } from "@/components/admin/AdminUserTableServer";
 import { AdminRecentActivity } from "@/components/admin/AdminRecentActivity";
+import { AdminRevenueDashboard } from "@/components/admin/AdminRevenueDashboard";
+import { AdminAuditFeed } from "@/components/admin/AdminAuditFeed";
 import { PeriodSelector, type PeriodPreset, computeRange } from "@/components/admin/PeriodSelector";
 
 interface LaudoData {
@@ -233,10 +235,12 @@ export default function Admin() {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-8">
+          <TabsList className="grid w-full grid-cols-7 mb-8">
             <TabsTrigger value="overview"><BarChart3 className="w-4 h-4 mr-2" />Visão Geral</TabsTrigger>
+            {canManageBilling && <TabsTrigger value="finance"><DollarSign className="w-4 h-4 mr-2" />Financeiro</TabsTrigger>}
             <TabsTrigger value="users"><Users className="w-4 h-4 mr-2" />Usuários</TabsTrigger>
             <TabsTrigger value="emails"><Mail className="w-4 h-4 mr-2" />Emails</TabsTrigger>
+            <TabsTrigger value="audit"><ShieldCheck className="w-4 h-4 mr-2" />Auditoria</TabsTrigger>
             <TabsTrigger value="activity"><Activity className="w-4 h-4 mr-2" />Atividade</TabsTrigger>
             <TabsTrigger value="modules"><Calendar className="w-4 h-4 mr-2" />Módulos</TabsTrigger>
           </TabsList>
@@ -265,6 +269,12 @@ export default function Admin() {
             )}
           </TabsContent>
 
+          {canManageBilling && (
+            <TabsContent value="finance">
+              <AdminRevenueDashboard from={range.from} to={range.to} />
+            </TabsContent>
+          )}
+
           <TabsContent value="users">
             <AdminUserTableServer />
           </TabsContent>
@@ -272,6 +282,11 @@ export default function Admin() {
           <TabsContent value="emails">
             <AdminEmailMonitor />
           </TabsContent>
+
+          <TabsContent value="audit">
+            <AdminAuditFeed from={range.from} to={range.to} />
+          </TabsContent>
+
 
           <TabsContent value="activity">
             <AdminRecentActivity laudos={recentLaudos} />
