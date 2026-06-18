@@ -207,6 +207,11 @@ export const AdminUserTableServer = () => {
           </div>
         </div>
       </CardContent>
+      <AdminUserDetailDrawer
+        userId={selectedUserId}
+        onClose={() => setSelectedUserId(null)}
+        onChanged={() => setReloadKey(k => k + 1)}
+      />
     </Card>
   );
 };
