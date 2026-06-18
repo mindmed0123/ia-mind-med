@@ -159,10 +159,10 @@ export const AdminUserTableServer = () => {
             {rows.map(user => {
               const contact = user.whatsapp || user.phone;
               return (
-                <TableRow key={user.id}>
+                <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedUserId(user.id)}>
                   <TableCell className="font-medium">{user.full_name || "-"}</TableCell>
                   <TableCell className="text-sm">{user.email}</TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     {contact ? (
                       <a href={waLink(contact)} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 text-sm text-green-600 hover:underline">
