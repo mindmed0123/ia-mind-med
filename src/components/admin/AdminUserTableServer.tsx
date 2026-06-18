@@ -80,7 +80,7 @@ export const AdminUserTableServer = () => {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [debouncedSearch, status, plan, sort, page]);
+  }, [debouncedSearch, status, plan, sort, page, reloadKey]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
