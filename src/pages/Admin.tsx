@@ -269,6 +269,12 @@ export default function Admin() {
             )}
           </TabsContent>
 
+          {canManageBilling && (
+            <TabsContent value="finance">
+              <AdminRevenueDashboard from={range.from} to={range.to} />
+            </TabsContent>
+          )}
+
           <TabsContent value="users">
             <AdminUserTableServer />
           </TabsContent>
@@ -276,6 +282,11 @@ export default function Admin() {
           <TabsContent value="emails">
             <AdminEmailMonitor />
           </TabsContent>
+
+          <TabsContent value="audit">
+            <AdminAuditFeed from={range.from} to={range.to} />
+          </TabsContent>
+
 
           <TabsContent value="activity">
             <AdminRecentActivity laudos={recentLaudos} />
