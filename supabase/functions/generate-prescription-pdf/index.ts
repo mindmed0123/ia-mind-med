@@ -333,6 +333,14 @@ function generatePrescriptionHTML(prescription: any, profile: any): string {
   .signature-section p { margin: 3px 0; color: #1e40af; font-weight: 600; }
   .stamp { text-align: center; margin-top: 16px; }
   .stamp img { max-width: 140px; max-height: 140px; border-radius: 6px; }
+  .qr-block {
+    margin-top: 20px; display: flex; align-items: center; justify-content: center;
+    gap: 12px; padding: 10px; border: 1px dashed #cbd5e1; border-radius: 6px;
+    page-break-inside: avoid;
+  }
+  .qr-img img { width: 90px; height: 90px; }
+  .qr-text { font-size: 8.5pt; color: #475569; text-align: left; line-height: 1.4; }
+  .qr-id { font-family: 'Courier New', monospace; font-size: 8pt; color: #1e293b; }
   .footer-mini {
     margin-top: 20px; text-align: center; font-size: 8pt; color: #94a3b8;
     padding-top: 10px; border-top: 1px solid #e2e8f0;
