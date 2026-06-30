@@ -179,6 +179,14 @@ export function MedicationSearch({
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
+                  {med.recomendado_cid && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] gap-1"
+                    >
+                      Recomendado p/ CID
+                    </Badge>
+                  )}
                   {med.is_parceiro && (
                     <Badge
                       variant="secondary"
