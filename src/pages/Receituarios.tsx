@@ -670,14 +670,29 @@ export default function Receituarios() {
                           {new Date(prescription.created_at).toLocaleString('pt-BR')}
                         </p>
                         <div className="space-y-2">
-                          {prescription.items.map((item, idx) => (
-                            <div key={idx} className="text-sm">
-                              <span className="font-medium">{item.medicamento}</span>
-                              {' - '}
-                              {item.dosagem} - {item.posologia}
-                              {item.duracao && ` (${item.duracao})`}
-                            </div>
-                          ))}
+                          {prescription.items.map((item, idx) => {
+                            const tipo = inferTipoReceita(item);
+                            return (
+                              <div key={idx} className="text-sm flex items-center gap-2 flex-wrap">
+                                <span className="font-medium">{item.medicamento}</span>
+                                <span className="text-muted-foreground">
+                                  {item.dosagem} · {item.posologia}
+                                  {item.duracao && ` (${item.duracao})`}
+                                </span>
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] ${TIPO_RECEITA_COLOR[tipo]}`}
+                                >
+                                  {TIPO_RECEITA_SHORT[tipo]}
+                                </Badge>
+                                {item.parceiro && (
+                                  <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-primary/20">
+                                    {item.parceiro}
+                                  </Badge>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
 
