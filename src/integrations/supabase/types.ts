@@ -1239,6 +1239,7 @@ export type Database = {
       prescriptions: {
         Row: {
           created_at: string
+          group_id: string | null
           id: string
           items: Json
           notes: string | null
@@ -1247,11 +1248,13 @@ export type Database = {
           patient_name: string
           patient_sex: string | null
           pdf_url: string | null
+          tipo_receita: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          group_id?: string | null
           id?: string
           items?: Json
           notes?: string | null
@@ -1260,11 +1263,13 @@ export type Database = {
           patient_name: string
           patient_sex?: string | null
           pdf_url?: string | null
+          tipo_receita?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          group_id?: string | null
           id?: string
           items?: Json
           notes?: string | null
@@ -1273,6 +1278,7 @@ export type Database = {
           patient_name?: string
           patient_sex?: string | null
           pdf_url?: string | null
+          tipo_receita?: string | null
           updated_at?: string
           user_id?: string
         }
