@@ -208,9 +208,20 @@ export default function Receituarios() {
           dosagem: sanitizeText(item.dosagem),
           posologia: sanitizeText(item.posologia),
           duracao: item.duracao ? sanitizeText(item.duracao) : '',
-          observacoes: item.observacoes ? sanitizeText(item.observacoes) : ''
+          observacoes: item.observacoes ? sanitizeText(item.observacoes) : '',
+          parceiro: item.parceiro || null,
+          tarja: item.tarja || null,
+          tipo_receita: inferTipoReceita(item),
         })) as any,
-        notes: formData.notes ? sanitizeText(formData.notes) : null
+        notes: formData.notes ? sanitizeText(formData.notes) : null,
+        tipo_receita: (() => {
+          // tipo mais restritivo presente
+          const order: TipoReceita[] = ['amarela_a', 'azul_b', 'controle_especial', 'antimicrobiano', 'branca_comum'];
+          for (const t of order) {
+            if (validItems.some(i => inferTipoReceita(i) === t)) return t;
+          }
+          return 'branca_comum';
+        })(),
       };
 
       if (editingId) {
