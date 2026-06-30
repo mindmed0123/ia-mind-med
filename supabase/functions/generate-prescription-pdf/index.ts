@@ -96,268 +96,249 @@ serve(async (req) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────
+// Classificação de receitas (espelha src/lib/receita-classifier.ts)
+// ─────────────────────────────────────────────────────────────
+type TipoReceita =
+  | 'branca_comum'
+  | 'antimicrobiano'
+  | 'controle_especial'
+  | 'azul_b'
+  | 'amarela_a';
+
+const TIPO_LABEL: Record<TipoReceita, string> = {
+  branca_comum: 'Receita Comum (Branca)',
+  antimicrobiano: 'Receita de Antimicrobiano (Branca — 2 vias)',
+  controle_especial: 'Receita de Controle Especial (Branca — 2 vias)',
+  azul_b: 'Notificação de Receita B (Azul)',
+  amarela_a: 'Notificação de Receita A (Amarela)',
+};
+
+const TIPO_HEADER_COLOR: Record<TipoReceita, string> = {
+  branca_comum: '#1e40af',
+  antimicrobiano: '#7c2d12',
+  controle_especial: '#581c87',
+  azul_b: '#1e3a8a',
+  amarela_a: '#854d0e',
+};
+
+const TIPO_BG: Record<TipoReceita, string> = {
+  branca_comum: '#ffffff',
+  antimicrobiano: '#fffbeb',
+  controle_especial: '#faf5ff',
+  azul_b: '#eff6ff',
+  amarela_a: '#fefce8',
+};
+
+function isControlado(t: TipoReceita): boolean {
+  return t === 'antimicrobiano' || t === 'controle_especial' || t === 'azul_b' || t === 'amarela_a';
+}
+
+function inferTipoReceita(item: any): TipoReceita {
+  const raw = (item.tipo_receita || '').toString().toLowerCase();
+  if (raw === 'branca_comum' || raw === 'antimicrobiano' || raw === 'controle_especial' || raw === 'azul_b' || raw === 'amarela_a') {
+    return raw as TipoReceita;
+  }
+  const tarja = (item.tarja || '').toString().toLowerCase();
+  if (tarja.includes('amarela')) return 'amarela_a';
+  if (tarja.includes('preta') || tarja.includes('azul')) return 'azul_b';
+  if (tarja.includes('vermelha')) {
+    const nome = (item.medicamento || '').toLowerCase();
+    if (/(amoxicilina|azitromicina|cefalexina|ciprofloxa|levofloxa|claritromic|sulfameto|metronidazol|nitrofurantoína|nitrofurantoina|clindamicina|doxiciclina|ampicilina|penicilina)/.test(nome)) {
+      return 'antimicrobiano';
+    }
+    return 'controle_especial';
+  }
+  return 'branca_comum';
+}
+
+function groupByReceita(items: any[]): Array<{ tipo: TipoReceita; items: any[] }> {
+  const map = new Map<TipoReceita, any[]>();
+  for (const it of items) {
+    const t = inferTipoReceita(it);
+    if (!map.has(t)) map.set(t, []);
+    map.get(t)!.push(it);
+  }
+  const order: TipoReceita[] = ['branca_comum', 'antimicrobiano', 'controle_especial', 'azul_b', 'amarela_a'];
+  return order.filter(t => map.has(t)).map(t => ({ tipo: t, items: map.get(t)! }));
+}
+
+function esc(s: any): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// ─────────────────────────────────────────────────────────────
 function generatePrescriptionHTML(prescription: any, profile: any): string {
-  const items = prescription.items || [];
-  const patientAge = prescription.patient_dob 
+  const items = Array.isArray(prescription.items) ? prescription.items : [];
+  const groups = groupByReceita(items);
+  const patientAge = prescription.patient_dob
     ? new Date().getFullYear() - new Date(prescription.patient_dob).getFullYear()
     : null;
+
+  const hasPartner = items.some((i: any) => i.parceiro);
+  const dataFmt = new Date(prescription.created_at).toLocaleDateString('pt-BR', {
+    day: '2-digit', month: 'long', year: 'numeric',
+  });
+
+  const renderHeader = (tipo: TipoReceita) => `
+    <div class="header" style="border-bottom-color:${TIPO_HEADER_COLOR[tipo]};">
+      ${profile?.logo_url ? `<img src="${esc(profile.logo_url)}" alt="Logo">` : ''}
+      <h1 style="color:${TIPO_HEADER_COLOR[tipo]};">${esc(profile?.full_name || 'Médico')}</h1>
+      <div class="doctor-info">
+        ${profile?.crm && profile?.crm_uf ? `<p style="font-weight:600;color:${TIPO_HEADER_COLOR[tipo]};">CRM: ${esc(profile.crm)}/${esc(profile.crm_uf)}</p>` : ''}
+        ${profile?.specialty ? `<p>${esc(profile.specialty)}</p>` : ''}
+        ${profile?.clinic_name ? `<p style="margin-top:6px;font-weight:500;">${esc(profile.clinic_name)}</p>` : ''}
+        ${profile?.address ? `<p>${esc(profile.address)}</p>` : ''}
+        ${profile?.phone ? `<p>${esc(profile.phone)}</p>` : ''}
+      </div>
+    </div>
+  `;
+
+  const renderPatient = () => `
+    <div class="patient-info">
+      <h2>Identificação do Paciente</h2>
+      <p><strong>Nome:</strong> ${esc(prescription.patient_name)}</p>
+      ${patientAge ? `<p><strong>Idade:</strong> ${patientAge} anos</p>` : ''}
+      ${prescription.patient_sex ? `<p><strong>Sexo:</strong> ${esc(prescription.patient_sex)}</p>` : ''}
+      ${prescription.patient_id_external ? `<p><strong>Prontuário:</strong> ${esc(prescription.patient_id_external)}</p>` : ''}
+    </div>
+    <div class="date">${dataFmt}</div>
+  `;
+
+  const renderItems = (groupItems: any[]) => `
+    <div class="prescription-symbol">℞</div>
+    <div class="medications">
+      ${groupItems.map((item: any, index: number) => `
+        <div class="medication-item">
+          <h3>${index + 1}. ${esc(item.medicamento)}
+            ${item.parceiro ? `<span class="partner-tag">${esc(item.parceiro)}</span>` : ''}
+          </h3>
+          <p><strong>Dosagem:</strong> ${esc(item.dosagem)}</p>
+          <p><strong>Posologia:</strong> ${esc(item.posologia)}</p>
+          ${item.duracao ? `<p><strong>Duração:</strong> ${esc(item.duracao)}</p>` : ''}
+          ${item.observacoes ? `<p><strong>Observações:</strong> ${esc(item.observacoes)}</p>` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  const renderSignature = () => `
+    ${prescription.notes ? `<div class="footer-text"><strong>Observações Gerais:</strong><br>${esc(prescription.notes)}</div>` : ''}
+    ${profile?.prescription_footer_text ? `<div class="footer-text">${esc(profile.prescription_footer_text)}</div>` : ''}
+    <div class="signature-section">
+      ${profile?.signature_image_url ? `<img src="${esc(profile.signature_image_url)}" alt="Assinatura">` : `<div class="signature-line"></div>`}
+      <p>${esc(profile?.full_name || 'Médico')}</p>
+      ${profile?.crm && profile?.crm_uf ? `<p style="font-size:10pt;color:#64748b;">CRM: ${esc(profile.crm)}/${esc(profile.crm_uf)}</p>` : ''}
+    </div>
+    ${profile?.stamp_image_url ? `<div class="stamp"><img src="${esc(profile.stamp_image_url)}" alt="Carimbo"></div>` : ''}
+  `;
+
+  const renderPage = (tipo: TipoReceita, groupItems: any[], via?: string) => `
+    <section class="page" style="background:${TIPO_BG[tipo]};">
+      <div class="tipo-banner" style="background:${TIPO_HEADER_COLOR[tipo]};">
+        ${esc(TIPO_LABEL[tipo])}${via ? ` · ${esc(via)}` : ''}
+      </div>
+      ${renderHeader(tipo)}
+      ${renderPatient()}
+      ${renderItems(groupItems)}
+      ${renderSignature()}
+      <div class="footer-mini">Receituário emitido por MindMed · Documento válido com assinatura e carimbo do médico</div>
+    </section>
+  `;
+
+  const pages: string[] = [];
+  for (const g of groups) {
+    if (isControlado(g.tipo)) {
+      pages.push(renderPage(g.tipo, g.items, '1ª via — Farmácia'));
+      pages.push(renderPage(g.tipo, g.items, '2ª via — Paciente'));
+    } else {
+      pages.push(renderPage(g.tipo, g.items));
+    }
+  }
 
   return `
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <style>
-    @page {
-      size: A4;
-      margin: 2.5cm;
-    }
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    body {
-      font-family: 'Segoe UI', 'Arial', sans-serif;
-      font-size: 11pt;
-      line-height: 1.8;
-      color: #1f2937;
-    }
-    .header {
-      text-align: center;
-      padding: 24px;
-      margin-bottom: 32px;
-      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-      border-radius: 12px;
-      border-bottom: 3px solid #3b82f6;
-    }
-    .header img {
-      max-width: 180px;
-      max-height: 100px;
-      margin-bottom: 16px;
-      border-radius: 8px;
-    }
-    .header h1 {
-      font-size: 20pt;
-      margin: 12px 0 8px;
-      color: #1e40af;
-      font-weight: 700;
-    }
-    .header p {
-      font-size: 10pt;
-      margin: 4px 0;
-      color: #475569;
-    }
-    .doctor-info {
-      font-size: 10pt;
-      margin-top: 12px;
-      color: #64748b;
-    }
-    .patient-info {
-      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-      padding: 20px;
-      margin: 24px 0;
-      border-left: 5px solid #10b981;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-    .patient-info h2 {
-      font-size: 14pt;
-      margin-bottom: 12px;
-      color: #065f46;
-      font-weight: 700;
-    }
-    .patient-info p {
-      margin: 6px 0;
-      color: #374151;
-    }
-    .patient-info strong {
-      color: #047857;
-      min-width: 100px;
-      display: inline-block;
-    }
-    .prescription-symbol {
-      font-size: 56pt;
-      font-weight: bold;
-      color: #3b82f6;
-      margin: 24px 0 16px;
-      text-align: center;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-    }
-    .medications {
-      margin: 32px 0;
-    }
-    .medication-item {
-      margin-bottom: 24px;
-      padding: 20px;
-      border: 2px solid #e5e7eb;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-      page-break-inside: avoid;
-    }
-    .medication-item h3 {
-      font-size: 14pt;
-      color: #1e40af;
-      margin-bottom: 12px;
-      font-weight: 700;
-      padding-bottom: 8px;
-      border-bottom: 2px solid #dbeafe;
-    }
-    .medication-item p {
-      margin: 8px 0;
-      padding-left: 12px;
-      color: #374151;
-    }
-    .medication-item strong {
-      color: #1e3a8a;
-      min-width: 100px;
-      display: inline-block;
-      font-weight: 600;
-    }
-    .footer-text {
-      margin-top: 32px;
-      padding: 16px;
-      background: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%);
-      border: 2px solid #fbbf24;
-      border-radius: 8px;
-      font-size: 10pt;
-      font-style: italic;
-      color: #92400e;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    }
-    .footer-text strong {
-      color: #78350f;
-    }
-    .signature-section {
-      margin-top: 64px;
-      text-align: center;
-      page-break-inside: avoid;
-    }
-    .signature-section img {
-      max-width: 220px;
-      max-height: 90px;
-      margin: 12px 0;
-    }
-    .signature-line {
-      width: 350px;
-      border-top: 2px solid #1e3a8a;
-      margin: 48px auto 12px;
-    }
-    .signature-section p {
-      margin: 4px 0;
-      color: #1e40af;
-      font-weight: 600;
-    }
-    .stamp {
-      text-align: center;
-      margin-top: 24px;
-    }
-    .stamp img {
-      max-width: 170px;
-      max-height: 170px;
-      border-radius: 8px;
-    }
-    .date {
-      text-align: right;
-      margin-top: 24px;
-      font-size: 11pt;
-      color: #475569;
-      font-weight: 500;
-    }
-    .watermark {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) rotate(-45deg);
-      font-size: 80pt;
-      color: rgba(59, 130, 246, 0.03);
-      font-weight: 900;
-      z-index: -1;
-      user-select: none;
-    }
-  </style>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4; margin: 1.5cm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #1f2937; }
+  .page { padding: 8px 12px 24px; page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+  .tipo-banner {
+    color: #fff; text-align: center; padding: 8px 12px;
+    font-weight: 700; font-size: 11pt; letter-spacing: 0.5px;
+    border-radius: 6px; margin-bottom: 16px; text-transform: uppercase;
+  }
+  .header {
+    text-align: center; padding: 16px; margin-bottom: 20px;
+    background: #f8fafc; border-radius: 10px; border-bottom: 3px solid #1e40af;
+  }
+  .header img { max-width: 140px; max-height: 80px; margin-bottom: 10px; border-radius: 6px; }
+  .header h1 { font-size: 18pt; margin: 8px 0 6px; font-weight: 700; }
+  .doctor-info { font-size: 10pt; color: #64748b; }
+  .doctor-info p { margin: 2px 0; }
+  .patient-info {
+    background: #f0fdf4; padding: 14px 16px; margin: 16px 0;
+    border-left: 4px solid #10b981; border-radius: 6px;
+  }
+  .patient-info h2 { font-size: 12pt; margin-bottom: 8px; color: #065f46; }
+  .patient-info p { margin: 4px 0; }
+  .patient-info strong { color: #047857; min-width: 90px; display: inline-block; }
+  .date { text-align: right; margin: 8px 0 16px; font-size: 10pt; color: #475569; font-weight: 500; }
+  .prescription-symbol {
+    font-size: 44pt; font-weight: bold; color: #1e40af;
+    margin: 12px 0 8px; text-align: center;
+  }
+  .medications { margin: 16px 0; }
+  .medication-item {
+    margin-bottom: 14px; padding: 14px 16px;
+    border: 1.5px solid #e5e7eb; border-radius: 8px;
+    background: #ffffff; page-break-inside: avoid;
+  }
+  .medication-item h3 {
+    font-size: 12.5pt; color: #1e40af; margin-bottom: 8px; font-weight: 700;
+    padding-bottom: 6px; border-bottom: 1.5px solid #dbeafe;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .medication-item p { margin: 4px 0; padding-left: 6px; }
+  .medication-item strong { color: #1e3a8a; min-width: 90px; display: inline-block; font-weight: 600; }
+  .partner-tag {
+    font-size: 8pt; padding: 2px 8px; border-radius: 999px;
+    background: #dbeafe; color: #1e40af; font-weight: 600;
+    border: 1px solid #93c5fd;
+  }
+  .footer-text {
+    margin-top: 16px; padding: 10px 14px;
+    background: #fefce8; border: 1.5px solid #fbbf24; border-radius: 6px;
+    font-size: 9.5pt; color: #92400e;
+  }
+  .signature-section {
+    margin-top: 40px; text-align: center; page-break-inside: avoid;
+  }
+  .signature-section img { max-width: 180px; max-height: 70px; margin: 8px 0; }
+  .signature-line { width: 320px; border-top: 1.5px solid #1e3a8a; margin: 36px auto 8px; }
+  .signature-section p { margin: 3px 0; color: #1e40af; font-weight: 600; }
+  .stamp { text-align: center; margin-top: 16px; }
+  .stamp img { max-width: 140px; max-height: 140px; border-radius: 6px; }
+  .footer-mini {
+    margin-top: 20px; text-align: center; font-size: 8pt; color: #94a3b8;
+    padding-top: 10px; border-top: 1px solid #e2e8f0;
+  }
+</style>
 </head>
 <body>
-  <div class="watermark">RECEITUÁRIO</div>
-  
-  <div class="header">
-    ${profile?.logo_url ? `<img src="${profile.logo_url}" alt="Logo">` : ''}
-    <h1>${profile?.full_name || 'Médico'}</h1>
-    <div class="doctor-info">
-      ${profile?.crm && profile?.crm_uf ? `<p style="font-weight:600;color:#1e40af;">CRM: ${profile.crm}/${profile.crm_uf}</p>` : ''}
-      ${profile?.specialty ? `<p>${profile.specialty}</p>` : ''}
-      ${profile?.clinic_name ? `<p style="margin-top:8px;font-weight:500;">${profile.clinic_name}</p>` : ''}
-      ${profile?.address ? `<p>${profile.address}</p>` : ''}
-      ${profile?.phone ? `<p>📞 ${profile.phone}</p>` : ''}
-      ${profile?.email_public ? `<p>📧 ${profile.email_public}</p>` : ''}
-    </div>
-  </div>
-
-  <div class="patient-info">
-    <h2>👤 Dados do Paciente</h2>
-    <p><strong>Nome:</strong> ${prescription.patient_name}</p>
-    ${patientAge ? `<p><strong>Idade:</strong> ${patientAge} anos</p>` : ''}
-    ${prescription.patient_sex ? `<p><strong>Sexo:</strong> ${prescription.patient_sex}</p>` : ''}
-    ${prescription.patient_id_external ? `<p><strong>Prontuário:</strong> ${prescription.patient_id_external}</p>` : ''}
-  </div>
-
-  <div class="date">
-    📅 ${new Date(prescription.created_at).toLocaleDateString('pt-BR', { 
-      day: '2-digit', 
-      month: 'long', 
-      year: 'numeric' 
-    })}
-  </div>
-
-  <div class="prescription-symbol">℞</div>
-
-  <div class="medications">
-    ${items.map((item: any, index: number) => `
-      <div class="medication-item">
-        <h3>${index + 1}. ${item.medicamento}</h3>
-        <p><strong>💊 Dosagem:</strong> ${item.dosagem}</p>
-        <p><strong>⏰ Posologia:</strong> ${item.posologia}</p>
-        ${item.duracao ? `<p><strong>📅 Duração:</strong> ${item.duracao}</p>` : ''}
-        ${item.observacoes ? `<p><strong>📝 Observações:</strong> ${item.observacoes}</p>` : ''}
-      </div>
-    `).join('')}
-  </div>
-
-  ${prescription.notes ? `
-    <div class="footer-text">
-      <strong>⚠️ Observações Gerais:</strong><br>
-      ${prescription.notes}
-    </div>
+  ${pages.join('\n')}
+  ${hasPartner ? `
+    <div style="display:none;">Parceiros: ${items.filter((i: any) => i.parceiro).map((i: any) => esc(i.parceiro)).join(', ')}</div>
   ` : ''}
-
-  ${profile?.prescription_footer_text ? `
-    <div class="footer-text">
-      ${profile.prescription_footer_text}
-    </div>
-  ` : ''}
-
-  <div class="signature-section">
-    ${profile?.signature_image_url ? `
-      <img src="${profile.signature_image_url}" alt="Assinatura">
-    ` : `
-      <div class="signature-line"></div>
-    `}
-    <p>${profile?.full_name || 'Médico'}</p>
-    ${profile?.crm && profile?.crm_uf ? `<p style="font-size:10pt;color:#64748b;">CRM: ${profile.crm}/${profile.crm_uf}</p>` : ''}
-  </div>
-
-  ${profile?.stamp_image_url ? `
-    <div class="stamp">
-      <img src="${profile.stamp_image_url}" alt="Carimbo">
-    </div>
-  ` : ''}
-  
-  <div style="margin-top:32px;text-align:center;font-size:8pt;color:#94a3b8;padding:16px;border-top:1px solid #e2e8f0;">
-    <p>📄 Receituário gerado por <strong style="color:#3b82f6;">MindMed</strong></p>
-    <p style="margin-top:4px;">Este documento é válido apenas com assinatura e carimbo do médico responsável</p>
-  </div>
 </body>
 </html>
   `.trim();
 }
+

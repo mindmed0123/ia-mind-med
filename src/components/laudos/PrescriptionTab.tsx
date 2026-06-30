@@ -5,12 +5,21 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Save, Sparkles, Pill, Loader2, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, Save, Sparkles, Pill, Loader2, CheckCircle2, FileText, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeText, validatePatientName, validateMedicationName, validateDosage } from '@/lib/validation';
 import { MedicationSearch, type MedicationResult } from '@/components/prescription/MedicationSearch';
+import {
+  inferTipoReceita,
+  groupByReceita,
+  isControlado,
+  TIPO_RECEITA_LABEL,
+  TIPO_RECEITA_SHORT,
+  TIPO_RECEITA_COLOR,
+  type TipoReceita,
+} from '@/lib/receita-classifier';
 
 interface PrescriptionItem {
   medicamento: string;
@@ -20,6 +29,7 @@ interface PrescriptionItem {
   observacoes?: string;
   parceiro?: string | null;
   tarja?: string | null;
+  tipo_receita?: string | null;
 }
 
 interface PrescriptionTabProps {
@@ -90,9 +100,14 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
       posologia: med.posologia_referencia || newItems[index].posologia,
       parceiro: med.parceiro_nome,
       tarja: med.tarja,
+      tipo_receita: med.tipo_receita,
     };
     setItems(newItems);
   };
+
+  const validItemsForPreview = items.filter(i => i.medicamento.trim());
+  const receitaGroups = groupByReceita(validItemsForPreview);
+  const hasControlados = receitaGroups.some(g => isControlado(g.tipo));
 
   const handleSave = async () => {
     if (!user) return;
@@ -132,8 +147,18 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
           posologia: sanitizeText(item.posologia),
           duracao: item.duracao ? sanitizeText(item.duracao) : '',
           observacoes: item.observacoes ? sanitizeText(item.observacoes) : '',
+          parceiro: item.parceiro || null,
+          tarja: item.tarja || null,
+          tipo_receita: inferTipoReceita(item),
         })) as any,
         notes: notes ? sanitizeText(notes) : null,
+        tipo_receita: (() => {
+          const order: TipoReceita[] = ['amarela_a', 'azul_b', 'controle_especial', 'antimicrobiano', 'branca_comum'];
+          for (const t of order) {
+            if (validItems.some(i => inferTipoReceita(i) === t)) return t;
+          }
+          return 'branca_comum';
+        })(),
       };
 
       const { error } = await supabase
@@ -195,8 +220,8 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
               className="p-4 border border-border/70 bg-gradient-to-br from-card to-card/60 shadow-sm hover:shadow-md transition-shadow"
             >
               <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-sm font-medium">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 text-sm font-medium flex-wrap">
                     <Pill className="w-4 h-4 text-primary" />
                     Medicamento #{index + 1}
                     {item.parceiro && (
@@ -208,6 +233,14 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
                         {item.parceiro}
                       </Badge>
                     )}
+                    {item.medicamento && (() => {
+                      const tipo = inferTipoReceita(item);
+                      return (
+                        <Badge variant="outline" className={`text-[10px] font-medium ${TIPO_RECEITA_COLOR[tipo]}`}>
+                          {TIPO_RECEITA_SHORT[tipo]}
+                        </Badge>
+                      );
+                    })()}
                   </div>
                   {items.length > 1 && (
                     <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}>
@@ -267,6 +300,39 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
           ))}
         </div>
 
+
+        {/* Resumo de classificação */}
+        {receitaGroups.length > 0 && (
+          <Card className="p-4 border-primary/30 bg-primary/5">
+            <div className="flex items-start gap-3">
+              <FileText className="w-5 h-5 text-primary mt-0.5" />
+              <div className="flex-1 space-y-2">
+                <div className="text-sm font-semibold">
+                  Serão emitidas {receitaGroups.length} receita{receitaGroups.length > 1 ? 's' : ''} (1 PDF):
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {receitaGroups.map(g => (
+                    <Badge
+                      key={g.tipo}
+                      variant="outline"
+                      className={`${TIPO_RECEITA_COLOR[g.tipo]} font-medium`}
+                    >
+                      {TIPO_RECEITA_LABEL[g.tipo]} · {g.items.length} item{g.items.length > 1 ? 'ns' : ''}
+                    </Badge>
+                  ))}
+                </div>
+                {hasControlados && (
+                  <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mt-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>
+                      Medicamentos controlados serão emitidos em 2 vias (Farmácia + Paciente) no PDF.
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Notes */}
         <div>
