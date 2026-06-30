@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.search_medications(text, text) FROM anon;
