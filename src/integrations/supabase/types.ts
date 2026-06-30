@@ -808,6 +808,87 @@ export type Database = {
           },
         ]
       }
+      medications: {
+        Row: {
+          apresentacao: string | null
+          ativo: boolean
+          cid10_relacionados: string[] | null
+          classe_terapeutica: string | null
+          concentracao: string | null
+          contraindicacoes: string | null
+          created_at: string
+          destaque_ordem: number
+          ean: string | null
+          forma_farmaceutica: string | null
+          id: string
+          indicacoes: string | null
+          is_parceiro: boolean
+          laboratorio: string | null
+          nome_comercial: string
+          parceiro_nome: string | null
+          posologia_referencia: string | null
+          preco_pmc: number | null
+          principio_ativo: string
+          registro_anvisa: string | null
+          tarja: string | null
+          tipo_receita: string | null
+          updated_at: string
+          via_administracao: string | null
+        }
+        Insert: {
+          apresentacao?: string | null
+          ativo?: boolean
+          cid10_relacionados?: string[] | null
+          classe_terapeutica?: string | null
+          concentracao?: string | null
+          contraindicacoes?: string | null
+          created_at?: string
+          destaque_ordem?: number
+          ean?: string | null
+          forma_farmaceutica?: string | null
+          id?: string
+          indicacoes?: string | null
+          is_parceiro?: boolean
+          laboratorio?: string | null
+          nome_comercial: string
+          parceiro_nome?: string | null
+          posologia_referencia?: string | null
+          preco_pmc?: number | null
+          principio_ativo: string
+          registro_anvisa?: string | null
+          tarja?: string | null
+          tipo_receita?: string | null
+          updated_at?: string
+          via_administracao?: string | null
+        }
+        Update: {
+          apresentacao?: string | null
+          ativo?: boolean
+          cid10_relacionados?: string[] | null
+          classe_terapeutica?: string | null
+          concentracao?: string | null
+          contraindicacoes?: string | null
+          created_at?: string
+          destaque_ordem?: number
+          ean?: string | null
+          forma_farmaceutica?: string | null
+          id?: string
+          indicacoes?: string | null
+          is_parceiro?: boolean
+          laboratorio?: string | null
+          nome_comercial?: string
+          parceiro_nome?: string | null
+          posologia_referencia?: string | null
+          preco_pmc?: number | null
+          principio_ativo?: string
+          registro_anvisa?: string | null
+          tarja?: string | null
+          tipo_receita?: string | null
+          updated_at?: string
+          via_administracao?: string | null
+        }
+        Relationships: []
+      }
       onboarding_progress: {
         Row: {
           completed: boolean
@@ -1895,6 +1976,29 @@ export type Database = {
       register_patient_consent: {
         Args: { p_consent_at?: string; p_consent_ip?: string; p_id: string }
         Returns: boolean
+      }
+      search_medications: {
+        Args: { cid?: string; q?: string }
+        Returns: {
+          apresentacao: string
+          cid10_relacionados: string[]
+          classe_terapeutica: string
+          concentracao: string
+          contraindicacoes: string
+          forma_farmaceutica: string
+          id: string
+          indicacoes: string
+          is_parceiro: boolean
+          laboratorio: string
+          nome_comercial: string
+          parceiro_nome: string
+          posologia_referencia: string
+          principio_ativo: string
+          registro_anvisa: string
+          tarja: string
+          tipo_receita: string
+          via_administracao: string
+        }[]
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }

@@ -5,11 +5,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Save, Sparkles, Pill, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Save, Sparkles, Pill, Loader2, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeText, validatePatientName, validateMedicationName, validateDosage } from '@/lib/validation';
+import { MedicationSearch, type MedicationResult } from '@/components/prescription/MedicationSearch';
 
 interface PrescriptionItem {
   medicamento: string;
@@ -17,6 +18,8 @@ interface PrescriptionItem {
   posologia: string;
   duracao: string;
   observacoes?: string;
+  parceiro?: string | null;
+  tarja?: string | null;
 }
 
 interface PrescriptionTabProps {
@@ -74,7 +77,20 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
 
   const handleItemChange = (index: number, field: keyof PrescriptionItem, value: string) => {
     const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
+    (newItems[index] as any)[field] = value;
+    setItems(newItems);
+  };
+
+  const handleMedicationSelect = (index: number, med: MedicationResult) => {
+    const newItems = [...items];
+    newItems[index] = {
+      ...newItems[index],
+      medicamento: med.nome_comercial,
+      dosagem: med.concentracao || newItems[index].dosagem,
+      posologia: med.posologia_referencia || newItems[index].posologia,
+      parceiro: med.parceiro_nome,
+      tarja: med.tarja,
+    };
     setItems(newItems);
   };
 
@@ -174,33 +190,52 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
           </div>
 
           {items.map((item, index) => (
-            <Card key={index} className="p-4 border-dashed">
+            <Card
+              key={index}
+              className="p-4 border border-border/70 bg-gradient-to-br from-card to-card/60 shadow-sm hover:shadow-md transition-shadow"
+            >
               <div className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 grid md:grid-cols-2 gap-3">
-                    <div>
-                      <Label>Medicamento *</Label>
-                      <Input
-                        value={item.medicamento}
-                        onChange={(e) => handleItemChange(index, 'medicamento', e.target.value)}
-                        placeholder="Nome do medicamento"
-                      />
-                    </div>
-                    <div>
-                      <Label>Dosagem *</Label>
-                      <Input
-                        value={item.dosagem}
-                        onChange={(e) => handleItemChange(index, 'dosagem', e.target.value)}
-                        placeholder="Ex: 500mg"
-                      />
-                    </div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Pill className="w-4 h-4 text-primary" />
+                    Medicamento #{index + 1}
+                    {item.parceiro && (
+                      <Badge
+                        variant="secondary"
+                        className="bg-gradient-to-r from-primary/15 to-accent/15 text-primary border border-primary/20 gap-1"
+                      >
+                        <CheckCircle2 className="w-3 h-3" />
+                        {item.parceiro}
+                      </Badge>
+                    )}
                   </div>
                   {items.length > 1 && (
-                    <Button variant="destructive" size="icon" onClick={() => handleRemoveItem(index)}>
-                      <Trash2 className="w-4 h-4" />
+                    <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}>
+                      <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
                   )}
                 </div>
+
+                <div className="grid md:grid-cols-2 gap-3">
+                  <div>
+                    <Label>Medicamento *</Label>
+                    <MedicationSearch
+                      value={item.medicamento}
+                      onChange={(v) => handleItemChange(index, 'medicamento', v)}
+                      onSelect={(med) => handleMedicationSelect(index, med)}
+                      cid={Array.isArray(laudoData?.cid10_codes) ? laudoData.cid10_codes[0] : null}
+                    />
+                  </div>
+                  <div>
+                    <Label>Dosagem *</Label>
+                    <Input
+                      value={item.dosagem}
+                      onChange={(e) => handleItemChange(index, 'dosagem', e.target.value)}
+                      placeholder="Ex: 500mg"
+                    />
+                  </div>
+                </div>
+
                 <div className="grid md:grid-cols-3 gap-3">
                   <div>
                     <Label>Posologia *</Label>
@@ -231,6 +266,7 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
             </Card>
           ))}
         </div>
+
 
         {/* Notes */}
         <div>
