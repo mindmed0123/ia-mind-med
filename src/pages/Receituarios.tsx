@@ -334,7 +334,7 @@ export default function Receituarios() {
         const pdfBlob = await generatePdf({
           html: data.html,
           fileName,
-          verifyUrl: '' // Receitas não precisam de verificação por enquanto
+          verifyUrl: `${window.location.origin}/r/${prescriptionId}`,
         });
 
         // Upload para storage
