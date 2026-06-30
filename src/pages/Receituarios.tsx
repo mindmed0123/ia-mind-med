@@ -495,8 +495,8 @@ export default function Receituarios() {
                     className="p-4 border border-border/70 bg-gradient-to-br from-card to-card/60 shadow-sm hover:shadow-md transition-shadow"
                   >
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 text-sm font-medium">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 text-sm font-medium flex-wrap">
                           <Pill className="w-4 h-4 text-primary" />
                           Medicamento #{index + 1}
                           {item.parceiro && (
@@ -508,6 +508,17 @@ export default function Receituarios() {
                               {item.parceiro}
                             </Badge>
                           )}
+                          {item.medicamento && (() => {
+                            const tipo = inferTipoReceita(item);
+                            return (
+                              <Badge
+                                variant="outline"
+                                className={`text-[10px] font-medium ${TIPO_RECEITA_COLOR[tipo]}`}
+                              >
+                                {TIPO_RECEITA_SHORT[tipo]}
+                              </Badge>
+                            );
+                          })()}
                         </div>
                         {items.length > 1 && (
                           <Button
