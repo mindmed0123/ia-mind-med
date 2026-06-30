@@ -24,6 +24,7 @@ export interface MedicationResult {
   cid10_relacionados: string[] | null;
   is_parceiro: boolean;
   parceiro_nome: string | null;
+  recomendado_cid?: boolean | null;
 }
 
 interface MedicationSearchProps {
