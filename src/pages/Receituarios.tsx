@@ -584,6 +584,40 @@ export default function Receituarios() {
               </div>
 
 
+              {/* Resumo de classificação por receita */}
+              {receitaGroups.length > 0 && (
+                <Card className="p-4 border-primary/30 bg-primary/5">
+                  <div className="flex items-start gap-3">
+                    <FileText className="w-5 h-5 text-primary mt-0.5" />
+                    <div className="flex-1 space-y-2">
+                      <div className="text-sm font-semibold">
+                        Serão emitidas {receitaGroups.length} receita{receitaGroups.length > 1 ? 's' : ''} (1 PDF):
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {receitaGroups.map(g => (
+                          <Badge
+                            key={g.tipo}
+                            variant="outline"
+                            className={`${TIPO_RECEITA_COLOR[g.tipo]} font-medium`}
+                          >
+                            {TIPO_RECEITA_LABEL[g.tipo]} · {g.items.length} item{g.items.length > 1 ? 'ns' : ''}
+                          </Badge>
+                        ))}
+                      </div>
+                      {hasControlados && (
+                        <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mt-2">
+                          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                          <span>
+                            Há medicamentos controlados. Cada receita controlada será emitida em 2 vias
+                            (Farmácia + Paciente) no PDF, conforme RDC 471/2021.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              )}
+
               {/* Observações Gerais */}
               <div>
                 <Label htmlFor="notes">Observações Gerais</Label>
@@ -595,6 +629,7 @@ export default function Receituarios() {
                   rows={3}
                 />
               </div>
+
 
               {/* Botões */}
               <div className="flex gap-4">
