@@ -233,6 +233,13 @@ function generatePrescriptionHTML(prescription: any, profile: any): string {
       <p>${esc(profile?.full_name || 'Médico')}</p>
       ${profile?.crm && profile?.crm_uf ? `<p style="font-size:10pt;color:#64748b;">CRM: ${esc(profile.crm)}/${esc(profile.crm_uf)}</p>` : ''}
     </div>
+    <div class="qr-block">
+      <div class="qr-img">📱 [QR Code seria gerado aqui]</div>
+      <div class="qr-text">
+        Verifique a autenticidade<br>
+        <span class="qr-id">ID: ${esc(prescription.id?.toString().slice(0, 8) || '')}</span>
+      </div>
+    </div>
     ${profile?.stamp_image_url ? `<div class="stamp"><img src="${esc(profile.stamp_image_url)}" alt="Carimbo"></div>` : ''}
   `;
 
