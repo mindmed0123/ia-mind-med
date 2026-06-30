@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Activity, ArrowLeft, Plus, Trash2, Copy, Download, Save, Crown, Sparkles, Pill, CheckCircle2 } from 'lucide-react';
+import { Activity, ArrowLeft, Plus, Trash2, Copy, Download, Save, Crown, Sparkles, Pill, CheckCircle2, FileText, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +20,15 @@ import {
   checkRateLimit
 } from '@/lib/validation';
 import { MedicationSearch, type MedicationResult } from '@/components/prescription/MedicationSearch';
+import {
+  inferTipoReceita,
+  groupByReceita,
+  isControlado,
+  TIPO_RECEITA_LABEL,
+  TIPO_RECEITA_SHORT,
+  TIPO_RECEITA_COLOR,
+  type TipoReceita,
+} from '@/lib/receita-classifier';
 
 interface PrescriptionItem {
   medicamento: string;
@@ -29,6 +38,7 @@ interface PrescriptionItem {
   observacoes?: string;
   parceiro?: string | null;
   tarja?: string | null;
+  tipo_receita?: string | null;
 }
 
 interface Prescription {
@@ -143,9 +153,15 @@ export default function Receituarios() {
       posologia: med.posologia_referencia || newItems[index].posologia,
       parceiro: med.parceiro_nome,
       tarja: med.tarja,
+      tipo_receita: med.tipo_receita,
     };
     setItems(newItems);
   };
+
+  // Classificação em tempo real para o resumo
+  const validItemsForPreview = items.filter(i => i.medicamento.trim());
+  const receitaGroups = groupByReceita(validItemsForPreview);
+  const hasControlados = receitaGroups.some(g => isControlado(g.tipo));
 
   const handleSave = async () => {
     try {
