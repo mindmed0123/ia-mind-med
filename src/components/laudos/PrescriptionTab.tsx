@@ -100,9 +100,14 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
       posologia: med.posologia_referencia || newItems[index].posologia,
       parceiro: med.parceiro_nome,
       tarja: med.tarja,
+      tipo_receita: med.tipo_receita,
     };
     setItems(newItems);
   };
+
+  const validItemsForPreview = items.filter(i => i.medicamento.trim());
+  const receitaGroups = groupByReceita(validItemsForPreview);
+  const hasControlados = receitaGroups.some(g => isControlado(g.tipo));
 
   const handleSave = async () => {
     if (!user) return;
