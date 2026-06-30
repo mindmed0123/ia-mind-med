@@ -18,6 +18,8 @@ interface PrescriptionItem {
   posologia: string;
   duracao: string;
   observacoes?: string;
+  parceiro?: string | null;
+  tarja?: string | null;
 }
 
 interface PrescriptionTabProps {
