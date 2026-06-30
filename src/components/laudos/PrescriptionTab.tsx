@@ -77,7 +77,20 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
 
   const handleItemChange = (index: number, field: keyof PrescriptionItem, value: string) => {
     const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
+    (newItems[index] as any)[field] = value;
+    setItems(newItems);
+  };
+
+  const handleMedicationSelect = (index: number, med: MedicationResult) => {
+    const newItems = [...items];
+    newItems[index] = {
+      ...newItems[index],
+      medicamento: med.nome_comercial,
+      dosagem: med.concentracao || newItems[index].dosagem,
+      posologia: med.posologia_referencia || newItems[index].posologia,
+      parceiro: med.parceiro_nome,
+      tarja: med.tarja,
+    };
     setItems(newItems);
   };
 
