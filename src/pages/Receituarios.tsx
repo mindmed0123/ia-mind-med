@@ -463,36 +463,53 @@ export default function Receituarios() {
                 </div>
 
                 {items.map((item, index) => (
-                  <Card key={index} className="p-4">
+                  <Card
+                    key={index}
+                    className="p-4 border border-border/70 bg-gradient-to-br from-card to-card/60 shadow-sm hover:shadow-md transition-shadow"
+                  >
                     <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 grid md:grid-cols-2 gap-3">
-                          <div>
-                            <Label>Medicamento *</Label>
-                            <Input
-                              value={item.medicamento}
-                              onChange={(e) => handleItemChange(index, 'medicamento', e.target.value)}
-                              placeholder="Nome do medicamento"
-                            />
-                          </div>
-                          <div>
-                            <Label>Dosagem *</Label>
-                            <Input
-                              value={item.dosagem}
-                              onChange={(e) => handleItemChange(index, 'dosagem', e.target.value)}
-                              placeholder="Ex: 500mg"
-                            />
-                          </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Pill className="w-4 h-4 text-primary" />
+                          Medicamento #{index + 1}
+                          {item.parceiro && (
+                            <Badge
+                              variant="secondary"
+                              className="bg-gradient-to-r from-primary/15 to-accent/15 text-primary border border-primary/20 gap-1"
+                            >
+                              <CheckCircle2 className="w-3 h-3" />
+                              {item.parceiro}
+                            </Badge>
+                          )}
                         </div>
                         {items.length > 1 && (
                           <Button
-                            variant="destructive"
+                            variant="ghost"
                             size="icon"
                             onClick={() => handleRemoveItem(index)}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
                         )}
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-3">
+                        <div>
+                          <Label>Medicamento *</Label>
+                          <MedicationSearch
+                            value={item.medicamento}
+                            onChange={(v) => handleItemChange(index, 'medicamento', v)}
+                            onSelect={(med) => handleMedicationSelect(index, med)}
+                          />
+                        </div>
+                        <div>
+                          <Label>Dosagem *</Label>
+                          <Input
+                            value={item.dosagem}
+                            onChange={(e) => handleItemChange(index, 'dosagem', e.target.value)}
+                            placeholder="Ex: 500mg"
+                          />
+                        </div>
                       </div>
 
                       <div className="grid md:grid-cols-2 gap-3">
@@ -527,6 +544,7 @@ export default function Receituarios() {
                   </Card>
                 ))}
               </div>
+
 
               {/* Observações Gerais */}
               <div>
