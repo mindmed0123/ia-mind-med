@@ -166,12 +166,16 @@ async function getQrDataUrl(url: string): Promise<string> {
 // ── Main Generator (optimized for speed) ──
 export const generatePdf = async ({ html, fileName, verifyUrl, pdfMeta }: PdfOptions): Promise<Blob> => {
   try {
-    const qrCodeDataUrl = await getQrDataUrl(verifyUrl);
-
-    const htmlWithQr = html.replace(
-      '📱 [QR Code seria gerado aqui]',
-      `<img src="${qrCodeDataUrl}" alt="QR Code" style="max-width:120px;margin:8px auto;display:block;" />`
-    );
+    const placeholder = '📱 [QR Code seria gerado aqui]';
+    let htmlWithQr = html;
+    if (verifyUrl && html.includes(placeholder)) {
+      const qrCodeDataUrl = await getQrDataUrl(verifyUrl);
+      const imgTag = `<img src="${qrCodeDataUrl}" alt="QR Code" style="max-width:100px;display:block;" />`;
+      htmlWithQr = html.split(placeholder).join(imgTag);
+    } else if (html.includes(placeholder)) {
+      // Sem URL: remove o placeholder para não vazar texto
+      htmlWithQr = html.split(placeholder).join('');
+    }
 
     const options = {
       margin: [HEADER_RESERVE, SIDE_MARGIN, FOOTER_RESERVE, SIDE_MARGIN] as [number, number, number, number],
@@ -192,7 +196,7 @@ export const generatePdf = async ({ html, fileName, verifyUrl, pdfMeta }: PdfOpt
         compress: true,
       },
       pagebreak: {
-        mode: ['avoid-all', 'css'] as string[],
+        mode: ['css', 'legacy'] as string[],
       },
     };
 
