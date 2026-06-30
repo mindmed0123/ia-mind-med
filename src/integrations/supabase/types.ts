@@ -2000,6 +2000,7 @@ export type Database = {
           parceiro_nome: string
           posologia_referencia: string
           principio_ativo: string
+          recomendado_cid: boolean
           registro_anvisa: string
           tarja: string
           tipo_receita: string
@@ -2008,6 +2009,7 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
       app_role:
