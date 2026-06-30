@@ -5,11 +5,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Save, Sparkles, Pill, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Save, Sparkles, Pill, Loader2, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeText, validatePatientName, validateMedicationName, validateDosage } from '@/lib/validation';
+import { MedicationSearch, type MedicationResult } from '@/components/prescription/MedicationSearch';
 
 interface PrescriptionItem {
   medicamento: string;
