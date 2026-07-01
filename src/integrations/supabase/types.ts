@@ -826,6 +826,7 @@ export type Database = {
           laboratorio: string | null
           nome_comercial: string
           parceiro_nome: string | null
+          pinned: boolean
           posologia_referencia: string | null
           preco_pmc: number | null
           principio_ativo: string
@@ -852,6 +853,7 @@ export type Database = {
           laboratorio?: string | null
           nome_comercial: string
           parceiro_nome?: string | null
+          pinned?: boolean
           posologia_referencia?: string | null
           preco_pmc?: number | null
           principio_ativo: string
@@ -878,6 +880,7 @@ export type Database = {
           laboratorio?: string | null
           nome_comercial?: string
           parceiro_nome?: string | null
+          pinned?: boolean
           posologia_referencia?: string | null
           preco_pmc?: number | null
           principio_ativo?: string
