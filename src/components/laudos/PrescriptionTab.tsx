@@ -258,6 +258,12 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
                         </Badge>
                       );
                     })()}
+                    {(item as any).origem === 'sugerida_ia' && (
+                      <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-900 border-amber-300 gap-1">
+                        <Sparkles className="w-3 h-3" />
+                        Sugestão da IA
+                      </Badge>
+                    )}
                   </div>
                   {items.length > 1 && (
                     <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}>
