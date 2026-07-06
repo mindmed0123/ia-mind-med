@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "sdk_version": "0.20.0",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://zwebwrbbrcmajkuptpwq.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "mindmed-mcp",
+      "version": "0.1.0",
+      "title": "MindMed"
+    },
+    "tools": [
+      {
+        "name": "list_pacientes",
+        "title": "Listar pacientes",
+        "description": "Lista os pacientes do médico autenticado (mais recentes primeiro).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Máximo de resultados (padrão 20)."
+            },
+            "search": {
+              "type": "string",
+              "description": "Filtro por nome do paciente (opcional)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_laudos",
+        "title": "Listar laudos",
+        "description": "Lista os laudos médicos do usuário autenticado.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Máximo de resultados (padrão 20)."
+            },
+            "status": {
+              "type": "string",
+              "description": "Filtrar por status (ex: 'completed', 'processing')."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_laudo",
+        "title": "Obter laudo",
+        "description": "Retorna um laudo completo pelo ID (respeita RLS do usuário).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "ID do laudo (UUID)."
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "search_medications",
+        "title": "Buscar medicamentos",
+        "description": "Busca medicamentos no catálogo (opcionalmente priorizando por CID-10).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Termo de busca: nome comercial, princípio ativo ou classe."
+            },
+            "cid": {
+              "type": "string",
+              "description": "Código CID-10 do paciente para priorizar recomendações."
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
