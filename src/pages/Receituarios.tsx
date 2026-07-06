@@ -333,8 +333,7 @@ export default function Receituarios() {
         title: 'Gerando PDF',
         description: 'Aguarde enquanto o documento é gerado...'
       });
-        description: 'Aguarde enquanto o documento é gerado...'
-      });
+
 
       const { data, error } = await supabase.functions.invoke('generate-prescription-pdf', {
         body: { prescription_id: prescriptionId }
