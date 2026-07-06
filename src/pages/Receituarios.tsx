@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Activity, ArrowLeft, Plus, Trash2, Copy, Download, Save, Crown, Sparkles, Pill, CheckCircle2, FileText, AlertTriangle } from 'lucide-react';
+import { Activity, ArrowLeft, Plus, Trash2, Copy, Download, Save, Crown, Sparkles, Pill, CheckCircle2, FileText, AlertTriangle, Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
