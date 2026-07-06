@@ -121,10 +121,18 @@ export default function Receituarios() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPrescriptions((data || []).map(item => ({
+      const mapped = (data || []).map(item => ({
         ...item,
         items: item.items as unknown as PrescriptionItem[]
-      })));
+      }));
+      // Rascunhos da IA primeiro; depois por data desc
+      mapped.sort((a, b) => {
+        const aDraft = a.status === 'rascunho_ia' ? 0 : 1;
+        const bDraft = b.status === 'rascunho_ia' ? 0 : 1;
+        if (aDraft !== bDraft) return aDraft - bDraft;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+      setPrescriptions(mapped);
     } catch (error) {
       toast({
         title: 'Erro',
