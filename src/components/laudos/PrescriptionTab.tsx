@@ -30,6 +30,7 @@ interface PrescriptionItem {
   parceiro?: string | null;
   tarja?: string | null;
   tipo_receita?: string | null;
+  origem?: 'mencionada' | 'sugerida_ia' | string | null;
 }
 
 interface PrescriptionTabProps {
@@ -56,6 +57,7 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
         posologia: p.posologia || '',
         duracao: p.duracao || '',
         observacoes: p.observacoes || '',
+        origem: p.origem || null,
       })));
       setHasExtractedMeds(true);
     } else {
@@ -137,10 +139,13 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
         }
       }
 
-      const prescriptionData = {
+      const prescriptionData: any = {
         user_id: user.id,
         patient_name: sanitizeText(patientName),
         patient_sex: patientData?.sexo || null,
+        laudo_id: laudoData?.id || null,
+        ai_generated: true,
+        status: 'final',
         items: validItems.map(item => ({
           medicamento: sanitizeText(item.medicamento),
           dosagem: sanitizeText(item.dosagem),
@@ -150,6 +155,7 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
           parceiro: item.parceiro || null,
           tarja: item.tarja || null,
           tipo_receita: inferTipoReceita(item),
+          origem: (item as any).origem || null,
         })) as any,
         notes: notes ? sanitizeText(notes) : null,
         tipo_receita: (() => {
@@ -161,13 +167,24 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
         })(),
       };
 
-      const { error } = await supabase
-        .from('prescriptions')
-        .insert(prescriptionData);
+      // Se já existe prescription atrelada a este laudo (rascunho IA), faz UPDATE.
+      let existingId: string | null = null;
+      if (laudoData?.id) {
+        const { data: existing } = await supabase
+          .from('prescriptions')
+          .select('id')
+          .eq('laudo_id', laudoData.id)
+          .maybeSingle();
+        existingId = existing?.id || null;
+      }
+
+      const { error } = existingId
+        ? await supabase.from('prescriptions').update(prescriptionData).eq('id', existingId)
+        : await supabase.from('prescriptions').insert(prescriptionData);
 
       if (error) throw error;
 
-      toast({ title: 'Receituário salvo!', description: 'O receituário foi criado com sucesso.' });
+      toast({ title: 'Receituário salvo!', description: existingId ? 'Rascunho revisado e finalizado.' : 'O receituário foi criado com sucesso.' });
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } finally {
@@ -241,6 +258,12 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
                         </Badge>
                       );
                     })()}
+                    {(item as any).origem === 'sugerida_ia' && (
+                      <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-900 border-amber-300 gap-1">
+                        <Sparkles className="w-3 h-3" />
+                        Sugestão da IA
+                      </Badge>
+                    )}
                   </div>
                   {items.length > 1 && (
                     <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}>

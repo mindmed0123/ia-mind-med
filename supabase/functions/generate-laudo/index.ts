@@ -95,6 +95,7 @@ const LAUDO_TOOL = {
         condutas: { type: "array", items: { type: "string" }, description: "Máximo 6 condutas" },
         prescricoes_sugeridas: {
           type: "array",
+          description: "SEMPRE preencher. Se o médico citou medicamentos que pretende receitar, use origem='mencionada'. Se NÃO citou nenhum, sugira tratamento de PRIMEIRA LINHA (diretriz) para a hipótese principal, respeitando idade, comorbidades, alergias e medicações em uso, com origem='sugerida_ia'. NUNCA sugerir por iniciativa própria controlados (opioides, benzodiazepínicos, listas A/B). Máximo 6 itens.",
           items: {
             type: "object",
             properties: {
@@ -102,10 +103,12 @@ const LAUDO_TOOL = {
               dosagem: { type: "string" },
               posologia: { type: "string" },
               duracao: { type: "string" },
-              observacoes: { type: "string" },
+              observacoes: { type: "string", description: "Se sugerida_ia, inclua racional curto (ex.: 'IECA - primeira linha para HAS em <55a')." },
+              origem: { type: "string", enum: ["mencionada", "sugerida_ia"], description: "mencionada = médico ditou; sugerida_ia = tratamento de 1ª linha sugerido pela IA." },
             },
-            required: ["medicamento", "dosagem", "posologia"],
+            required: ["medicamento", "dosagem", "posologia", "origem"],
           },
+          maxItems: 6,
         },
         exames: { type: "array", items: { type: "string" }, description: "Máximo 5 exames" },
         red_flags: { type: "array", items: { type: "string" }, description: "Máximo 4 red flags" },
@@ -119,7 +122,7 @@ const LAUDO_TOOL = {
           additionalProperties: { type: "string" },
         },
       },
-      required: ["resumo_clinico", "anamnese", "dados_paciente_extraidos", "hipotese_principal", "hipotese_diferencial", "condutas", "exames", "red_flags", "cid10", "texto_laudo_md", "texto_paciente_md"],
+      required: ["resumo_clinico", "anamnese", "dados_paciente_extraidos", "hipotese_principal", "hipotese_diferencial", "condutas", "prescricoes_sugeridas", "exames", "red_flags", "cid10", "texto_laudo_md", "texto_paciente_md"],
       additionalProperties: false,
     },
   },
@@ -309,7 +312,12 @@ REGRAS CRÍTICAS PARA A ANAMNESE (campo "anamnese") — siga TODAS:
 8. resumo_clinico continua sendo executivo (80-150 palavras) — NÃO substitui a anamnese detalhada.
 9. NOME DO PACIENTE: se o médico mencionar o nome do paciente em qualquer momento da consulta, capture EXATAMENTE em dados_paciente_extraidos.nome_completo. Não use "Paciente" ou "N/I" como valor — deixe o campo vazio se o nome realmente não foi dito.
 10. SINAIS VITAIS COMPLETOS: capture em dados_paciente_extraidos.sinais_vitais CADA valor citado — PA, FC, FR, SpO2, temperatura, glicemia, peso, altura, IMC, ritmo. Preencha também anamnese.sinais_vitais_texto com todos os vitais em formato "PA 120x80 mmHg, FC 80 bpm, Glicemia 95 mg/dL, Peso 70 kg" etc. Não invente — registre apenas o que foi dito. Se Glicemia, Peso ou Altura foram mencionados, eles OBRIGATORIAMENTE devem aparecer nesses campos.
-11. PRESCRIÇÕES SUGERIDAS: se o médico mencionar qualquer medicamento que pretende receitar (não os que o paciente já usa), capture em prescricoes_sugeridas com medicamento, dosagem, posologia e duração conforme mencionado.
+11. PRESCRIÇÕES SUGERIDAS (SEMPRE preencher — nunca vazio quando houver hipótese clínica):
+    a) Se o médico mencionar medicamentos que pretende receitar (não os que o paciente já usa), capture com origem="mencionada", com medicamento, dosagem, posologia e duração conforme dito.
+    b) Se o médico NÃO ditou nenhum medicamento novo, monte o esquema de PRIMEIRA LINHA coerente com a hipótese principal, idade, comorbidades, alergias e medicações em uso do paciente (ex.: HAS estágio 1 em <55a → IECA/BRA; DM2 → metformina; ITU não complicada → nitrofurantoína/fosfomicina; asma → CI+SABA). Use origem="sugerida_ia" e posologia usual de diretriz.
+    c) NUNCA sugerir por iniciativa própria medicamentos controlados (opioides fortes, benzodiazepínicos, listas A/B da Anvisa). Só inclua-os se o médico os mencionou explicitamente (origem="mencionada").
+    d) SEMPRE respeitar alergias declaradas. Em cada item sugerida_ia, coloque em observacoes um racional curto (ex.: "IECA - 1ª linha HAS <55a sem contraindicação").
+    e) Máximo 6 itens. Se nada for aplicável (ex.: caso puramente diagnóstico sem hipótese ou apenas orientação não-medicamentosa), retorne array vazio.
 12. CONDUTA COMPLETA: capture TODA a conduta mencionada — solicitação de exames, encaminhamentos, orientações ao paciente, retorno, prescrições. Nada pode ficar de fora dos campos condutas e prescricoes_sugeridas.`;
 const systemPrompt = baseSystemPrompt + anamneseInstruction;
 
@@ -555,6 +563,71 @@ const systemPrompt = baseSystemPrompt + anamneseInstruction;
     if (updateError) {
       log(cid, 'db_error', { error: updateError.message });
       throw new Error('Erro ao salvar.');
+    }
+
+    // ===== BEST-EFFORT: criar/atualizar rascunho de receituário gerado por IA =====
+    try {
+      const validPrescricoes = (Array.isArray(prescricoesSugeridas) ? prescricoesSugeridas : [])
+        .filter((p: any) => p && p.medicamento && p.dosagem && p.posologia)
+        .slice(0, 6)
+        .map((p: any) => ({
+          medicamento: String(p.medicamento).slice(0, 200),
+          dosagem: String(p.dosagem).slice(0, 100),
+          posologia: String(p.posologia).slice(0, 200),
+          duracao: p.duracao ? String(p.duracao).slice(0, 100) : '',
+          observacoes: p.observacoes ? String(p.observacoes).slice(0, 500) : '',
+          origem: p.origem === 'sugerida_ia' ? 'sugerida_ia' : 'mencionada',
+        }));
+
+      if (validPrescricoes.length > 0) {
+        const dpx: any = laudoData.dados_paciente_extraidos || {};
+        const patientName = dpx.nome_completo || dpx.iniciais || patient?.nome_completo || patient?.iniciais || 'Paciente';
+        const patientSex = dpx.sexo || patient?.sexo || null;
+        const hipoteseDesc = laudoData.hipotese_principal?.descricao || '';
+        const condutasArr = Array.isArray(condutas) ? condutas : [];
+        const cidArr = Array.isArray(cid10) ? cid10 : [];
+        const notes = [
+          hipoteseDesc ? `Diagnóstico: ${hipoteseDesc}` : null,
+          condutasArr.length ? `Conduta: ${condutasArr.join('; ')}` : null,
+          cidArr.length ? `CID-10: ${cidArr.join(', ')}` : null,
+          '⚠️ Rascunho gerado por IA — revisão médica obrigatória antes da emissão.',
+        ].filter(Boolean).join('\n\n');
+
+        const { data: existing } = await supabase
+          .from('prescriptions')
+          .select('id, status')
+          .eq('laudo_id', laudo_id)
+          .maybeSingle();
+
+        const payload = {
+          user_id: user.id,
+          laudo_id,
+          status: 'rascunho_ia' as const,
+          ai_generated: true,
+          patient_name: String(patientName).slice(0, 200),
+          patient_sex: patientSex ? String(patientSex).slice(0, 20) : null,
+          items: validPrescricoes as any,
+          notes,
+          tipo_receita: 'branca_comum',
+        };
+
+        if (!existing) {
+          const { error: insErr } = await supabase.from('prescriptions').insert(payload);
+          if (insErr) log(cid, 'prescription_draft_insert_error', { msg: insErr.message });
+          else log(cid, 'prescription_draft_created', { items: validPrescricoes.length });
+        } else if (existing.status === 'rascunho_ia') {
+          const { error: updErr } = await supabase
+            .from('prescriptions')
+            .update(payload)
+            .eq('id', existing.id);
+          if (updErr) log(cid, 'prescription_draft_update_error', { msg: updErr.message });
+          else log(cid, 'prescription_draft_updated', { items: validPrescricoes.length });
+        } else {
+          log(cid, 'prescription_draft_skipped_final', { id: existing.id });
+        }
+      }
+    } catch (e: any) {
+      log(cid, 'prescription_draft_exception', { msg: e?.message });
     }
 
     const t8 = now();

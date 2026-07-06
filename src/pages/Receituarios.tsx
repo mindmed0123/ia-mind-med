@@ -39,6 +39,7 @@ interface PrescriptionItem {
   parceiro?: string | null;
   tarja?: string | null;
   tipo_receita?: string | null;
+  origem?: 'mencionada' | 'sugerida_ia' | string | null;
 }
 
 interface Prescription {
@@ -50,6 +51,9 @@ interface Prescription {
   notes: string | null;
   created_at: string;
   pdf_url: string | null;
+  status?: string | null;
+  ai_generated?: boolean | null;
+  laudo_id?: string | null;
 }
 
 export default function Receituarios() {
@@ -197,7 +201,7 @@ export default function Receituarios() {
       }
 
       // Sanitizar dados
-      const prescriptionData = {
+      const prescriptionData: any = {
         user_id: user?.id,
         patient_name: sanitizeText(formData.patient_name),
         patient_dob: formData.patient_dob || null,
@@ -212,6 +216,7 @@ export default function Receituarios() {
           parceiro: item.parceiro || null,
           tarja: item.tarja || null,
           tipo_receita: inferTipoReceita(item),
+          origem: item.origem || null,
         })) as any,
         notes: formData.notes ? sanitizeText(formData.notes) : null,
         tipo_receita: (() => {
@@ -222,6 +227,8 @@ export default function Receituarios() {
           }
           return 'branca_comum';
         })(),
+        // Ao salvar via editor manual, o rascunho vira final (revisado pelo médico)
+        status: 'final',
       };
 
       if (editingId) {
@@ -312,11 +319,21 @@ export default function Receituarios() {
   };
 
   const handleDownloadPDF = async (prescriptionId: string) => {
+    const p = prescriptions.find(x => x.id === prescriptionId);
+    if (p?.status === 'rascunho_ia') {
+      toast({
+        title: 'Revisão obrigatória',
+        description: 'Revise e salve o rascunho antes de emitir o PDF.',
+        variant: 'destructive',
+      });
+      return;
+    }
     try {
       toast({
         title: 'Gerando PDF',
         description: 'Aguarde enquanto o documento é gerado...'
       });
+
 
       const { data, error } = await supabase.functions.invoke('generate-prescription-pdf', {
         body: { prescription_id: prescriptionId }
@@ -665,7 +682,21 @@ export default function Receituarios() {
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-lg mb-2">{prescription.patient_name}</h3>
+                        <div className="flex items-center gap-2 flex-wrap mb-2">
+                          <h3 className="font-semibold text-lg">{prescription.patient_name}</h3>
+                          {prescription.status === 'rascunho_ia' && (
+                            <Badge className="bg-amber-100 text-amber-900 border-amber-300 gap-1">
+                              <Sparkles className="w-3 h-3" />
+                              Rascunho da IA — revisar
+                            </Badge>
+                          )}
+                          {prescription.status !== 'rascunho_ia' && prescription.ai_generated && (
+                            <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 gap-1">
+                              <CheckCircle2 className="w-3 h-3" />
+                              IA + revisado
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground mb-3">
                           {new Date(prescription.created_at).toLocaleString('pt-BR')}
                         </p>
@@ -685,6 +716,12 @@ export default function Receituarios() {
                                 >
                                   {TIPO_RECEITA_SHORT[tipo]}
                                 </Badge>
+                                {item.origem === 'sugerida_ia' && (
+                                  <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-900 border-amber-300 gap-1">
+                                    <Sparkles className="w-3 h-3" />
+                                    IA
+                                  </Badge>
+                                )}
                                 {item.parceiro && (
                                   <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-primary/20">
                                     {item.parceiro}
@@ -696,13 +733,25 @@ export default function Receituarios() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap justify-end">
+                        {prescription.status === 'rascunho_ia' && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleEdit(prescription)}
+                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                          >
+                            <Sparkles className="w-4 h-4 mr-1" />
+                            Revisar
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="icon"
                           onClick={() => handleDownloadPDF(prescription.id)}
-                          title="Baixar PDF"
-                          className="hover:bg-primary/10 hover:text-primary transition-colors"
+                          title={prescription.status === 'rascunho_ia' ? 'Revise antes de emitir' : 'Baixar PDF'}
+                          disabled={prescription.status === 'rascunho_ia'}
+                          className="hover:bg-primary/10 hover:text-primary transition-colors disabled:opacity-40"
                         >
                           <Download className="w-4 h-4" />
                         </Button>
