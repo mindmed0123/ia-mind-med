@@ -50,6 +50,16 @@ serve(async (req) => {
       });
     }
 
+    // Bloqueio server-side: rascunho da IA não pode ser emitido em PDF
+    if ((prescription as any).status === 'rascunho_ia') {
+      return new Response(JSON.stringify({
+        error: 'Receituário pendente de revisão médica',
+        code: 'PRESCRIPTION_DRAFT_REVIEW_REQUIRED',
+      }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // Doctor profile through user client (RLS allows reading own profile)
     const { data: profile, error: profileError } = await userClient
       .from('profiles')

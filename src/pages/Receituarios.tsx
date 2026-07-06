@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Activity, ArrowLeft, Plus, Trash2, Copy, Download, Save, Crown, Sparkles, Pill, CheckCircle2, FileText, AlertTriangle } from 'lucide-react';
+import { Activity, ArrowLeft, Plus, Trash2, Copy, Download, Save, Crown, Sparkles, Pill, CheckCircle2, FileText, AlertTriangle, Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -121,10 +121,18 @@ export default function Receituarios() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPrescriptions((data || []).map(item => ({
+      const mapped = (data || []).map(item => ({
         ...item,
         items: item.items as unknown as PrescriptionItem[]
-      })));
+      }));
+      // Rascunhos da IA primeiro; depois por data desc
+      mapped.sort((a, b) => {
+        const aDraft = a.status === 'rascunho_ia' ? 0 : 1;
+        const bDraft = b.status === 'rascunho_ia' ? 0 : 1;
+        if (aDraft !== bDraft) return aDraft - bDraft;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+      setPrescriptions(mapped);
     } catch (error) {
       toast({
         title: 'Erro',
@@ -376,6 +384,59 @@ export default function Receituarios() {
       toast({
         title: 'Erro ao gerar PDF',
         description: error.message || 'Não foi possível gerar o PDF',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handlePrintPDF = async (prescriptionId: string) => {
+    const p = prescriptions.find(x => x.id === prescriptionId);
+    if (p?.status === 'rascunho_ia') {
+      toast({
+        title: 'Revisão obrigatória',
+        description: 'Revise e salve o rascunho antes de imprimir.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      toast({ title: 'Preparando impressão', description: 'Gerando o receituário...' });
+      const { data, error } = await supabase.functions.invoke('generate-prescription-pdf', {
+        body: { prescription_id: prescriptionId }
+      });
+      if (error) throw error;
+      if (!data?.html) throw new Error('Falha ao gerar o receituário');
+
+      const { generatePdf } = await import('@/lib/pdf-generator');
+      const fileName = `receituario-${prescriptionId}-${Date.now()}.pdf`;
+      const pdfBlob = await generatePdf({
+        html: data.html,
+        fileName,
+        verifyUrl: `${window.location.origin}/r/${prescriptionId}`,
+      });
+
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const printWindow = window.open(blobUrl, '_blank');
+      if (!printWindow) {
+        toast({
+          title: 'Pop-up bloqueado',
+          description: 'Permita pop-ups para imprimir direto. Baixando o PDF...',
+          variant: 'destructive',
+        });
+        const { downloadPdf } = await import('@/lib/pdf-generator');
+        downloadPdf(pdfBlob, fileName);
+      } else {
+        // Aguardar carregamento e disparar diálogo de impressão
+        printWindow.addEventListener('load', () => {
+          try { printWindow.focus(); printWindow.print(); } catch {}
+        });
+        toast({ title: 'Receituário pronto', description: 'A janela de impressão foi aberta.' });
+      }
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao imprimir',
+        description: error.message || 'Não foi possível preparar a impressão',
         variant: 'destructive'
       });
     }
@@ -754,6 +815,16 @@ export default function Receituarios() {
                           className="hover:bg-primary/10 hover:text-primary transition-colors disabled:opacity-40"
                         >
                           <Download className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handlePrintPDF(prescription.id)}
+                          title={prescription.status === 'rascunho_ia' ? 'Revise antes de imprimir' : 'Imprimir'}
+                          disabled={prescription.status === 'rascunho_ia'}
+                          className="hover:bg-primary/10 hover:text-primary transition-colors disabled:opacity-40"
+                        >
+                          <Printer className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="outline"
