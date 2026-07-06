@@ -565,6 +565,71 @@ const systemPrompt = baseSystemPrompt + anamneseInstruction;
       throw new Error('Erro ao salvar.');
     }
 
+    // ===== BEST-EFFORT: criar/atualizar rascunho de receituário gerado por IA =====
+    try {
+      const validPrescricoes = (Array.isArray(prescricoesSugeridas) ? prescricoesSugeridas : [])
+        .filter((p: any) => p && p.medicamento && p.dosagem && p.posologia)
+        .slice(0, 6)
+        .map((p: any) => ({
+          medicamento: String(p.medicamento).slice(0, 200),
+          dosagem: String(p.dosagem).slice(0, 100),
+          posologia: String(p.posologia).slice(0, 200),
+          duracao: p.duracao ? String(p.duracao).slice(0, 100) : '',
+          observacoes: p.observacoes ? String(p.observacoes).slice(0, 500) : '',
+          origem: p.origem === 'sugerida_ia' ? 'sugerida_ia' : 'mencionada',
+        }));
+
+      if (validPrescricoes.length > 0) {
+        const dpx: any = laudoData.dados_paciente_extraidos || {};
+        const patientName = dpx.nome_completo || dpx.iniciais || patient?.nome_completo || patient?.iniciais || 'Paciente';
+        const patientSex = dpx.sexo || patient?.sexo || null;
+        const hipoteseDesc = laudoData.hipotese_principal?.descricao || '';
+        const condutasArr = Array.isArray(condutas) ? condutas : [];
+        const cidArr = Array.isArray(cid10) ? cid10 : [];
+        const notes = [
+          hipoteseDesc ? `Diagnóstico: ${hipoteseDesc}` : null,
+          condutasArr.length ? `Conduta: ${condutasArr.join('; ')}` : null,
+          cidArr.length ? `CID-10: ${cidArr.join(', ')}` : null,
+          '⚠️ Rascunho gerado por IA — revisão médica obrigatória antes da emissão.',
+        ].filter(Boolean).join('\n\n');
+
+        const { data: existing } = await supabase
+          .from('prescriptions')
+          .select('id, status')
+          .eq('laudo_id', laudo_id)
+          .maybeSingle();
+
+        const payload = {
+          user_id: user.id,
+          laudo_id,
+          status: 'rascunho_ia' as const,
+          ai_generated: true,
+          patient_name: String(patientName).slice(0, 200),
+          patient_sex: patientSex ? String(patientSex).slice(0, 20) : null,
+          items: validPrescricoes as any,
+          notes,
+          tipo_receita: 'branca_comum',
+        };
+
+        if (!existing) {
+          const { error: insErr } = await supabase.from('prescriptions').insert(payload);
+          if (insErr) log(cid, 'prescription_draft_insert_error', { msg: insErr.message });
+          else log(cid, 'prescription_draft_created', { items: validPrescricoes.length });
+        } else if (existing.status === 'rascunho_ia') {
+          const { error: updErr } = await supabase
+            .from('prescriptions')
+            .update(payload)
+            .eq('id', existing.id);
+          if (updErr) log(cid, 'prescription_draft_update_error', { msg: updErr.message });
+          else log(cid, 'prescription_draft_updated', { items: validPrescricoes.length });
+        } else {
+          log(cid, 'prescription_draft_skipped_final', { id: existing.id });
+        }
+      }
+    } catch (e: any) {
+      log(cid, 'prescription_draft_exception', { msg: e?.message });
+    }
+
     const t8 = now();
     log(cid, 'complete', {
       laudo_id, model: actualModel, requested_model: modelUsed, mode,
