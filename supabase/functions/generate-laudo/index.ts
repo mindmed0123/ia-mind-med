@@ -95,6 +95,7 @@ const LAUDO_TOOL = {
         condutas: { type: "array", items: { type: "string" }, description: "Máximo 6 condutas" },
         prescricoes_sugeridas: {
           type: "array",
+          description: "SEMPRE preencher. Se o médico citou medicamentos que pretende receitar, use origem='mencionada'. Se NÃO citou nenhum, sugira tratamento de PRIMEIRA LINHA (diretriz) para a hipótese principal, respeitando idade, comorbidades, alergias e medicações em uso, com origem='sugerida_ia'. NUNCA sugerir por iniciativa própria controlados (opioides, benzodiazepínicos, listas A/B). Máximo 6 itens.",
           items: {
             type: "object",
             properties: {
@@ -102,10 +103,12 @@ const LAUDO_TOOL = {
               dosagem: { type: "string" },
               posologia: { type: "string" },
               duracao: { type: "string" },
-              observacoes: { type: "string" },
+              observacoes: { type: "string", description: "Se sugerida_ia, inclua racional curto (ex.: 'IECA - primeira linha para HAS em <55a')." },
+              origem: { type: "string", enum: ["mencionada", "sugerida_ia"], description: "mencionada = médico ditou; sugerida_ia = tratamento de 1ª linha sugerido pela IA." },
             },
-            required: ["medicamento", "dosagem", "posologia"],
+            required: ["medicamento", "dosagem", "posologia", "origem"],
           },
+          maxItems: 6,
         },
         exames: { type: "array", items: { type: "string" }, description: "Máximo 5 exames" },
         red_flags: { type: "array", items: { type: "string" }, description: "Máximo 4 red flags" },
