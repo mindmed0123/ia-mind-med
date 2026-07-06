@@ -23,9 +23,15 @@ const Auth = () => {
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [signupData, setSignupData] = useState({ name: "", email: "", password: "", confirmPassword: "" });
 
+  const getNextPath = (): string => {
+    const raw = new URLSearchParams(window.location.search).get("next");
+    if (raw && raw.startsWith("/") && !raw.startsWith("//")) return raw;
+    return "/dashboard";
+  };
+
   useEffect(() => {
     if (user) {
-      navigate("/dashboard");
+      navigate(getNextPath());
     }
   }, [user, navigate]);
 
@@ -56,7 +62,7 @@ const Auth = () => {
         }
       } else {
         toast.success("Login realizado com sucesso!");
-        navigate("/dashboard");
+        navigate(getNextPath());
       }
     } catch {
       toast.error("Erro ao fazer login. Tente novamente.");
