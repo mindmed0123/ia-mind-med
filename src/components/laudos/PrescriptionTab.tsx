@@ -30,6 +30,7 @@ interface PrescriptionItem {
   parceiro?: string | null;
   tarja?: string | null;
   tipo_receita?: string | null;
+  origem?: 'mencionada' | 'sugerida_ia' | string | null;
 }
 
 interface PrescriptionTabProps {
