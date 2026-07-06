@@ -312,7 +312,12 @@ REGRAS CRÍTICAS PARA A ANAMNESE (campo "anamnese") — siga TODAS:
 8. resumo_clinico continua sendo executivo (80-150 palavras) — NÃO substitui a anamnese detalhada.
 9. NOME DO PACIENTE: se o médico mencionar o nome do paciente em qualquer momento da consulta, capture EXATAMENTE em dados_paciente_extraidos.nome_completo. Não use "Paciente" ou "N/I" como valor — deixe o campo vazio se o nome realmente não foi dito.
 10. SINAIS VITAIS COMPLETOS: capture em dados_paciente_extraidos.sinais_vitais CADA valor citado — PA, FC, FR, SpO2, temperatura, glicemia, peso, altura, IMC, ritmo. Preencha também anamnese.sinais_vitais_texto com todos os vitais em formato "PA 120x80 mmHg, FC 80 bpm, Glicemia 95 mg/dL, Peso 70 kg" etc. Não invente — registre apenas o que foi dito. Se Glicemia, Peso ou Altura foram mencionados, eles OBRIGATORIAMENTE devem aparecer nesses campos.
-11. PRESCRIÇÕES SUGERIDAS: se o médico mencionar qualquer medicamento que pretende receitar (não os que o paciente já usa), capture em prescricoes_sugeridas com medicamento, dosagem, posologia e duração conforme mencionado.
+11. PRESCRIÇÕES SUGERIDAS (SEMPRE preencher — nunca vazio quando houver hipótese clínica):
+    a) Se o médico mencionar medicamentos que pretende receitar (não os que o paciente já usa), capture com origem="mencionada", com medicamento, dosagem, posologia e duração conforme dito.
+    b) Se o médico NÃO ditou nenhum medicamento novo, monte o esquema de PRIMEIRA LINHA coerente com a hipótese principal, idade, comorbidades, alergias e medicações em uso do paciente (ex.: HAS estágio 1 em <55a → IECA/BRA; DM2 → metformina; ITU não complicada → nitrofurantoína/fosfomicina; asma → CI+SABA). Use origem="sugerida_ia" e posologia usual de diretriz.
+    c) NUNCA sugerir por iniciativa própria medicamentos controlados (opioides fortes, benzodiazepínicos, listas A/B da Anvisa). Só inclua-os se o médico os mencionou explicitamente (origem="mencionada").
+    d) SEMPRE respeitar alergias declaradas. Em cada item sugerida_ia, coloque em observacoes um racional curto (ex.: "IECA - 1ª linha HAS <55a sem contraindicação").
+    e) Máximo 6 itens. Se nada for aplicável (ex.: caso puramente diagnóstico sem hipótese ou apenas orientação não-medicamentosa), retorne array vazio.
 12. CONDUTA COMPLETA: capture TODA a conduta mencionada — solicitação de exames, encaminhamentos, orientações ao paciente, retorno, prescrições. Nada pode ficar de fora dos campos condutas e prescricoes_sugeridas.`;
 const systemPrompt = baseSystemPrompt + anamneseInstruction;
 
