@@ -85,6 +85,7 @@ const App = () => (
                 <Route path="/agendar" element={<Agendar />} />
                 <Route path="/aceitar-convite" element={<AceitarConvite />} />
                 <Route path="/sala/:id" element={<SalaPaciente />} />
+                <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                 
                 {/* Protected routes */}
                 <Route path="/dashboard" element={<SubscriptionGuard><Dashboard /></SubscriptionGuard>} />
