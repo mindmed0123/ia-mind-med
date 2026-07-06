@@ -682,7 +682,21 @@ export default function Receituarios() {
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-lg mb-2">{prescription.patient_name}</h3>
+                        <div className="flex items-center gap-2 flex-wrap mb-2">
+                          <h3 className="font-semibold text-lg">{prescription.patient_name}</h3>
+                          {prescription.status === 'rascunho_ia' && (
+                            <Badge className="bg-amber-100 text-amber-900 border-amber-300 gap-1">
+                              <Sparkles className="w-3 h-3" />
+                              Rascunho da IA — revisar
+                            </Badge>
+                          )}
+                          {prescription.status !== 'rascunho_ia' && prescription.ai_generated && (
+                            <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 gap-1">
+                              <CheckCircle2 className="w-3 h-3" />
+                              IA + revisado
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground mb-3">
                           {new Date(prescription.created_at).toLocaleString('pt-BR')}
                         </p>
@@ -702,6 +716,12 @@ export default function Receituarios() {
                                 >
                                   {TIPO_RECEITA_SHORT[tipo]}
                                 </Badge>
+                                {item.origem === 'sugerida_ia' && (
+                                  <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-900 border-amber-300 gap-1">
+                                    <Sparkles className="w-3 h-3" />
+                                    IA
+                                  </Badge>
+                                )}
                                 {item.parceiro && (
                                   <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-primary/20">
                                     {item.parceiro}
@@ -713,13 +733,25 @@ export default function Receituarios() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap justify-end">
+                        {prescription.status === 'rascunho_ia' && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleEdit(prescription)}
+                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                          >
+                            <Sparkles className="w-4 h-4 mr-1" />
+                            Revisar
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="icon"
                           onClick={() => handleDownloadPDF(prescription.id)}
-                          title="Baixar PDF"
-                          className="hover:bg-primary/10 hover:text-primary transition-colors"
+                          title={prescription.status === 'rascunho_ia' ? 'Revise antes de emitir' : 'Baixar PDF'}
+                          disabled={prescription.status === 'rascunho_ia'}
+                          className="hover:bg-primary/10 hover:text-primary transition-colors disabled:opacity-40"
                         >
                           <Download className="w-4 h-4" />
                         </Button>
