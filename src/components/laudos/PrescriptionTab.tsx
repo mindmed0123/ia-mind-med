@@ -57,6 +57,7 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
         posologia: p.posologia || '',
         duracao: p.duracao || '',
         observacoes: p.observacoes || '',
+        origem: p.origem || null,
       })));
       setHasExtractedMeds(true);
     } else {
