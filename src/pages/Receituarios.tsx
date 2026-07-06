@@ -389,6 +389,59 @@ export default function Receituarios() {
     }
   };
 
+  const handlePrintPDF = async (prescriptionId: string) => {
+    const p = prescriptions.find(x => x.id === prescriptionId);
+    if (p?.status === 'rascunho_ia') {
+      toast({
+        title: 'Revisão obrigatória',
+        description: 'Revise e salve o rascunho antes de imprimir.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      toast({ title: 'Preparando impressão', description: 'Gerando o receituário...' });
+      const { data, error } = await supabase.functions.invoke('generate-prescription-pdf', {
+        body: { prescription_id: prescriptionId }
+      });
+      if (error) throw error;
+      if (!data?.html) throw new Error('Falha ao gerar o receituário');
+
+      const { generatePdf } = await import('@/lib/pdf-generator');
+      const fileName = `receituario-${prescriptionId}-${Date.now()}.pdf`;
+      const pdfBlob = await generatePdf({
+        html: data.html,
+        fileName,
+        verifyUrl: `${window.location.origin}/r/${prescriptionId}`,
+      });
+
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const printWindow = window.open(blobUrl, '_blank');
+      if (!printWindow) {
+        toast({
+          title: 'Pop-up bloqueado',
+          description: 'Permita pop-ups para imprimir direto. Baixando o PDF...',
+          variant: 'destructive',
+        });
+        const { downloadPdf } = await import('@/lib/pdf-generator');
+        downloadPdf(pdfBlob, fileName);
+      } else {
+        // Aguardar carregamento e disparar diálogo de impressão
+        printWindow.addEventListener('load', () => {
+          try { printWindow.focus(); printWindow.print(); } catch {}
+        });
+        toast({ title: 'Receituário pronto', description: 'A janela de impressão foi aberta.' });
+      }
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao imprimir',
+        description: error.message || 'Não foi possível preparar a impressão',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const resetForm = () => {
     setEditingId(null);
     setFormData({
