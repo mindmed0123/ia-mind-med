@@ -201,7 +201,7 @@ export default function Receituarios() {
       }
 
       // Sanitizar dados
-      const prescriptionData = {
+      const prescriptionData: any = {
         user_id: user?.id,
         patient_name: sanitizeText(formData.patient_name),
         patient_dob: formData.patient_dob || null,
@@ -216,6 +216,7 @@ export default function Receituarios() {
           parceiro: item.parceiro || null,
           tarja: item.tarja || null,
           tipo_receita: inferTipoReceita(item),
+          origem: item.origem || null,
         })) as any,
         notes: formData.notes ? sanitizeText(formData.notes) : null,
         tipo_receita: (() => {
@@ -226,6 +227,8 @@ export default function Receituarios() {
           }
           return 'branca_comum';
         })(),
+        // Ao salvar via editor manual, o rascunho vira final (revisado pelo médico)
+        status: 'final',
       };
 
       if (editingId) {
