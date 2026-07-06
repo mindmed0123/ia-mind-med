@@ -1241,51 +1241,68 @@ export type Database = {
       }
       prescriptions: {
         Row: {
+          ai_generated: boolean
           created_at: string
           group_id: string | null
           id: string
           items: Json
+          laudo_id: string | null
           notes: string | null
           patient_dob: string | null
           patient_id_external: string | null
           patient_name: string
           patient_sex: string | null
           pdf_url: string | null
+          status: string
           tipo_receita: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          ai_generated?: boolean
           created_at?: string
           group_id?: string | null
           id?: string
           items?: Json
+          laudo_id?: string | null
           notes?: string | null
           patient_dob?: string | null
           patient_id_external?: string | null
           patient_name: string
           patient_sex?: string | null
           pdf_url?: string | null
+          status?: string
           tipo_receita?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          ai_generated?: boolean
           created_at?: string
           group_id?: string | null
           id?: string
           items?: Json
+          laudo_id?: string | null
           notes?: string | null
           patient_dob?: string | null
           patient_id_external?: string | null
           patient_name?: string
           patient_sex?: string | null
           pdf_url?: string | null
+          status?: string
           tipo_receita?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "prescriptions_laudo_id_fkey"
+            columns: ["laudo_id"]
+            isOneToOne: false
+            referencedRelation: "laudos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
