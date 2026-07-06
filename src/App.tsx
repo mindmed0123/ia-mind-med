@@ -36,6 +36,7 @@ const Telemedicina = lazy(() => import("./pages/Telemedicina"));
 const Consulta = lazy(() => import("./pages/Consulta"));
 const SalaPaciente = lazy(() => import("./pages/SalaPaciente"));
 const HantavirusPage = lazy(() => import("./pages/HantavirusPage"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
