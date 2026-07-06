@@ -39,6 +39,7 @@ interface PrescriptionItem {
   parceiro?: string | null;
   tarja?: string | null;
   tipo_receita?: string | null;
+  origem?: 'mencionada' | 'sugerida_ia' | string | null;
 }
 
 interface Prescription {
@@ -50,6 +51,9 @@ interface Prescription {
   notes: string | null;
   created_at: string;
   pdf_url: string | null;
+  status?: string | null;
+  ai_generated?: boolean | null;
+  laudo_id?: string | null;
 }
 
 export default function Receituarios() {
