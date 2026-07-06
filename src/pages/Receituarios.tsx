@@ -819,6 +819,16 @@ export default function Receituarios() {
                         <Button
                           variant="outline"
                           size="icon"
+                          onClick={() => handlePrintPDF(prescription.id)}
+                          title={prescription.status === 'rascunho_ia' ? 'Revise antes de imprimir' : 'Imprimir'}
+                          disabled={prescription.status === 'rascunho_ia'}
+                          className="hover:bg-primary/10 hover:text-primary transition-colors disabled:opacity-40"
+                        >
+                          <Printer className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
                           onClick={() => handleDuplicate(prescription)}
                           title="Duplicar"
                           className="hover:bg-secondary/80 transition-colors"
