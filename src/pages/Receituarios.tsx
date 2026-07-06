@@ -319,9 +319,20 @@ export default function Receituarios() {
   };
 
   const handleDownloadPDF = async (prescriptionId: string) => {
+    const p = prescriptions.find(x => x.id === prescriptionId);
+    if (p?.status === 'rascunho_ia') {
+      toast({
+        title: 'Revisão obrigatória',
+        description: 'Revise e salve o rascunho antes de emitir o PDF.',
+        variant: 'destructive',
+      });
+      return;
+    }
     try {
       toast({
         title: 'Gerando PDF',
+        description: 'Aguarde enquanto o documento é gerado...'
+      });
         description: 'Aguarde enquanto o documento é gerado...'
       });
 
