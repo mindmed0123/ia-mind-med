@@ -528,11 +528,11 @@ export default function FarmacovigilanciaNovo() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase.from('profiles').select('full_name, crm, uf, phone').eq('id', user.id).maybeSingle();
+      const { data } = await supabase.from('profiles').select('full_name, crm, crm_uf, phone').eq('id', user.id).maybeSingle();
       if (data) {
         methods.setValue('relator.nome', data.full_name ?? methods.getValues('relator.nome'));
         methods.setValue('relator.crm', (data as any).crm ?? '');
-        methods.setValue('relator.uf', (data as any).uf ?? '');
+        methods.setValue('relator.uf', (data as any).crm_uf ?? '');
         methods.setValue('relator.telefone', (data as any).phone ?? '');
       }
     })();
