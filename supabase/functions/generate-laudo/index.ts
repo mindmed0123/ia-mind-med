@@ -516,6 +516,113 @@ const systemPrompt = baseSystemPrompt + anamneseInstruction;
       exame_fisico: anamnese.exame_fisico || '',
     };
 
+    // ===== ENRIQUECIMENTO: resolver prescrições contra o catálogo (medications) =====
+    // Estratégia: para cada item da IA, buscar via search_medications; anexar
+    // medication_id/tarja/tipo_receita/is_parceiro/parceiro_nome quando houver
+    // match. Se houver equivalente parceiro para o mesmo princípio ativo,
+    // incluir sugestao_parceiro. Se não achar, marcar nao_catalogado:true.
+    try {
+      const stripDose = (s: string) =>
+        String(s || '')
+          .replace(/\d+([\.,]\d+)?\s*(mg|mcg|g|ml|ui|%|cp|comp|caps|gts|gotas)\b/gi, ' ')
+          .replace(/[\/\+].*$/g, ' ') // remove "/500mg" ou "+ clavulanato"
+          .replace(/\s+/g, ' ')
+          .trim();
+      const norm = (s: string) =>
+        String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+      const enriched: any[] = [];
+      for (const p of prescricoesSugeridas) {
+        if (!p || !p.medicamento) { enriched.push(p); continue; }
+        const raw = String(p.medicamento);
+        const q = stripDose(raw) || raw;
+        try {
+          const { data: results } = await supabase.rpc('search_medications', { q, cid: null });
+          const arr = Array.isArray(results) ? results : [];
+          if (arr.length === 0) {
+            enriched.push({ ...p, nao_catalogado: true });
+            continue;
+          }
+          // Ranquear: prioriza começa-com e igualdade em nome/princípio, depois primeiro
+          const nq = norm(q);
+          const scored = arr.map((m: any) => {
+            const nn = norm(m.nome_comercial);
+            const np = norm(m.principio_ativo);
+            let score = 0;
+            if (nn === nq || np === nq) score += 100;
+            if (nn.startsWith(nq) || np.startsWith(nq)) score += 50;
+            if (nn.includes(nq) || np.includes(nq)) score += 20;
+            if (m.is_parceiro) score += 5;
+            return { m, score };
+          }).sort((a, b) => b.score - a.score);
+          const top = scored[0].m;
+          // Sugestão de parceiro: mesmo princípio ativo, é parceiro, é outro registro
+          let sugestao_parceiro: string | null = null;
+          if (!top.is_parceiro && top.principio_ativo) {
+            const paNorm = norm(top.principio_ativo);
+            const parc = arr.find((m: any) =>
+              m.is_parceiro &&
+              m.id !== top.id &&
+              norm(m.principio_ativo) === paNorm
+            );
+            if (parc) {
+              sugestao_parceiro = `${parc.nome_comercial}${parc.parceiro_nome ? ` (${parc.parceiro_nome})` : ''}`;
+            }
+          }
+          enriched.push({
+            ...p,
+            medication_id: top.id,
+            principio_ativo: top.principio_ativo,
+            tarja: top.tarja,
+            tipo_receita: top.tipo_receita,
+            is_parceiro: !!top.is_parceiro,
+            parceiro: top.parceiro_nome || (top.is_parceiro ? top.laboratorio : null),
+            parceiro_nome: top.parceiro_nome || null,
+            catalog_nome_comercial: top.nome_comercial,
+            sugestao_parceiro,
+          });
+        } catch (_e) {
+          enriched.push({ ...p, nao_catalogado: true });
+        }
+      }
+      prescricoesSugeridas = enriched;
+    } catch (e: any) {
+      log(cid, 'prescription_enrichment_error', { msg: e?.message });
+    }
+
+    // ===== Piso de segurança clínica/legal por nome/princípio ativo =====
+    const _norm = (s: string) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const _SEV = { branca_comum: 0, antimicrobiano: 1, controle_especial: 2, azul_b: 3, amarela_a: 4 } as const;
+    type _TR = keyof typeof _SEV;
+    const _AMARELA = [/\bmorfina\b/,/\bfentanil\b/,/\bmetadona\b/,/\boxicodona\b/,/\bhidromorfona\b/,/\bpetidina\b/,/\bmeperidina\b/,/\bmetilfenidato\b/,/\blisdexanfetamina\b/,/\bdexanfetamina\b/,/\banfepramona\b/,/\bfenproporex\b/,/\bmazindol\b/,/\britalina\b/,/\bconcerta\b/,/\bvenvanse\b/,/\bdimesilato\b/];
+    const _AZUL = [/\bclonazepam\b/,/\balprazolam\b/,/\bdiazepam\b/,/\bbromazepam\b/,/\blorazepam\b/,/\bmidazolam\b/,/\bflunitrazepam\b/,/\bnitrazepam\b/,/\btriazolam\b/,/\boxazepam\b/,/\bclobazam\b/,/\bestazolam\b/,/\bcloxazolam\b/,/\bzolpidem\b/,/\bzopiclona\b/,/\bzaleplona\b/,/\beszopiclona\b/,/\bbuprenorfina\b/,/\bfrontal\b/,/\brivotril\b/,/\blexotan\b/,/\bvalium\b/,/\bstilnox\b/,/\bturno\b/,/\bdormonid\b/];
+    const _CE = [/\btramadol\b/,/\bcodeina\b/,/\bcodein\b/,/\btylex\b/,/\btramal\b/,/\bgesico\b/,/\bpaco\b/,/\bsertralina\b/,/\bfluoxetina\b/,/\bparoxetina\b/,/\bescitalopram\b/,/\bcitalopram\b/,/\bvenlafaxina\b/,/\bdesvenlafaxina\b/,/\bduloxetina\b/,/\bbupropiona\b/,/\bmirtazapina\b/,/\btrazodona\b/,/\bamitriptilina\b/,/\bnortriptilina\b/,/\bclomipramina\b/,/\bimipramina\b/,/\bhaloperidol\b/,/\brisperidona\b/,/\bquetiapina\b/,/\bolanzapina\b/,/\baripiprazol\b/,/\bclozapina\b/,/\blamotrigina\b/,/\bcarbamazepina\b/,/\boxcarbazepina\b/,/\bdivalproato\b/,/\bvalproato\b/,/\btopiramato\b/,/\bgabapentina\b/,/\bpregabalina\b/,/\blevetiracetam\b/,/\bfenitoina\b/,/\bfenobarbital\b/,/\bdonepezila\b/,/\brivastigmina\b/,/\bgalantamina\b/,/\bmemantina\b/,/\bisotretinoina\b/,/\bacitretina\b/];
+    const _ATB = [/\bamoxicilina\b/,/\bampicilina\b/,/\bpenicilina\b/,/\bcefalexina\b/,/\bcefadroxil\b/,/\bcefuroxima\b/,/\bceftriaxona\b/,/\bcefepim/,/\bciprofloxacino\b/,/\blevofloxacino\b/,/\bmoxifloxacino\b/,/\bnorfloxacino\b/,/\bazitromicina\b/,/\bclaritromicina\b/,/\beritromicina\b/,/\bclindamicina\b/,/\bsulfametoxazol\b/,/\btrimetoprima\b/,/\bbactrim\b/,/\bmetronidazol\b/,/\btinidazol\b/,/\bsecnidazol\b/,/\bnitrofurantoina\b/,/\bfosfomicina\b/,/\bdoxiciclina\b/,/\btetraciclina\b/,/\bvancomicina\b/,/\blinezolida\b/,/\bgentamicina\b/,/\bamicacina\b/,/\bfluconazol\b/,/\bitraconazol\b/,/\baciclovir\b/,/\bvalaciclovir\b/,/\boseltamivir\b/,/\brifampicina\b/,/\bkeflex\b/,/\bamoxil\b/,/\bcipro\b/,/\bsinot\b/,/\bastro\b/,/\bsubtrax\b/];
+    const pisoTipo = (nome?: string, principio?: string): _TR | null => {
+      const alvo = [nome, principio].filter(Boolean).map((s) => _norm(String(s))).join(' | ');
+      if (!alvo) return null;
+      if (_AMARELA.some((r) => r.test(alvo))) return 'amarela_a';
+      if (_AZUL.some((r) => r.test(alvo))) return 'azul_b';
+      if (_CE.some((r) => r.test(alvo))) return 'controle_especial';
+      if (_ATB.some((r) => r.test(alvo))) return 'antimicrobiano';
+      return null;
+    };
+    const inferTipo = (it: any): _TR => {
+      let base: _TR = 'branca_comum';
+      const raw = String(it.tipo_receita || '').toLowerCase();
+      if (['branca_comum','antimicrobiano','controle_especial','azul_b','amarela_a'].includes(raw)) {
+        base = raw as _TR;
+      } else {
+        const tarja = String(it.tarja || '').toLowerCase();
+        if (tarja.includes('amarela')) base = 'amarela_a';
+        else if (tarja.includes('preta') || tarja.includes('azul')) base = 'azul_b';
+        else if (tarja === 'vermelha_retencao') base = 'controle_especial';
+      }
+      const piso = pisoTipo(it.medicamento, it.principio_ativo);
+      if (piso && _SEV[piso] > _SEV[base]) return piso;
+      return base;
+    };
+
     // ===== DB UPDATE =====
     const t7 = now();
     const { error: updateError } = await supabase
