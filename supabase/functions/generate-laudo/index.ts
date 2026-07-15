@@ -677,14 +677,26 @@ const systemPrompt = baseSystemPrompt + anamneseInstruction;
       const validPrescricoes = (Array.isArray(prescricoesSugeridas) ? prescricoesSugeridas : [])
         .filter((p: any) => p && p.medicamento && p.dosagem && p.posologia)
         .slice(0, 6)
-        .map((p: any) => ({
-          medicamento: String(p.medicamento).slice(0, 200),
-          dosagem: String(p.dosagem).slice(0, 100),
-          posologia: String(p.posologia).slice(0, 200),
-          duracao: p.duracao ? String(p.duracao).slice(0, 100) : '',
-          observacoes: p.observacoes ? String(p.observacoes).slice(0, 500) : '',
-          origem: p.origem === 'sugerida_ia' ? 'sugerida_ia' : 'mencionada',
-        }));
+        .map((p: any) => {
+          const tipoItem = inferTipo(p);
+          return {
+            medicamento: String(p.medicamento).slice(0, 200),
+            dosagem: String(p.dosagem).slice(0, 100),
+            posologia: String(p.posologia).slice(0, 200),
+            duracao: p.duracao ? String(p.duracao).slice(0, 100) : '',
+            observacoes: p.observacoes ? String(p.observacoes).slice(0, 500) : '',
+            origem: p.origem === 'sugerida_ia' ? 'sugerida_ia' : 'mencionada',
+            // Metadados resolvidos contra o catálogo (podem estar ausentes)
+            medication_id: p.medication_id || null,
+            principio_ativo: p.principio_ativo || null,
+            tarja: p.tarja || null,
+            tipo_receita: tipoItem,
+            is_parceiro: !!p.is_parceiro,
+            parceiro_nome: p.parceiro_nome || null,
+            sugestao_parceiro: p.sugestao_parceiro || null,
+            nao_catalogado: !!p.nao_catalogado,
+          };
+        });
 
       if (validPrescricoes.length > 0) {
         const dpx: any = laudoData.dados_paciente_extraidos || {};
@@ -706,6 +718,12 @@ const systemPrompt = baseSystemPrompt + anamneseInstruction;
           .eq('laudo_id', laudo_id)
           .maybeSingle();
 
+        // Tipo de receita do cabeçalho = mais restritivo entre os itens
+        const tipoHeader = validPrescricoes.reduce<_TR>((acc, it) => {
+          const t = it.tipo_receita as _TR;
+          return _SEV[t] > _SEV[acc] ? t : acc;
+        }, 'branca_comum');
+
         const payload = {
           user_id: user.id,
           laudo_id,
@@ -715,8 +733,9 @@ const systemPrompt = baseSystemPrompt + anamneseInstruction;
           patient_sex: patientSex ? String(patientSex).slice(0, 20) : null,
           items: validPrescricoes as any,
           notes,
-          tipo_receita: 'branca_comum',
+          tipo_receita: tipoHeader,
         };
+
 
         if (!existing) {
           const { error: insErr } = await supabase.from('prescriptions').insert(payload);
