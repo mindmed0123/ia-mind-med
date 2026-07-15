@@ -407,13 +407,7 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
                   </label>
                 )}
 
-                  </div>
-                  {items.length > 1 && (
-                    <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  )}
-                </div>
+
 
                 <div className="grid md:grid-cols-2 gap-3">
                   <div>
