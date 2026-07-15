@@ -16,6 +16,7 @@ import { PatientTimeline } from '@/components/patient/PatientTimeline';
 import { ImageComparison } from '@/components/patient/ImageComparison';
 import { PatientClinicalProfile } from '@/components/patient/PatientClinicalProfile';
 import { PatientHantavirusTriagens } from '@/components/patient/PatientHantavirusTriagens';
+import { FarmacovigilanciaButton } from '@/components/farmacovigilancia/FarmacovigilanciaButton';
 import { useSubscription } from '@/hooks/useSubscription';
 
 interface Patient {
@@ -224,6 +225,10 @@ export default function HistoricoPaciente() {
               Comparar Imagens
             </Button>
           )}
+          <FarmacovigilanciaButton
+            size="default"
+            prefill={{ paciente: { nome: patient.name, sexo: patient.sex ?? undefined, dataNascimento: patient.birth_date ?? undefined } }}
+          />
         </div>
 
         <Tabs defaultValue="perfil" className="w-full">
