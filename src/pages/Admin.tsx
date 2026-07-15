@@ -5,8 +5,9 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, BarChart3, Users, Mail, Activity, Calendar, RefreshCw, DollarSign, ShieldCheck } from "lucide-react";
+import { Loader2, ArrowLeft, BarChart3, Users, Mail, Activity, Calendar, RefreshCw, DollarSign, ShieldCheck, Building2 } from "lucide-react";
 import { AdminFeatureAccess } from "@/components/admin/AdminFeatureAccess";
+import { AdminFarmaceuticasTab } from "@/components/admin/AdminFarmaceuticasTab";
 import { toast } from "sonner";
 import { AdminKPICards } from "@/components/admin/AdminKPICards";
 import { AdminConversionFunnel } from "@/components/admin/AdminConversionFunnel";
@@ -235,7 +236,7 @@ export default function Admin() {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-7 mb-8">
+          <TabsList className="grid w-full grid-cols-8 mb-8">
             <TabsTrigger value="overview"><BarChart3 className="w-4 h-4 mr-2" />Visão Geral</TabsTrigger>
             {canManageBilling && <TabsTrigger value="finance"><DollarSign className="w-4 h-4 mr-2" />Financeiro</TabsTrigger>}
             <TabsTrigger value="users"><Users className="w-4 h-4 mr-2" />Usuários</TabsTrigger>
@@ -243,6 +244,7 @@ export default function Admin() {
             <TabsTrigger value="audit"><ShieldCheck className="w-4 h-4 mr-2" />Auditoria</TabsTrigger>
             <TabsTrigger value="activity"><Activity className="w-4 h-4 mr-2" />Atividade</TabsTrigger>
             <TabsTrigger value="modules"><Calendar className="w-4 h-4 mr-2" />Módulos</TabsTrigger>
+            <TabsTrigger value="farmaceuticas"><Building2 className="w-4 h-4 mr-2" />Farmacêuticas</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -294,6 +296,10 @@ export default function Admin() {
 
           <TabsContent value="modules">
             <AdminFeatureAccess />
+          </TabsContent>
+
+          <TabsContent value="farmaceuticas">
+            <AdminFarmaceuticasTab />
           </TabsContent>
         </Tabs>
       </main>
