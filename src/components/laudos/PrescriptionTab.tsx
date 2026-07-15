@@ -215,6 +215,18 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
         throw new Error('Adicione pelo menos um medicamento com nome, dosagem e posologia');
       }
 
+      // Exige confirmação para itens fora do catálogo antes de gravar
+      const semConfirmacao = validItems.filter(
+        (i) => i.nao_catalogado && !i.confirmado_fora_catalogo
+      );
+      if (semConfirmacao.length > 0) {
+        throw new Error(
+          `Confirme os medicamentos fora do catálogo antes de salvar: ${semConfirmacao
+            .map((i) => i.medicamento)
+            .join(', ')}`,
+        );
+      }
+
       for (const item of validItems) {
         if (!validateMedicationName(item.medicamento)) {
           throw new Error(`Medicamento "${item.medicamento}" inválido`);
@@ -238,9 +250,15 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
           duracao: item.duracao ? sanitizeText(item.duracao) : '',
           observacoes: item.observacoes ? sanitizeText(item.observacoes) : '',
           parceiro: item.parceiro || null,
+          parceiro_nome: item.parceiro_nome || null,
           tarja: item.tarja || null,
           tipo_receita: inferTipoReceita(item),
-          origem: (item as any).origem || null,
+          principio_ativo: item.principio_ativo || null,
+          medication_id: item.medication_id || null,
+          is_parceiro: !!item.is_parceiro,
+          nao_catalogado: !!item.nao_catalogado,
+          confirmado_fora_catalogo: !!item.confirmado_fora_catalogo,
+          origem: item.origem || null,
         })) as any,
         notes: notes ? sanitizeText(notes) : null,
         tipo_receita: (() => {
