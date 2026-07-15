@@ -47,3 +47,5 @@ project_id = "zwebwrbbrcmajkuptpwq"
     verify_jwt = false
   [functions.laudo-watchdog]
     verify_jwt = false
+  [functions.send-farmacovigilancia]
+    verify_jwt = true

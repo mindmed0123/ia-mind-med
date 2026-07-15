@@ -625,6 +625,36 @@ export type Database = {
           },
         ]
       }
+      farmaceuticas: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          email_farmacovigilancia: string
+          id: string
+          nome: string
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          email_farmacovigilancia: string
+          id?: string
+          nome: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          email_farmacovigilancia?: string
+          id?: string
+          nome?: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       feature_access: {
         Row: {
           created_at: string

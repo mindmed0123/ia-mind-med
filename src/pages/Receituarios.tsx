@@ -29,6 +29,7 @@ import {
   TIPO_RECEITA_COLOR,
   type TipoReceita,
 } from '@/lib/receita-classifier';
+import { FarmacovigilanciaButton } from '@/components/farmacovigilancia/FarmacovigilanciaButton';
 
 interface PrescriptionItem {
   medicamento: string;
@@ -474,12 +475,15 @@ export default function Receituarios() {
                 </span>
               )}
             </div>
-            {!showForm && subscription?.isPro && (
-              <Button onClick={() => setShowForm(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Novo Receituário
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <FarmacovigilanciaButton />
+              {!showForm && subscription?.isPro && (
+                <Button onClick={() => setShowForm(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Receituário
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </header>
