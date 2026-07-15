@@ -5,7 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Save, Sparkles, Pill, Loader2, CheckCircle2, FileText, AlertTriangle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, Trash2, Save, Sparkles, Pill, Loader2, CheckCircle2, FileText, AlertTriangle, HelpCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -30,13 +31,27 @@ interface PrescriptionItem {
   parceiro?: string | null;
   tarja?: string | null;
   tipo_receita?: string | null;
+  principio_ativo?: string | null;
   origem?: 'mencionada' | 'sugerida_ia' | string | null;
+  medication_id?: string | null;
+  is_parceiro?: boolean;
+  parceiro_nome?: string | null;
+  sugestao_parceiro?: string | null;
+  nao_catalogado?: boolean;
+  confirmado_fora_catalogo?: boolean;
 }
 
 interface PrescriptionTabProps {
   laudoData: any;
   patientData: any;
 }
+
+const stripDose = (s: string) =>
+  String(s || '')
+    .replace(/\d+([\.,]\d+)?\s*(mg|mcg|g|ml|ui|%|cp|comp|caps|gts|gotas)\b/gi, ' ')
+    .replace(/[\/\+].*$/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps) {
   const { user } = useAuth();
@@ -46,24 +61,69 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
   const [notes, setNotes] = useState('');
   const [hasExtractedMeds, setHasExtractedMeds] = useState(false);
 
+  // Fallback: resolve item contra catálogo (usado para laudos ANTIGOS sem metadados)
+  const resolveAgainstCatalog = async (item: PrescriptionItem): Promise<PrescriptionItem> => {
+    if (item.medication_id || item.nao_catalogado) return item;
+    const q = stripDose(item.medicamento) || item.medicamento;
+    if (!q) return item;
+    try {
+      const { data } = await supabase.rpc('search_medications', { q, cid: null });
+      const arr = Array.isArray(data) ? data : [];
+      if (arr.length === 0) return { ...item, nao_catalogado: true };
+      const top = arr[0] as any;
+      return {
+        ...item,
+        medication_id: top.id,
+        principio_ativo: top.principio_ativo,
+        tarja: top.tarja,
+        tipo_receita: top.tipo_receita,
+        is_parceiro: !!top.is_parceiro,
+        parceiro: top.parceiro_nome || item.parceiro || null,
+        parceiro_nome: top.parceiro_nome || null,
+      };
+    } catch {
+      return { ...item, nao_catalogado: true };
+    }
+  };
+
   useEffect(() => {
     const sections = laudoData?.sections as any;
     const prescricoes = sections?.prescricoes_sugeridas;
 
     if (Array.isArray(prescricoes) && prescricoes.length > 0) {
-      setItems(prescricoes.map((p: any) => ({
+      const mapped: PrescriptionItem[] = prescricoes.map((p: any) => ({
         medicamento: p.medicamento || '',
         dosagem: p.dosagem || '',
         posologia: p.posologia || '',
         duracao: p.duracao || '',
         observacoes: p.observacoes || '',
         origem: p.origem || null,
-      })));
+        medication_id: p.medication_id ?? null,
+        principio_ativo: p.principio_ativo ?? null,
+        tarja: p.tarja ?? null,
+        tipo_receita: p.tipo_receita ?? null,
+        is_parceiro: !!p.is_parceiro,
+        parceiro: p.parceiro_nome || p.parceiro || null,
+        parceiro_nome: p.parceiro_nome ?? null,
+        sugestao_parceiro: p.sugestao_parceiro ?? null,
+        nao_catalogado: !!p.nao_catalogado,
+      }));
+      setItems(mapped);
       setHasExtractedMeds(true);
+
+      // Fallback para laudos antigos: itens sem medication_id nem flag nao_catalogado
+      const precisaResolver = mapped.some((m) => !m.medication_id && !m.nao_catalogado);
+      if (precisaResolver) {
+        (async () => {
+          const resolved = await Promise.all(mapped.map(resolveAgainstCatalog));
+          setItems(resolved);
+        })();
+      }
     } else {
       setItems([{ medicamento: '', dosagem: '', posologia: '', duracao: '', observacoes: '' }]);
       setHasExtractedMeds(false);
     }
+
 
     // Build notes from diagnosis
     const diagParts: string[] = [];
@@ -90,6 +150,13 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
   const handleItemChange = (index: number, field: keyof PrescriptionItem, value: string) => {
     const newItems = [...items];
     (newItems[index] as any)[field] = value;
+    // Se o médico editou o nome manualmente, invalida a resolução prévia
+    if (field === 'medicamento') {
+      newItems[index].medication_id = null;
+      newItems[index].nao_catalogado = false;
+      newItems[index].confirmado_fora_catalogo = false;
+      newItems[index].sugestao_parceiro = null;
+    }
     setItems(newItems);
   };
 
@@ -101,15 +168,33 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
       dosagem: med.concentracao || newItems[index].dosagem,
       posologia: med.posologia_referencia || newItems[index].posologia,
       parceiro: med.parceiro_nome,
+      parceiro_nome: med.parceiro_nome,
       tarja: med.tarja,
       tipo_receita: med.tipo_receita,
+      principio_ativo: (med as any).principio_ativo || newItems[index].principio_ativo,
+      medication_id: (med as any).id || null,
+      is_parceiro: !!(med as any).is_parceiro,
+      nao_catalogado: false,
+      confirmado_fora_catalogo: false,
+      sugestao_parceiro: null,
     };
+    setItems(newItems);
+  };
+
+  const handleToggleConfirmacao = (index: number, checked: boolean) => {
+    const newItems = [...items];
+    newItems[index].confirmado_fora_catalogo = checked;
     setItems(newItems);
   };
 
   const validItemsForPreview = items.filter(i => i.medicamento.trim());
   const receitaGroups = groupByReceita(validItemsForPreview);
   const hasControlados = receitaGroups.some(g => isControlado(g.tipo));
+  // Bloqueia salvamento se houver item fora do catálogo sem confirmação explícita
+  const pendenteConfirmacao = validItemsForPreview.some(
+    (i) => i.nao_catalogado && !i.confirmado_fora_catalogo
+  );
+
 
   const handleSave = async () => {
     if (!user) return;
@@ -128,6 +213,18 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
 
       if (validItems.length === 0) {
         throw new Error('Adicione pelo menos um medicamento com nome, dosagem e posologia');
+      }
+
+      // Exige confirmação para itens fora do catálogo antes de gravar
+      const semConfirmacao = validItems.filter(
+        (i) => i.nao_catalogado && !i.confirmado_fora_catalogo
+      );
+      if (semConfirmacao.length > 0) {
+        throw new Error(
+          `Confirme os medicamentos fora do catálogo antes de salvar: ${semConfirmacao
+            .map((i) => i.medicamento)
+            .join(', ')}`,
+        );
       }
 
       for (const item of validItems) {
@@ -153,9 +250,15 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
           duracao: item.duracao ? sanitizeText(item.duracao) : '',
           observacoes: item.observacoes ? sanitizeText(item.observacoes) : '',
           parceiro: item.parceiro || null,
+          parceiro_nome: item.parceiro_nome || null,
           tarja: item.tarja || null,
           tipo_receita: inferTipoReceita(item),
-          origem: (item as any).origem || null,
+          principio_ativo: item.principio_ativo || null,
+          medication_id: item.medication_id || null,
+          is_parceiro: !!item.is_parceiro,
+          nao_catalogado: !!item.nao_catalogado,
+          confirmado_fora_catalogo: !!item.confirmado_fora_catalogo,
+          origem: item.origem || null,
         })) as any,
         notes: notes ? sanitizeText(notes) : null,
         tipo_receita: (() => {
@@ -264,6 +367,12 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
                         Sugestão da IA
                       </Badge>
                     )}
+                    {item.nao_catalogado && (
+                      <Badge variant="outline" className="text-[10px] bg-yellow-100 text-yellow-900 border-yellow-400 gap-1">
+                        <HelpCircle className="w-3 h-3" />
+                        Não catalogado — revisar
+                      </Badge>
+                    )}
                   </div>
                   {items.length > 1 && (
                     <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}>
@@ -271,6 +380,34 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
                     </Button>
                   )}
                 </div>
+
+                {/* Sugestão de parceiro (sem impor) */}
+                {item.sugestao_parceiro && !item.is_parceiro && (
+                  <div className="flex items-start gap-2 text-xs text-primary bg-primary/5 border border-primary/20 rounded p-2">
+                    <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      Equivalente parceiro disponível:{' '}
+                      <strong>{item.sugestao_parceiro}</strong> (mesma substância ativa).
+                    </span>
+                  </div>
+                )}
+
+                {/* Confirmação obrigatória para itens fora do catálogo */}
+                {item.nao_catalogado && (
+                  <label className="flex items-start gap-2 text-xs bg-yellow-50 border border-yellow-300 rounded p-2 cursor-pointer">
+                    <Checkbox
+                      checked={!!item.confirmado_fora_catalogo}
+                      onCheckedChange={(c) => handleToggleConfirmacao(index, !!c)}
+                      className="mt-0.5"
+                    />
+                    <span className="text-yellow-900">
+                      Confirmo que este medicamento está correto mesmo sem correspondência no catálogo.
+                      Responsabilidade clínica pela prescrição é integralmente do médico.
+                    </span>
+                  </label>
+                )}
+
+
 
                 <div className="grid md:grid-cols-2 gap-3">
                   <div>
@@ -369,7 +506,20 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
           />
         </div>
 
-        <Button onClick={handleSave} disabled={saving} className="w-full">
+        {pendenteConfirmacao && (
+          <div className="flex items-start gap-2 text-xs text-yellow-900 bg-yellow-50 border border-yellow-300 rounded p-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              Confirme os medicamentos fora do catálogo antes de salvar o receituário.
+            </span>
+          </div>
+        )}
+
+        <Button
+          onClick={handleSave}
+          disabled={saving || pendenteConfirmacao}
+          className="w-full"
+        >
           {saving ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -382,6 +532,7 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
             </>
           )}
         </Button>
+
       </CardContent>
     </Card>
   );

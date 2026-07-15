@@ -144,22 +144,99 @@ function isControlado(t: TipoReceita): boolean {
   return t === 'antimicrobiano' || t === 'controle_especial' || t === 'azul_b' || t === 'amarela_a';
 }
 
+// ─────────────────────────────────────────────────────────────
+// Piso de segurança clínica/legal — espelha src/lib/receita-classifier.ts
+// NUNCA classificar mais permissivo que o mínimo determinado pelo nome/princípio.
+// ─────────────────────────────────────────────────────────────
+const SEVERIDADE_TIPO: Record<TipoReceita, number> = {
+  branca_comum: 0, antimicrobiano: 1, controle_especial: 2, azul_b: 3, amarela_a: 4,
+};
+
+function normalizeNome(s: string): string {
+  return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+const AMARELA_A_RE = [
+  /\bmorfina\b/, /\bfentanil\b/, /\bmetadona\b/, /\boxicodona\b/, /\bhidromorfona\b/,
+  /\bpetidina\b/, /\bmeperidina\b/, /\bremifentanil\b/, /\bsufentanil\b/, /\balfentanil\b/,
+  /\bnalbufina\b/, /\bmetilfenidato\b/, /\blisdexanfetamina\b/, /\bdexanfetamina\b/,
+  /\banfepramona\b/, /\bfenproporex\b/, /\bmazindol\b/,
+  /\britalina\b/, /\bconcerta\b/, /\bvenvanse\b/, /\bdimesilato\b/, /\bdurogesic\b/, /\bdimorf\b/,
+];
+const AZUL_B_RE = [
+  /\bclonazepam\b/, /\balprazolam\b/, /\bdiazepam\b/, /\bbromazepam\b/, /\blorazepam\b/,
+  /\bmidazolam\b/, /\bflunitrazepam\b/, /\bnitrazepam\b/, /\btriazolam\b/, /\boxazepam\b/,
+  /\bclobazam\b/, /\bestazolam\b/, /\bcloxazolam\b/, /\bclordiazepoxido\b/, /\btemazepam\b/,
+  /\bzolpidem\b/, /\bzopiclona\b/, /\bzaleplona\b/, /\beszopiclona\b/,
+  /\bbuprenorfina\b/, /\bpentazocina\b/,
+  /\bfrontal\b/, /\brivotril\b/, /\blexotan\b/, /\bvalium\b/, /\bstilnox\b/,
+  /\bturno\b/, /\blorax\b/, /\burbanil\b/, /\bdormonid\b/, /\bdormire\b/, /\bnoctal\b/,
+];
+const CONTROLE_ESPECIAL_RE = [
+  /\btramadol\b/, /\bcodeina\b/, /\bcodein\b/, /\btylex\b/, /\btramal\b/, /\bultracet\b/, /\bgesico\b/, /\bpaco\b/,
+  /\bsertralina\b/, /\bfluoxetina\b/, /\bparoxetina\b/, /\bcitalopram\b/, /\bescitalopram\b/, /\bfluvoxamina\b/,
+  /\bvenlafaxina\b/, /\bdesvenlafaxina\b/, /\bduloxetina\b/, /\bmilnaciprano\b/,
+  /\bbupropiona\b/, /\bmirtazapina\b/, /\btrazodona\b/,
+  /\bamitriptilina\b/, /\bnortriptilina\b/, /\bclomipramina\b/, /\bimipramina\b/,
+  /\bagomelatina\b/, /\bvortioxetina\b/,
+  /\bhaloperidol\b/, /\brisperidona\b/, /\bquetiapina\b/, /\bolanzapina\b/, /\baripiprazol\b/,
+  /\bclozapina\b/, /\bziprasidona\b/, /\blurasidona\b/, /\bpaliperidona\b/,
+  /\bclorpromazina\b/, /\blevomepromazina\b/, /\bsulpirida\b/, /\btiaprid/,
+  /\blamotrigina\b/, /\bcarbamazepina\b/, /\boxcarbazepina\b/,
+  /\bdivalproato\b/, /\bvalproato\b/, /\bvalproic/, /\bacido valproic/,
+  /\btopiramato\b/, /\bgabapentina\b/, /\bpregabalina\b/, /\blevetiracetam\b/,
+  /\bfenitoina\b/, /\bfenobarbital\b/, /\bprimidona\b/, /\bvigabatrina\b/,
+  /\betossuximida\b/, /\btiagabina\b/,
+  /\bdonepezila\b/, /\brivastigmina\b/, /\bgalantamina\b/, /\bmemantina\b/,
+  /\bisotretinoina\b/, /\bacitretina\b/,
+];
+const ANTIMICROBIANO_RE = [
+  /\bamoxicilina\b/, /\bampicilina\b/, /\bpenicilina\b/, /\boxacilina\b/,
+  /\bcefalexina\b/, /\bcefadroxil\b/, /\bcefuroxima\b/, /\bcefaclor\b/,
+  /\bceftriaxona\b/, /\bcefotaxima\b/, /\bcefepim/, /\bceftazidima\b/,
+  /\bciprofloxacino\b/, /\blevofloxacino\b/, /\bmoxifloxacino\b/,
+  /\bnorfloxacino\b/, /\bofloxacino\b/, /\bgatifloxacino\b/,
+  /\bazitromicina\b/, /\bclaritromicina\b/, /\beritromicina\b/, /\broxitromicina\b/,
+  /\bclindamicina\b/, /\blincomicina\b/,
+  /\bsulfametoxazol\b/, /\btrimetoprima\b/, /\bbactrim\b/, /\bsulfa\b/,
+  /\bmetronidazol\b/, /\btinidazol\b/, /\bsecnidazol\b/, /\bornidazol\b/,
+  /\bnitrofurantoina\b/, /\bfosfomicina\b/,
+  /\bdoxiciclina\b/, /\btetraciclina\b/, /\bminociclina\b/, /\btigeciclina\b/,
+  /\bvancomicina\b/, /\bteicoplanina\b/, /\blinezolida\b/, /\bdaptomicina\b/,
+  /\bgentamicina\b/, /\bamicacina\b/, /\btobramicina\b/, /\bestreptomicina\b/,
+  /\bmeropenem\b/, /\bimipenem\b/, /\bertapenem\b/, /\baztreonam\b/,
+  /\bfluconazol\b/, /\bitraconazol\b/, /\bcetoconazol\b/, /\bvoriconazol\b/,
+  /\bposaconazol\b/, /\bterbinafina\b/, /\bgriseofulvina\b/,
+  /\baciclovir\b/, /\bvalaciclovir\b/, /\bganciclovir\b/, /\boseltamivir\b/,
+  /\brifampicina\b/, /\bisoniazida\b/, /\bpirazinamida\b/, /\betambutol\b/, /\brifaximina\b/,
+  /\bkeflex\b/, /\bamoxil\b/, /\bzithromax\b/, /\bcipro\b/, /\btavanic\b/,
+  /\bsinot\b/, /\bastro\b/, /\bsubtrax\b/,
+];
+
+function pisoSegurancaPorNome(...campos: (string | null | undefined)[]): TipoReceita | null {
+  const alvo = campos.filter(Boolean).map((s) => normalizeNome(String(s))).join(' | ');
+  if (!alvo) return null;
+  if (AMARELA_A_RE.some((r) => r.test(alvo))) return 'amarela_a';
+  if (AZUL_B_RE.some((r) => r.test(alvo))) return 'azul_b';
+  if (CONTROLE_ESPECIAL_RE.some((r) => r.test(alvo))) return 'controle_especial';
+  if (ANTIMICROBIANO_RE.some((r) => r.test(alvo))) return 'antimicrobiano';
+  return null;
+}
+
 function inferTipoReceita(item: any): TipoReceita {
+  let base: TipoReceita = 'branca_comum';
   const raw = (item.tipo_receita || '').toString().toLowerCase();
   if (raw === 'branca_comum' || raw === 'antimicrobiano' || raw === 'controle_especial' || raw === 'azul_b' || raw === 'amarela_a') {
-    return raw as TipoReceita;
+    base = raw as TipoReceita;
+  } else {
+    const tarja = (item.tarja || '').toString().toLowerCase();
+    if (tarja.includes('amarela')) base = 'amarela_a';
+    else if (tarja.includes('preta') || tarja.includes('azul')) base = 'azul_b';
+    else if (tarja === 'vermelha_retencao' || tarja.includes('vermelha_retencao')) base = 'controle_especial';
   }
-  const tarja = (item.tarja || '').toString().toLowerCase();
-  if (tarja.includes('amarela')) return 'amarela_a';
-  if (tarja.includes('preta') || tarja.includes('azul')) return 'azul_b';
-  if (tarja.includes('vermelha')) {
-    const nome = (item.medicamento || '').toLowerCase();
-    if (/(amoxicilina|azitromicina|cefalexina|ciprofloxa|levofloxa|claritromic|sulfameto|metronidazol|nitrofurantoína|nitrofurantoina|clindamicina|doxiciclina|ampicilina|penicilina)/.test(nome)) {
-      return 'antimicrobiano';
-    }
-    return 'controle_especial';
-  }
-  return 'branca_comum';
+  const piso = pisoSegurancaPorNome(item.medicamento, item.principio_ativo);
+  if (piso && SEVERIDADE_TIPO[piso] > SEVERIDADE_TIPO[base]) return piso;
+  return base;
 }
 
 function groupByReceita(items: any[]): Array<{ tipo: TipoReceita; items: any[] }> {
