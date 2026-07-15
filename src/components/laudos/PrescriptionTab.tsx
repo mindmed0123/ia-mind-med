@@ -367,6 +367,46 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
                         Sugestão da IA
                       </Badge>
                     )}
+                    {item.nao_catalogado && (
+                      <Badge variant="outline" className="text-[10px] bg-yellow-100 text-yellow-900 border-yellow-400 gap-1">
+                        <HelpCircle className="w-3 h-3" />
+                        Não catalogado — revisar
+                      </Badge>
+                    )}
+                  </div>
+                  {items.length > 1 && (
+                    <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}>
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+
+                {/* Sugestão de parceiro (sem impor) */}
+                {item.sugestao_parceiro && !item.is_parceiro && (
+                  <div className="flex items-start gap-2 text-xs text-primary bg-primary/5 border border-primary/20 rounded p-2">
+                    <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      Equivalente parceiro disponível:{' '}
+                      <strong>{item.sugestao_parceiro}</strong> (mesma substância ativa).
+                    </span>
+                  </div>
+                )}
+
+                {/* Confirmação obrigatória para itens fora do catálogo */}
+                {item.nao_catalogado && (
+                  <label className="flex items-start gap-2 text-xs bg-yellow-50 border border-yellow-300 rounded p-2 cursor-pointer">
+                    <Checkbox
+                      checked={!!item.confirmado_fora_catalogo}
+                      onCheckedChange={(c) => handleToggleConfirmacao(index, !!c)}
+                      className="mt-0.5"
+                    />
+                    <span className="text-yellow-900">
+                      Confirmo que este medicamento está correto mesmo sem correspondência no catálogo.
+                      Responsabilidade clínica pela prescrição é integralmente do médico.
+                    </span>
+                  </label>
+                )}
+
                   </div>
                   {items.length > 1 && (
                     <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}>
