@@ -1,75 +1,74 @@
-# Módulo de Telemedicina MindMed
+# Sistema de Farmacovigilância — MindMed
 
-Implementação completa de teleconsulta por vídeo, com conformidade CFM 2.314/2022 e LGPD, integrada ao fluxo atual (laudos, agendamentos, pacientes, assinaturas).
+Fluxo: médico clica em **"Alertar Farmacovigilância"** (ficha do paciente ou receituário) → wizard multi-etapas → Edge Function envia email para a farmacêutica com cópia para o médico. **Nenhum relato é salvo** — apenas a tabela `farmaceuticas` fica no banco.
 
-## Etapa 1 — Banco de dados (migration)
+## 1. Banco de dados
 
-- **Enum** `teleconsulta_status`: agendada, sala_aberta, em_andamento, concluida, cancelada, nao_compareceu
-- **Tabela `teleconsultas`**: organização, médico, paciente (snapshot + FK opcional), sala Daily.co (room_name, room_url, doctor_token, patient_token), status, timing, consentimentos médico/paciente (com IP), notas, transcript, vínculo a laudo
-- **Tabela `teleconsulta_events`**: log de eventos (joined, left, muted, etc.)
-- **Tabela `teleconsulta_messages`**: chat em tempo real (médico/paciente)
-- **RLS**: membros da org gerenciam tudo; paciente acessa via token + status público (`sala_aberta`/`em_andamento`)
-- **Trigger** `updated_at`
-- Índices para org, médico, status, scheduled_at
+**Migration:**
+- Tabela `public.farmaceuticas` (`id`, `nome`, `email_farmacovigilancia`, `telefone`, `ativo`, `created_at`) + GRANTs + RLS.
+  - SELECT: `authenticated` (apenas `ativo = true`, via policy).
+  - INSERT/UPDATE/DELETE: apenas `has_role(auth.uid(), 'admin')`.
+- Seed: Eurofarma, EMS, Aché, Hypera, Medley, Neo Química, Cimed, Sandoz, Cristália, União Química (emails placeholder editáveis pelo admin, ex.: `farmacovigilancia@eurofarma.com.br`).
 
-## Etapa 2 — Edge Functions (Deno)
+## 2. Botão "Alertar Farmacovigilância"
 
-1. **`create-teleconsulta`** — cria sala no Daily.co (com fallback mock se sem API key), gera tokens médico/paciente, persiste registro, retorna link do paciente
-2. **`send-teleconsulta-link`** — usa `send-transactional-email` existente para enviar e-mail premium ao paciente (template registrado)
-3. **`finalize-teleconsulta`** — atualiza status, calcula duração, opcionalmente dispara `generate-laudo` com as notas
+Novo componente `FarmacovigilanciaButton.tsx` (ShieldAlert âmbar, `variant="outline"`), integrado em:
+- **Ficha do paciente** (`src/pages/HistoricoPaciente.tsx` / `PatientClinicalProfile.tsx`) — pré-preenche paciente.
+- **Receituário** (`src/pages/Receituarios.tsx` e/ou `PrescriptionTab.tsx`) — pré-preenche medicamento (nome/apresentação/dose) + paciente se vinculado.
 
-## Etapa 3 — Tipos + Hook
+Navega para `/farmacovigilancia/novo` passando dados via `location.state`.
 
-- `src/types/teleconsulta.ts` (interfaces, labels, cores de status)
-- `src/hooks/useTeleconsultas.ts` (load + realtime por organização + updateStatus + cancelar)
+## 3. Wizard multi-etapas (`/farmacovigilancia/novo`)
 
-## Etapa 4 — Componentes
+Página nova `src/pages/FarmacovigilanciaNovo.tsx` + componentes em `src/components/farmacovigilancia/`:
+- `Stepper.tsx` (visual das 6 etapas)
+- `Step1Relator.tsx` — pré-preenche do perfil do médico (nome, email, CRM, UF)
+- `Step2Paciente.tsx` — iniciais/nome, sexo, gestação condicional, DN, peso, altura
+- `Step3Produto.tsx` — Select de farmacêutica (busca via `farmaceuticas`), produto, lote/validade, via, posologia, datas
+- `Step4Historico.tsx` — doenças (lista dinâmica) + outros medicamentos (lista dinâmica)
+- `Step5Evento.tsx` — descrição, tipo (categorias ANVISA), causa, datas, recuperação, tratamento, outros eventos, gravidade
+- `Step6Revisao.tsx` — resumo + consentimento LGPD + aviso VigiMed + botão enviar
 
-- `NovaTeleconsultaModal` — wizard 2 passos (dados + consentimento) com link copiável + QR Code (lib `qrcode` já instalada)
-- `TeleconsultaCard` — card por status com ações contextuais
-- `ConsentTermoTelemedicina` — termo LGPD/CFM com scroll obrigatório
-- `VideoRoom` — iframe Daily.co prebuilt + painel lateral (notas, chat, prescrição) + cronômetro + badge AO VIVO
-- `WaitingRoom` (dentro de SalaPaciente) — sala de espera mobile-first
-- `TelemedicinaDashboard` — métricas + tabs (Hoje/Próximas/Concluídas/Todas) + busca
+Stack: `react-hook-form` + `zod` (schema por etapa), shadcn/ui.
+Guard de saída: `beforeunload` + confirm no `navigate` interceptado.
 
-## Etapa 5 — Páginas + Rotas
+Registro da rota em `src/App.tsx` sob `SubscriptionGuard`.
 
-- `/telemedicina` (protegida + feature flag) → `Telemedicina.tsx`
-- `/consulta/:id` (protegida) → `SalaTelemedicina.tsx` (médico)
-- `/sala/:id` (PÚBLICA, sem SubscriptionGuard) → `SalaPaciente.tsx`
+## 4. Edge Function `send-farmacovigilancia`
 
-## Etapa 6 — Integrações
+`supabase/functions/send-farmacovigilancia/index.ts` (`verify_jwt = true`):
+1. Valida JWT, obtém `user`.
+2. Zod valida payload completo.
+3. Rate limit: 10 envios/h por `user.id` (in-memory map na função, best-effort).
+4. Busca `farmaceuticas.email_farmacovigilancia` pelo `farmaceutica_id` (via service role).
+5. Gera protocolo `FV-YYYYMMDD-XXXX` (não persiste).
+6. Renderiza HTML profissional com todas as seções.
+7. Envia via infra de email existente (`enqueue_email` RPC → fila `transactional_emails`) — cria template novo `farmacovigilancia-notificacao` em `_shared/transactional-email-templates/` e registra em `registry.ts`. `To` = farmacêutica, `Cc` = médico, subject `[Farmacovigilância] Notificação de Evento Adverso — {produto} — Protocolo {protocolo}`.
+8. Retorna `{ success, protocolo }`.
 
-- `useFeatureAccess.ts` → adicionar `"telemedicina"` ao `FeatureKey`
-- `Dashboard.tsx` → botão "Telemedicina" em Ações Rápidas com badge de consultas do dia
-- `Navbar.tsx` → adicionar item após "Agendamentos" (porém Navbar atual é da landing — confirmar se deve ser no header do Dashboard, é o mais consistente)
-- `AppointmentModal.tsx` → toggle "É teleconsulta?" + criação opcional da sala
-- `DayView.tsx` / `WeekView.tsx` → ícone de vídeo nos eventos teleconsulta
-- `Admin.tsx` (ou `AdminFeatureAccess`) → toggle de feature `telemedicina` por usuário
+`supabase/config.toml`: adiciona bloco `[functions.send-farmacovigilancia] verify_jwt = true`.
 
-## Etapa 7 — Secrets
+## 5. Pós-envio + Admin
 
-- Solicitar via `secrets--add_secret`: `DAILY_API_KEY` e `PUBLIC_APP_URL`
-- Edge function tem fallback mock se `DAILY_API_KEY` ausente (modo dev)
+- Tela de sucesso com protocolo destacado, botões "Nova notificação" / "Voltar".
+- Toast de erro mantém dados no form.
+- **CRUD Admin** em `src/pages/Admin.tsx` — nova aba "Farmacêuticas" (`AdminFarmaceuticasTab.tsx`) com listar/criar/editar/inativar. Acesso via `useAdminRole`.
 
-## Conformidade CFM/LGPD
+## Detalhes técnicos
 
-- Consentimento duplo (médico + paciente com IP) registrado no banco
-- CPF + nome obrigatórios antes de iniciar
-- Notas obrigatórias ao encerrar
-- Badge "CFM 2.314/2022" visível
-- Aviso de 180 dias para crônicos
-- Sala privada Daily.co com expiração 24h, max 2 participantes, gravação cloud opcional
+- Cc no template: o template `enqueue_email` atual não suporta `cc` nativamente. Solução: enviar 2 emails separados (um para farmacêutica, um para médico) com mesmo `idempotencyKey`-base + sufixo, garantindo a cópia. Alternativa mais limpa: adicionar suporte `cc` ao `send-transactional-email` — porém isso mexe em infra compartilhada. **Vou pelo caminho de 2 envios** (menor blast radius).
+- Categorias ANVISA e opções via constantes em `src/lib/farmacovigilancia-constants.ts`.
+- i18n: tudo em pt-BR. Design tokens existentes (âmbar via `text-amber-*` já usado no projeto).
 
-## Notas técnicas
+## Arquivos novos (resumo)
+- Migration `farmaceuticas` + seed
+- `supabase/functions/send-farmacovigilancia/index.ts`
+- `supabase/functions/_shared/transactional-email-templates/farmacovigilancia-notificacao.tsx` (+ registro)
+- `src/pages/FarmacovigilanciaNovo.tsx`
+- `src/pages/FarmacovigilanciaSucesso.tsx` (ou state interno)
+- `src/components/farmacovigilancia/*` (Stepper + 6 steps + Button)
+- `src/components/admin/AdminFarmaceuticasTab.tsx`
+- `src/lib/farmacovigilancia-constants.ts`
+- Edits: `App.tsx`, `Admin.tsx`, `HistoricoPaciente.tsx`, `PatientClinicalProfile.tsx`, `Receituarios.tsx`, `PrescriptionTab.tsx`, `config.toml`
 
-- A migration cria FKs para `auth.users` (created_by) e `profiles`/`organizations`/`appointments`/`patients`/`laudos` (todos já existem)
-- Realtime habilitado para `teleconsultas` via `ALTER PUBLICATION supabase_realtime ADD TABLE`
-- Política pública do paciente é restrita a `status IN ('sala_aberta','em_andamento')` — token Daily.co garante acesso à sala em si
-- A pasta `Navbar.tsx` é da landing (links /produto, /precos); a navegação real do app está no header do Dashboard — adicionarei lá
-
-## Confirmações antes de executar
-
-1. **Daily.co**: ok configurar `DAILY_API_KEY` agora (vou pedir via secret) ou começar em modo mock e configurar depois?
-2. **Volume**: implemento tudo em um único turno (vai ser grande, 15-20 arquivos novos) ou prefere dividir em fases (Etapa 1+2+3 primeiro, depois 4+5+6)?
-3. **Email do paciente**: usar template React Email registrado no sistema transacional (recomendado, padrão MindMed) em vez do HTML inline do prompt — ok?
+Confirma que posso seguir?
