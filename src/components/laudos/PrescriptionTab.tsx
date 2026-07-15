@@ -150,6 +150,13 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
   const handleItemChange = (index: number, field: keyof PrescriptionItem, value: string) => {
     const newItems = [...items];
     (newItems[index] as any)[field] = value;
+    // Se o médico editou o nome manualmente, invalida a resolução prévia
+    if (field === 'medicamento') {
+      newItems[index].medication_id = null;
+      newItems[index].nao_catalogado = false;
+      newItems[index].confirmado_fora_catalogo = false;
+      newItems[index].sugestao_parceiro = null;
+    }
     setItems(newItems);
   };
 
@@ -161,15 +168,33 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
       dosagem: med.concentracao || newItems[index].dosagem,
       posologia: med.posologia_referencia || newItems[index].posologia,
       parceiro: med.parceiro_nome,
+      parceiro_nome: med.parceiro_nome,
       tarja: med.tarja,
       tipo_receita: med.tipo_receita,
+      principio_ativo: (med as any).principio_ativo || newItems[index].principio_ativo,
+      medication_id: (med as any).id || null,
+      is_parceiro: !!(med as any).is_parceiro,
+      nao_catalogado: false,
+      confirmado_fora_catalogo: false,
+      sugestao_parceiro: null,
     };
+    setItems(newItems);
+  };
+
+  const handleToggleConfirmacao = (index: number, checked: boolean) => {
+    const newItems = [...items];
+    newItems[index].confirmado_fora_catalogo = checked;
     setItems(newItems);
   };
 
   const validItemsForPreview = items.filter(i => i.medicamento.trim());
   const receitaGroups = groupByReceita(validItemsForPreview);
   const hasControlados = receitaGroups.some(g => isControlado(g.tipo));
+  // Bloqueia salvamento se houver item fora do catálogo sem confirmação explícita
+  const pendenteConfirmacao = validItemsForPreview.some(
+    (i) => i.nao_catalogado && !i.confirmado_fora_catalogo
+  );
+
 
   const handleSave = async () => {
     if (!user) return;
