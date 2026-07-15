@@ -506,7 +506,20 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
           />
         </div>
 
-        <Button onClick={handleSave} disabled={saving} className="w-full">
+        {pendenteConfirmacao && (
+          <div className="flex items-start gap-2 text-xs text-yellow-900 bg-yellow-50 border border-yellow-300 rounded p-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              Confirme os medicamentos fora do catálogo antes de salvar o receituário.
+            </span>
+          </div>
+        )}
+
+        <Button
+          onClick={handleSave}
+          disabled={saving || pendenteConfirmacao}
+          className="w-full"
+        >
           {saving ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -519,6 +532,7 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
             </>
           )}
         </Button>
+
       </CardContent>
     </Card>
   );
