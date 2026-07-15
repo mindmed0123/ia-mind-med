@@ -25,6 +25,7 @@ import { template as winbackD3 } from './winback-d3.tsx'
 import { template as winbackD15 } from './winback-d15.tsx'
 import { template as upgradePrompt } from './upgrade-prompt.tsx'
 import { template as paymentFailed } from './payment-failed.tsx'
+import { template as farmacovigilanciaNotificacao } from './farmacovigilancia-notificacao.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'trial-reminder': trialReminder,
@@ -43,4 +44,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'winback-d15': winbackD15,
   'upgrade-prompt': upgradePrompt,
   'payment-failed': paymentFailed,
+  'farmacovigilancia-notificacao': farmacovigilanciaNotificacao,
 }
