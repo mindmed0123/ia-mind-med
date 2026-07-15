@@ -37,6 +37,7 @@ const Consulta = lazy(() => import("./pages/Consulta"));
 const SalaPaciente = lazy(() => import("./pages/SalaPaciente"));
 const HantavirusPage = lazy(() => import("./pages/HantavirusPage"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+const FarmacovigilanciaNovo = lazy(() => import("./pages/FarmacovigilanciaNovo"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -101,6 +102,7 @@ const App = () => (
                 <Route path="/telemedicina" element={<SubscriptionGuard><Telemedicina /></SubscriptionGuard>} />
                 <Route path="/consulta/:id" element={<SubscriptionGuard><Consulta /></SubscriptionGuard>} />
                 <Route path="/hantavirus" element={<SubscriptionGuard><HantavirusPage /></SubscriptionGuard>} />
+                <Route path="/farmacovigilancia/novo" element={<SubscriptionGuard><FarmacovigilanciaNovo /></SubscriptionGuard>} />
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
