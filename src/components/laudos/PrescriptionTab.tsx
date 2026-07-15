@@ -5,7 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Save, Sparkles, Pill, Loader2, CheckCircle2, FileText, AlertTriangle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, Trash2, Save, Sparkles, Pill, Loader2, CheckCircle2, FileText, AlertTriangle, HelpCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -30,13 +31,27 @@ interface PrescriptionItem {
   parceiro?: string | null;
   tarja?: string | null;
   tipo_receita?: string | null;
+  principio_ativo?: string | null;
   origem?: 'mencionada' | 'sugerida_ia' | string | null;
+  medication_id?: string | null;
+  is_parceiro?: boolean;
+  parceiro_nome?: string | null;
+  sugestao_parceiro?: string | null;
+  nao_catalogado?: boolean;
+  confirmado_fora_catalogo?: boolean;
 }
 
 interface PrescriptionTabProps {
   laudoData: any;
   patientData: any;
 }
+
+const stripDose = (s: string) =>
+  String(s || '')
+    .replace(/\d+([\.,]\d+)?\s*(mg|mcg|g|ml|ui|%|cp|comp|caps|gts|gotas)\b/gi, ' ')
+    .replace(/[\/\+].*$/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps) {
   const { user } = useAuth();
@@ -46,24 +61,69 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
   const [notes, setNotes] = useState('');
   const [hasExtractedMeds, setHasExtractedMeds] = useState(false);
 
+  // Fallback: resolve item contra catálogo (usado para laudos ANTIGOS sem metadados)
+  const resolveAgainstCatalog = async (item: PrescriptionItem): Promise<PrescriptionItem> => {
+    if (item.medication_id || item.nao_catalogado) return item;
+    const q = stripDose(item.medicamento) || item.medicamento;
+    if (!q) return item;
+    try {
+      const { data } = await supabase.rpc('search_medications', { q, cid: null });
+      const arr = Array.isArray(data) ? data : [];
+      if (arr.length === 0) return { ...item, nao_catalogado: true };
+      const top = arr[0] as any;
+      return {
+        ...item,
+        medication_id: top.id,
+        principio_ativo: top.principio_ativo,
+        tarja: top.tarja,
+        tipo_receita: top.tipo_receita,
+        is_parceiro: !!top.is_parceiro,
+        parceiro: top.parceiro_nome || item.parceiro || null,
+        parceiro_nome: top.parceiro_nome || null,
+      };
+    } catch {
+      return { ...item, nao_catalogado: true };
+    }
+  };
+
   useEffect(() => {
     const sections = laudoData?.sections as any;
     const prescricoes = sections?.prescricoes_sugeridas;
 
     if (Array.isArray(prescricoes) && prescricoes.length > 0) {
-      setItems(prescricoes.map((p: any) => ({
+      const mapped: PrescriptionItem[] = prescricoes.map((p: any) => ({
         medicamento: p.medicamento || '',
         dosagem: p.dosagem || '',
         posologia: p.posologia || '',
         duracao: p.duracao || '',
         observacoes: p.observacoes || '',
         origem: p.origem || null,
-      })));
+        medication_id: p.medication_id ?? null,
+        principio_ativo: p.principio_ativo ?? null,
+        tarja: p.tarja ?? null,
+        tipo_receita: p.tipo_receita ?? null,
+        is_parceiro: !!p.is_parceiro,
+        parceiro: p.parceiro_nome || p.parceiro || null,
+        parceiro_nome: p.parceiro_nome ?? null,
+        sugestao_parceiro: p.sugestao_parceiro ?? null,
+        nao_catalogado: !!p.nao_catalogado,
+      }));
+      setItems(mapped);
       setHasExtractedMeds(true);
+
+      // Fallback para laudos antigos: itens sem medication_id nem flag nao_catalogado
+      const precisaResolver = mapped.some((m) => !m.medication_id && !m.nao_catalogado);
+      if (precisaResolver) {
+        (async () => {
+          const resolved = await Promise.all(mapped.map(resolveAgainstCatalog));
+          setItems(resolved);
+        })();
+      }
     } else {
       setItems([{ medicamento: '', dosagem: '', posologia: '', duracao: '', observacoes: '' }]);
       setHasExtractedMeds(false);
     }
+
 
     // Build notes from diagnosis
     const diagParts: string[] = [];
