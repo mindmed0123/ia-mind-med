@@ -121,8 +121,40 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
         })();
       }
     } else {
-      setItems([{ medicamento: '', dosagem: '', posologia: '', duracao: '', observacoes: '' }]);
-      setHasExtractedMeds(false);
+      // Fallback: tenta extrair medicamentos citados nas condutas do laudo
+      const conducts = Array.isArray(laudoData?.conducts) ? laudoData.conducts.join(' ') : '';
+      const md = String(laudoData?.report_markdown || '');
+      const haystack = `${conducts}\n${md}`;
+      const medRegex = /\b([A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõç]{3,}(?:\s+[a-záéíóúâêôãõç]+)?)\s+(\d+(?:[.,]\d+)?\s*(?:mg|mcg|g|ml|UI|%))/g;
+      const found: PrescriptionItem[] = [];
+      const seen = new Set<string>();
+      let m: RegExpExecArray | null;
+      while ((m = medRegex.exec(haystack)) !== null && found.length < 6) {
+        const nome = m[1].trim();
+        const dose = m[2].trim();
+        const key = nome.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        found.push({
+          medicamento: nome,
+          dosagem: dose,
+          posologia: '',
+          duracao: '',
+          observacoes: 'Extraído automaticamente das condutas do laudo — revise.',
+          origem: 'sugerida_ia',
+        });
+      }
+      if (found.length > 0) {
+        setItems(found);
+        setHasExtractedMeds(true);
+        (async () => {
+          const resolved = await Promise.all(found.map(resolveAgainstCatalog));
+          setItems(resolved);
+        })();
+      } else {
+        setItems([{ medicamento: '', dosagem: '', posologia: '', duracao: '', observacoes: '' }]);
+        setHasExtractedMeds(false);
+      }
     }
 
 
