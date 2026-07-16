@@ -534,6 +534,28 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
           )}
         </Button>
 
+        {/* Farmacovigilância: reportar evento adverso relacionado a este receituário */}
+        <div className="pt-2 border-t border-border/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">
+            Identificou reação adversa a um destes medicamentos?
+          </p>
+          <FarmacovigilanciaButton
+            prefill={{
+              paciente: {
+                nome: patientData?.iniciais || patientData?.name,
+                sexo: patientData?.sexo,
+                dataNascimento: patientData?.dataNascimento,
+              },
+              produto: {
+                nome: items[0]?.medicamento,
+                apresentacao: items[0]?.dosagem,
+                dose: items[0]?.dosagem,
+                posologia: items[0]?.posologia,
+              },
+            }}
+          />
+        </div>
+
       </CardContent>
     </Card>
   );
