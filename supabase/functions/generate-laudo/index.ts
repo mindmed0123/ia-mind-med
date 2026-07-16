@@ -95,7 +95,8 @@ const LAUDO_TOOL = {
         condutas: { type: "array", items: { type: "string" }, description: "Máximo 6 condutas" },
         prescricoes_sugeridas: {
           type: "array",
-          description: "SEMPRE preencher. Se o médico citou medicamentos que pretende receitar, use origem='mencionada'. Se NÃO citou nenhum, sugira tratamento de PRIMEIRA LINHA (diretriz) para a hipótese principal, respeitando idade, comorbidades, alergias e medicações em uso, com origem='sugerida_ia'. NUNCA sugerir por iniciativa própria controlados (opioides, benzodiazepínicos, listas A/B). Máximo 6 itens.",
+          description: "OBRIGATÓRIO retornar ao menos 1 item, NUNCA vazio. Se o médico citou medicamentos, use origem='mencionada'. Se não citou, sugira tratamento de PRIMEIRA LINHA (diretriz) para a hipótese principal, respeitando idade/comorbidades/alergias, com origem='sugerida_ia'. Em casos puramente diagnósticos/encaminhamento (sem terapêutica óbvia) inclua ao menos 1 item de suporte seguro e não controlado (protetor solar, paracetamol s/n, hidratante, SRO). NUNCA sugerir por iniciativa própria controlados (opioides, benzodiazepínicos, listas A/B). Máximo 6 itens.",
+          minItems: 1,
           items: {
             type: "object",
             properties: {
