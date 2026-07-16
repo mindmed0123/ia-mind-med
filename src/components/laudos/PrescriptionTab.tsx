@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeText, validatePatientName, validateMedicationName, validateDosage } from '@/lib/validation';
 import { MedicationSearch, type MedicationResult } from '@/components/prescription/MedicationSearch';
+import { FarmacovigilanciaButton } from '@/components/farmacovigilancia/FarmacovigilanciaButton';
 import {
   inferTipoReceita,
   groupByReceita,
