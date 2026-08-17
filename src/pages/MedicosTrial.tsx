@@ -317,11 +317,13 @@ export default function MedicosTrial() {
                   )}
                 </Button>
 
-                <p className="text-xs text-center text-muted-foreground">
-                  Você será redirecionado para adicionar um cartão de crédito.
-                  <br />
-                  Não será cobrado nada durante o período de teste.
+                <p className="text-xs text-center text-muted-foreground leading-relaxed">
+                  7 dias de teste. Nada é cobrado hoje. Pedimos o cartão para que o acesso continue
+                  sem interrupção depois do teste. Você pode cancelar a qualquer momento em dois
+                  cliques, dentro da plataforma. Garantia de 30 dias: se depois da primeira cobrança
+                  você não estiver satisfeito, devolvemos 100% do valor. Sem perguntas.
                 </p>
+
               </form>
 
               <div className="mt-6 pt-4 border-t text-center">
