@@ -38,11 +38,27 @@ const Dashboard = () => {
     markLgpdConsentGiven();
   }, [markLgpdConsentGiven]);
 
+  // Confirmação de checkout vinda do Stripe (?checkout=success&session_id=...)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("checkout") === "success") {
+      toast({
+        title: "Teste ativado",
+        description: "Você tem 7 dias de acesso completo. Nada foi cobrado.",
+      });
+      params.delete("checkout");
+      params.delete("session_id");
+      const qs = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""));
+    }
+  }, [toast]);
+
   useEffect(() => {
     if (!loading && !user) {
       navigate("/");
     }
   }, [user, loading, navigate]);
+
 
   const handleAudioUploadComplete = async (url: string, path: string) => {
     if (!user?.id) {

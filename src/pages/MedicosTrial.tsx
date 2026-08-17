@@ -5,16 +5,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { getAttribution } from '@/lib/attribution';
 import { Brain, Shield, Clock, FileText, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
+
+const PLANS = [
+  { id: 'mindmed_starter', label: 'Starter', price: 'R$ 149/mês', badge: null as string | null },
+  { id: 'mindmed_pro', label: 'Pro', price: 'R$ 299/mês', badge: 'Recomendado' },
+  { id: 'mindmed_pro_anual', label: 'Pro anual', price: 'R$ 2.990/ano', badge: '2 meses grátis' },
+];
 
 export default function MedicosTrial() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  
+  const [selectedPlan, setSelectedPlan] = useState('mindmed_pro');
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -38,8 +47,21 @@ export default function MedicosTrial() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      toast.error('A senha deve ter pelo menos 6 caracteres');
+    const pwd = formData.password;
+    if (pwd.length < 8) {
+      toast.error('A senha deve ter no mínimo 8 caracteres');
+      return;
+    }
+    if (!/[A-Z]/.test(pwd)) {
+      toast.error('A senha deve conter pelo menos uma letra maiúscula');
+      return;
+    }
+    if (!/[a-z]/.test(pwd)) {
+      toast.error('A senha deve conter pelo menos uma letra minúscula');
+      return;
+    }
+    if (!/[0-9]/.test(pwd)) {
+      toast.error('A senha deve conter pelo menos um número');
       return;
     }
 
@@ -86,11 +108,10 @@ export default function MedicosTrial() {
       // 3. Create checkout session
       const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout-session', {
         body: {
-          userId: authData.user.id,
-          email: formData.email,
           name: formData.name,
           whatsapp: formData.whatsapp,
-          plan: 'mindmed_pro',
+          plan: selectedPlan,
+          attribution: getAttribution(),
         },
       });
 
@@ -110,6 +131,7 @@ export default function MedicosTrial() {
       setLoading(false);
     }
   };
+
 
   const benefits = [
     { icon: Brain, text: 'IA que gera laudos completos automaticamente' },
@@ -173,18 +195,20 @@ export default function MedicosTrial() {
                   <span className="font-semibold text-foreground">Garantia total</span>
                 </div>
                 <ul className="space-y-2 text-muted-foreground">
-                  <li>• 7 dias grátis para testar tudo</li>
-                  <li>• Cancele quando quiser, sem burocracia</li>
-                  <li>• Sem cobrança durante o período de teste</li>
+                  <li>• 7 dias de teste com acesso completo</li>
+                  <li>• Nada é cobrado hoje</li>
+                  <li>• Cancele em dois cliques, dentro da plataforma</li>
+                  <li>• Garantia de 30 dias após a primeira cobrança</li>
                   <li>• Suporte prioritário via WhatsApp</li>
                 </ul>
               </CardContent>
             </Card>
 
             <div className="text-center text-sm text-muted-foreground">
-              <p>Após o período de teste: <strong>R$ 299/mês</strong></p>
-              <p>Plano PRO com acesso ilimitado a todas as funcionalidades</p>
+              <p>Planos: <strong>Starter R$ 149/mês</strong> · <strong>Pro R$ 299/mês</strong> · <strong>Pro anual R$ 2.990/ano</strong></p>
+              <p>Escolha seu plano no formulário ao lado</p>
             </div>
+
           </div>
 
           {/* Form */}
@@ -197,6 +221,30 @@ export default function MedicosTrial() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Escolha seu plano</Label>
+                  <div className="grid gap-2">
+                    {PLANS.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setSelectedPlan(p.id)}
+                        className={`flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${
+                          selectedPlan === p.id
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                            : 'border-border hover:bg-muted/50'
+                        }`}
+                      >
+                        <div>
+                          <p className="font-medium text-foreground">{p.label}</p>
+                          <p className="text-sm text-muted-foreground">{p.price}</p>
+                        </div>
+                        {p.badge && <Badge variant="secondary">{p.badge}</Badge>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome completo</Label>
                   <Input
@@ -238,7 +286,7 @@ export default function MedicosTrial() {
                   <Input
                     id="password"
                     type="password"
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Mínimo 8 caracteres, com maiúscula, minúscula e número"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
@@ -293,11 +341,13 @@ export default function MedicosTrial() {
                   )}
                 </Button>
 
-                <p className="text-xs text-center text-muted-foreground">
-                  Você será redirecionado para adicionar um cartão de crédito.
-                  <br />
-                  Não será cobrado nada durante o período de teste.
+                <p className="text-xs text-center text-muted-foreground leading-relaxed">
+                  7 dias de teste. Nada é cobrado hoje. Pedimos o cartão para que o acesso continue
+                  sem interrupção depois do teste. Você pode cancelar a qualquer momento em dois
+                  cliques, dentro da plataforma. Garantia de 30 dias: se depois da primeira cobrança
+                  você não estiver satisfeito, devolvemos 100% do valor. Sem perguntas.
                 </p>
+
               </form>
 
               <div className="mt-6 pt-4 border-t text-center">
