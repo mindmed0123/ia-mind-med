@@ -222,6 +222,30 @@ export default function MedicosTrial() {
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
+                  <Label>Escolha seu plano</Label>
+                  <div className="grid gap-2">
+                    {PLANS.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setSelectedPlan(p.id)}
+                        className={`flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${
+                          selectedPlan === p.id
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                            : 'border-border hover:bg-muted/50'
+                        }`}
+                      >
+                        <div>
+                          <p className="font-medium text-foreground">{p.label}</p>
+                          <p className="text-sm text-muted-foreground">{p.price}</p>
+                        </div>
+                        {p.badge && <Badge variant="secondary">{p.badge}</Badge>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="name">Nome completo</Label>
                   <Input
                     id="name"
