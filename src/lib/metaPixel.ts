@@ -1,8 +1,15 @@
-// Meta Pixel helper - dispara eventos com value > 0 (Purchase com value:0 é ignorado pelo Meta)
+/**
+ * Eventos de navegador (Meta Pixel + GA4).
+ *
+ * Purchase NÃO existe aqui: compra é evento de servidor, enviado
+ * exclusivamente pela Conversions API a partir do webhook do Stripe.
+ * Payload sempre neutro (sem termos clínicos) e sem value/currency.
+ */
+
 declare global {
   interface Window {
     fbq?: (...args: any[]) => void;
-    __firePixelTest?: () => void;
+    gtag?: (...args: any[]) => void;
     __mmPixelFired?: Record<string, number>;
   }
 }
@@ -10,7 +17,7 @@ declare global {
 const DEDUP_WINDOW_MS = 5000;
 
 function shouldFire(key: string): boolean {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === "undefined") return false;
   window.__mmPixelFired = window.__mmPixelFired || {};
   const now = Date.now();
   const last = window.__mmPixelFired[key] || 0;
@@ -19,53 +26,57 @@ function shouldFire(key: string): boolean {
   return true;
 }
 
-export const trackSignupIntent = (source: 'free' | 'trial_15d' = 'free') => {
-  if (!shouldFire(`intent_${source}`)) return;
-  fireSignupPurchase(source, 'intent');
-};
+function slug(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
 
-export const trackSignupPurchase = (source: 'free' | 'trial_15d' = 'free') => {
-  if (!shouldFire(`success_${source}`)) return;
-  fireSignupPurchase(source, 'success');
-};
-
-function fireSignupPurchase(source: 'free' | 'trial_15d', stage: 'intent' | 'success') {
-  if (typeof window === 'undefined' || typeof window.fbq !== 'function') {
-    console.warn('[MetaPixel] fbq não está disponível');
-    return;
-  }
-
-  const eventID = `signup_${source}_${stage}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const value = source === 'trial_15d' ? 299.0 : 99.9;
-  const content_name =
-    source === 'trial_15d'
-      ? 'Cadastro Médico - Trial 15 dias PRO'
-      : 'Cadastro Médico - Conta Grátis';
-
+function fbqTrack(eventName: string, params: Record<string, string>, eventId: string): void {
+  if (typeof window === "undefined" || typeof window.fbq !== "function") return;
   try {
-    window.fbq('track', 'Lead', { content_category: 'signup', stage }, { eventID: `lead_${eventID}` });
-    window.fbq(
-      'track',
-      'Purchase',
-      {
-        value,
-        currency: 'BRL',
-        content_name,
-        content_category: source === 'trial_15d' ? 'signup_trial' : 'signup',
-        content_type: 'product',
-        contents: [{ id: source, quantity: 1, item_price: value }],
-        stage,
-      },
-      { eventID: `purchase_${eventID}` }
-    );
-    console.log('[MetaPixel] Purchase disparado', { source, stage, value, eventID });
-  } catch (err) {
-    console.error('[MetaPixel] erro ao disparar evento', err);
+    window.fbq("track", eventName, params, { eventID: eventId });
+  } catch {
+    /* tracking nunca pode quebrar a aplicação */
   }
 }
 
-// Expor globalmente para disparo manual de teste no console: window.__firePixelTest()
-if (typeof window !== 'undefined') {
-  window.__firePixelTest = () => fireSignupPurchase('free', 'success');
+/** Dispara um evento no GA4, quando disponível. */
+export function trackGA4(eventName: string, params: Record<string, string> = {}): void {
+  if (typeof window === "undefined" || typeof window.gtag !== "function") return;
+  try {
+    window.gtag("event", eventName, params);
+  } catch {
+    /* noop */
+  }
 }
 
+/** Landing ou página de planos carregada. */
+export function trackViewContent(contentName: string): void {
+  const name = slug(contentName);
+  if (!shouldFire(`view_${name}`)) return;
+  fbqTrack("ViewContent", { content_name: name, content_category: "signup" }, `view_${name}`);
+  trackGA4("view_content", { content_name: name });
+}
+
+/** Usuário clicou no CTA que leva ao checkout. */
+export function trackInitiateCheckout(plan: string): void {
+  const p = slug(plan);
+  if (!shouldFire(`checkout_${p}`)) return;
+  fbqTrack("InitiateCheckout", { content_name: p, content_category: "signup" }, `checkout_${p}`);
+  trackGA4("initiate_checkout", { plan: p });
+}
+
+/**
+ * Conta criada com sucesso — evento de topo de funil.
+ * @param userId id do Supabase; usado como eventId determinístico.
+ */
+export function trackLead(userId: string): void {
+  if (!userId) return;
+  if (!shouldFire(`lead_${userId}`)) return;
+  fbqTrack("Lead", { content_category: "signup" }, `lead_${userId}`);
+  trackGA4("lead", { user_id: userId });
+}

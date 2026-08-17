@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <!-- Content Security Policy -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net https://www.facebook.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://storage.googleapis.com https://*.supabase.co https://opengraph.githubassets.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.daily.co https://ai.gateway.lovable.dev https://connect.facebook.net https://www.facebook.com; media-src 'self' blob: https://*.supabase.co; frame-src 'self' https://*.daily.co; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net https://www.facebook.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://storage.googleapis.com https://*.supabase.co https://opengraph.githubassets.com https://www.facebook.com https://www.google-analytics.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.daily.co https://ai.gateway.lovable.dev https://connect.facebook.net https://www.facebook.com https://www.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; media-src 'self' blob: https://*.supabase.co; frame-src 'self' https://*.daily.co; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MindMed - O maior inimigo do burnout médico</title>
     <meta name="description" content="Reduza até 40% do tempo de burocracia clínica. Transcreva consultas, gere resumos e laudos prontos para PEP com LGPD by design.">
@@ -13,16 +13,18 @@
     
     
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/iiiViKpKu9fWtIhiSfMR2Lxe6OV2/social-images/social-1764731426548-1758830940775.jpeg">
+    <meta property="og:url" content="https://acesso.mindmed.online/" />
+    <meta property="og:site_name" content="MindMed" />
+    <link rel="canonical" href="https://acesso.mindmed.online/" />
+    <meta property="og:image" content="/og-image.jpg">
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@lovable_dev" />
-    <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/iiiViKpKu9fWtIhiSfMR2Lxe6OV2/social-images/social-1764731426548-1758830940775.jpeg">
+    <meta name="twitter:image" content="/og-image.jpg">
     <meta property="og:title" content="MindMed - O maior inimigo do burnout médico">
   <meta name="twitter:title" content="MindMed - O maior inimigo do burnout médico">
   <meta property="og:description" content="Reduza até 40% do tempo de burocracia clínica. Transcreva consultas, gere resumos e laudos prontos para PEP com LGPD by design.">
   <meta name="twitter:description" content="Reduza até 40% do tempo de burocracia clínica. Transcreva consultas, gere resumos e laudos prontos para PEP com LGPD by design.">
-  <link rel="icon" type="image/x-icon" href="https://storage.googleapis.com/gpt-engineer-file-uploads/iiiViKpKu9fWtIhiSfMR2Lxe6OV2/uploads/1764731423015-1758830940775.jpeg">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
 
   <!-- Meta Pixel Code -->
   <script>
@@ -38,6 +40,24 @@
   fbq('track', 'PageView');
   </script>
   <!-- End Meta Pixel Code -->
+
+  <!-- Google Analytics 4 -->
+  <script>
+    (function () {
+      var GA_ID = "%VITE_GA4_MEASUREMENT_ID%";
+      if (!GA_ID || GA_ID.indexOf("VITE_") !== -1) return;
+      var s = document.createElement("script");
+      s.async = true;
+      s.src = "https://www.googletagmanager.com/gtag/js?id=" + GA_ID;
+      document.head.appendChild(s);
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function () { window.dataLayer.push(arguments); };
+      window.gtag("js", new Date());
+      window.gtag("config", GA_ID);
+    })();
+  </script>
+  <!-- End Google Analytics 4 -->
+
 </head>
 
   <body>

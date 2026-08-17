@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { sendMetaEvent } from "../_shared/meta-capi.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -76,7 +77,7 @@ serve(async (req) => {
 
         if (userId && stripeStatus === "trialing") {
           const price = subscription.items?.data?.[0]?.price;
-          const { error } = await supabase
+          const { data, error } = await supabase
             .from("subscriptions")
             .update({
               stripe_customer_id: customerId,
@@ -102,12 +103,38 @@ serve(async (req) => {
               } : {}),
             })
             .eq("user_id", userId)
-            .eq("status", "PENDING_CHECKOUT");
+            .select();
 
           if (error) {
             logStep("Error promoting subscription to TRIALING", { error });
+          } else if (!data || data.length === 0) {
+            logStep("ERROR: no subscription row updated for user — paying customer may lack access", { userId, subscriptionId: subscription.id });
           } else {
-            logStep("PENDING_CHECKOUT promoted to TRIALING");
+            logStep("Subscription promoted to TRIALING", { rows: data.length });
+          }
+
+          // Meta CAPI — início de trial
+          try {
+            const customer = await stripe.customers.retrieve(customerId);
+            const email = (customer as Stripe.Customer)?.email ?? undefined;
+            const phone = (customer as Stripe.Customer)?.phone ?? undefined;
+            await sendMetaEvent({
+              eventName: "StartTrial",
+              eventId: `trial_${subscription.id}`,
+              value: 0,
+              currency: "BRL",
+              actionSource: "system_generated",
+              userData: {
+                email,
+                phone,
+                externalId: userId,
+                fbc: subscription.metadata?.fbc,
+                fbp: subscription.metadata?.fbp,
+              },
+              customData: { plan },
+            });
+          } catch (e) {
+            logStep("StartTrial CAPI failed", { error: e instanceof Error ? e.message : String(e) });
           }
         }
         break;
@@ -124,7 +151,7 @@ serve(async (req) => {
 
         if (userId) {
           const now = new Date();
-          const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+          let trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
           // Fetch price details from Stripe so MRR is accurate
           let amount_cents: number | null = null;
@@ -133,6 +160,7 @@ serve(async (req) => {
           try {
             if (subscriptionId) {
               const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
+              if (stripeSub.trial_end) trialEnd = new Date(stripeSub.trial_end * 1000);
               const price = stripeSub.items?.data?.[0]?.price;
               if (price?.unit_amount) {
                 amount_cents = price.unit_amount;
@@ -152,6 +180,7 @@ serve(async (req) => {
               stripe_subscription_id: subscriptionId,
               status: "TRIALING",
               plan: plan === "mindmed_starter" ? "STARTER" : "PRO",
+              billing_cycle: plan === "mindmed_pro_anual" ? "ANNUAL" : "MONTHLY",
               trial_start: now.toISOString(),
               trial_end: trialEnd.toISOString(),
               current_period_start: now.toISOString(),
@@ -214,6 +243,45 @@ serve(async (req) => {
               logStep("Error updating to ACTIVE", { error });
             } else {
               logStep("Subscription updated to ACTIVE");
+
+              // Meta CAPI — Purchase apenas na primeira fatura realmente paga
+              try {
+                const amountPaid = invoice.amount_paid ?? 0;
+                if (amountPaid > 0) {
+                  const { error: dedupError } = await supabase
+                    .from("conversion_events_sent")
+                    .insert({ stripe_subscription_id: subscriptionId, event_name: "Purchase" });
+
+                  if (dedupError) {
+                    logStep("Purchase already sent for subscription, skipping", { subscriptionId });
+                  } else {
+                    const customer = await stripe.customers.retrieve(customerId);
+                    const md = subscription.metadata ?? {};
+                    await sendMetaEvent({
+                      eventName: "Purchase",
+                      eventId: `purchase_${subscriptionId}`,
+                      value: amountPaid / 100,
+                      currency: (invoice.currency || "brl").toUpperCase(),
+                      actionSource: "system_generated",
+                      userData: {
+                        email: (customer as Stripe.Customer)?.email ?? undefined,
+                        phone: (customer as Stripe.Customer)?.phone ?? undefined,
+                        externalId: md.user_id ?? subData.user_id,
+                        fbc: md.fbc,
+                        fbp: md.fbp,
+                      },
+                      customData: {
+                        plan: md.plan ?? "",
+                        utm_source: md.utm_source ?? "",
+                        utm_medium: md.utm_medium ?? "",
+                        utm_campaign: md.utm_campaign ?? "",
+                      },
+                    });
+                  }
+                }
+              } catch (e) {
+                logStep("Purchase CAPI failed", { error: e instanceof Error ? e.message : String(e) });
+              }
 
               // Send upgrade confirmed email
               const { data: profile } = await supabase

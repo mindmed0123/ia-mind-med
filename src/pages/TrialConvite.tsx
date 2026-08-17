@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
-import { trackSignupPurchase, trackSignupIntent } from "@/lib/metaPixel";
+import { trackLead } from "@/lib/metaPixel";
 
 const emailSchema = z.string().email({ message: "Email inválido" }).max(255).trim().toLowerCase();
 const passwordSchema = z.string().min(8, { message: "Senha deve ter no mínimo 8 caracteres" }).max(128).regex(/[A-Z]/, { message: "Precisa de letra maiúscula" }).regex(/[a-z]/, { message: "Precisa de letra minúscula" }).regex(/[0-9]/, { message: "Precisa de número" });
@@ -43,8 +43,6 @@ const TrialConvite = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Dispara Purchase no clique (intenção) — independente de validação/sucesso
-    trackSignupIntent('trial_15d');
     setIsLoading(true);
 
     const nameResult = nameSchema.safeParse(formData.name);
@@ -75,7 +73,7 @@ const TrialConvite = () => {
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: emailResult.data,
         password: formData.password,
         options: {
@@ -94,8 +92,7 @@ const TrialConvite = () => {
           toast.error("Erro ao criar conta");
         }
       } else {
-        // Meta Pixel: dispara Lead + Purchase em cadastro de novo médico (trial 15d)
-        trackSignupPurchase('trial_15d');
+        if (data?.user) trackLead(data.user.id);
         toast.success("Conta criada com sucesso! Redirecionando...");
         navigate("/dashboard");
       }
@@ -207,7 +204,7 @@ const TrialConvite = () => {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full gradient-primary" disabled={isLoading} onClick={() => trackSignupIntent('trial_15d')}>
+              <Button type="submit" className="w-full gradient-primary" disabled={isLoading}>
                 {isLoading ? "Criando conta..." : "Começar meu trial de 15 dias"}
               </Button>
             </form>
