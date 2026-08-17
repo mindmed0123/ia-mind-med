@@ -19,6 +19,7 @@ export interface SubscriptionInfo {
   isTrial: boolean;
   remainingCredits: number | null;
   quotaUsed: number;
+  billingCycle: string;
   currentPeriodEnd: string | null;
   trialEnd: string | null;
 }
@@ -56,7 +57,7 @@ async function fetchSubscription(userId: string): Promise<SubscriptionInfo | nul
       const [subRes, invitedRes] = await Promise.all([
         supabase
           .from('subscriptions')
-          .select('status, plan, trial_end, remaining_starter_credits, quota_used, current_period_end, stripe_subscription_id')
+          .select('status, plan, trial_end, remaining_starter_credits, quota_used, current_period_end, stripe_subscription_id, billing_cycle')
           .eq('user_id', userId)
           .order('created_at', { ascending: false })
           .limit(1)
@@ -76,6 +77,7 @@ async function fetchSubscription(userId: string): Promise<SubscriptionInfo | nul
           isTrial: false,
           remainingCredits: null,
           quotaUsed: 0,
+          billingCycle: 'MONTHLY',
           currentPeriodEnd: null,
           trialEnd: null,
         };
@@ -89,6 +91,7 @@ async function fetchSubscription(userId: string): Promise<SubscriptionInfo | nul
         const fallback: SubscriptionInfo = {
           plan: 'STARTER', status: 'PENDING_CHECKOUT', isActive: false,
           isPro: false, isTrial: false, remainingCredits: 0, quotaUsed: 0,
+          billingCycle: 'MONTHLY',
           currentPeriodEnd: null, trialEnd: null,
         };
         _cache = { subscription: fallback, fetchedAt: Date.now(), fetchPromise: null };
@@ -109,6 +112,7 @@ async function fetchSubscription(userId: string): Promise<SubscriptionInfo | nul
         isTrial: currentStatus === 'TRIALING',
         remainingCredits: data.remaining_starter_credits,
         quotaUsed: data.quota_used || 0,
+        billingCycle: data.billing_cycle || 'MONTHLY',
         currentPeriodEnd: data.current_period_end,
         trialEnd: data.trial_end,
       };

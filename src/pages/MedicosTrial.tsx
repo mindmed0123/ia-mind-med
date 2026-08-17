@@ -9,20 +9,18 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { getAttribution } from '@/lib/attribution';
+import { SUBSCRIPTION_PLANS, VALID_SUBSCRIPTION_PLAN_IDS } from '@/lib/subscription-plans';
 import { Brain, Shield, Clock, FileText, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
-
-const PLANS = [
-  { id: 'mindmed_starter', label: 'Starter', price: 'R$ 149/mês', badge: null as string | null },
-  { id: 'mindmed_pro', label: 'Pro', price: 'R$ 299/mês', badge: 'Recomendado' },
-  { id: 'mindmed_pro_anual', label: 'Pro anual', price: 'R$ 2.990/ano', badge: '2 meses grátis' },
-];
 
 export default function MedicosTrial() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const planFromUrl = searchParams.get('plan');
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState('mindmed_pro');
+  const [selectedPlan, setSelectedPlan] = useState(
+    planFromUrl && VALID_SUBSCRIPTION_PLAN_IDS.includes(planFromUrl) ? planFromUrl : 'mindmed_pro'
+  );
 
   const [formData, setFormData] = useState({
     name: '',
@@ -103,6 +101,7 @@ export default function MedicosTrial() {
         .eq('id', authData.user.id);
 
       if (profileError) {
+        console.error('Erro ao atualizar perfil antes do checkout:', profileError);
       }
 
       // 3. Create checkout session
@@ -224,7 +223,7 @@ export default function MedicosTrial() {
                 <div className="space-y-2">
                   <Label>Escolha seu plano</Label>
                   <div className="grid gap-2">
-                    {PLANS.map((p) => (
+                    {SUBSCRIPTION_PLANS.map((p) => (
                       <button
                         key={p.id}
                         type="button"

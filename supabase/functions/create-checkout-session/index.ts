@@ -20,7 +20,7 @@ const PLAN_TO_DB: Record<string, string> = {
   mindmed_pro_anual: "PRO",
 };
 
-const ATTR_KEYS = ["utm_source","utm_medium","utm_campaign","utm_content","utm_term","fbclid","gclid","landing_path","referrer"];
+const ATTR_KEYS = ["utm_source","utm_medium","utm_campaign","utm_content","utm_term","fbclid","gclid","mm_lp","landing_path","referrer"];
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
