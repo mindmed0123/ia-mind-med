@@ -16,6 +16,20 @@ declare global {
 
 const DEDUP_WINDOW_MS = 5000;
 
+function newId(): string {
+  try {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+      return crypto.randomUUID();
+    }
+  } catch { /* segue para o fallback */ }
+  return `${Date.now().toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`;
+}
+
+// Um por carregamento de página. Torna os eventos de navegador distinguíveis
+// entre si sem quebrar a deduplicação dos eventos de servidor, que continuam
+// derivados do subscription ID do Stripe.
+const PAGE_ID = newId();
+
 function shouldFire(key: string): boolean {
   if (typeof window === "undefined") return false;
   window.__mmPixelFired = window.__mmPixelFired || {};
@@ -58,7 +72,7 @@ export function trackGA4(eventName: string, params: Record<string, string> = {})
 export function trackViewContent(contentName: string): void {
   const name = slug(contentName);
   if (!shouldFire(`view_${name}`)) return;
-  fbqTrack("ViewContent", { content_name: name, content_category: "signup" }, `view_${name}`);
+  fbqTrack("ViewContent", { content_name: name, content_category: "signup" }, `view_${name}_${PAGE_ID}`);
   trackGA4("view_content", { content_name: name });
 }
 
@@ -66,7 +80,7 @@ export function trackViewContent(contentName: string): void {
 export function trackInitiateCheckout(plan: string): void {
   const p = slug(plan);
   if (!shouldFire(`checkout_${p}`)) return;
-  fbqTrack("InitiateCheckout", { content_name: p, content_category: "signup" }, `checkout_${p}`);
+  fbqTrack("InitiateCheckout", { content_name: p, content_category: "signup" }, `checkout_${p}_${PAGE_ID}`);
   trackGA4("initiate_checkout", { plan: p });
 }
 
