@@ -25,13 +25,8 @@ const Footer = () => {
             <h4 className="font-semibold mb-4">Produto</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link to="/produto" className="hover:text-primary transition-colors">
-                  Como funciona
-                </Link>
-              </li>
-              <li>
-                <Link to="/integracoes" className="hover:text-primary transition-colors">
-                  Integrações
+                <Link to="/medicos/teste-gratis" className="hover:text-primary transition-colors">
+                  Teste grátis de 7 dias
                 </Link>
               </li>
               <li>
@@ -46,16 +41,6 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold mb-4">Empresa</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <Link to="/blog" className="hover:text-primary transition-colors">
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link to="/contato" className="hover:text-primary transition-colors">
-                  Contato
-                </Link>
-              </li>
               <li>
                 <Link to="/privacidade" className="hover:text-primary transition-colors">
                   Privacidade (LGPD)
@@ -75,11 +60,13 @@ const Footer = () => {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li className="flex items-center gap-2">
                 <Mail className="w-4 h-4" />
-                contato@mindmed.com.br
+                contato@mindmed.online
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4" />
-                (11) 95889-0212
+                <a href="https://wa.me/5511958890212" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors">
+                  (11) 95889-0212
+                </a>
               </li>
             </ul>
           </div>
@@ -87,9 +74,7 @@ const Footer = () => {
 
         <div className="border-t border-border mt-8 pt-8 text-center text-sm text-muted-foreground">
           <p>© 2025 MindMed. Todos os direitos reservados.</p>
-          <p className="mt-2">
-            LGPD by design | Certificado HIPAA-ready
-          </p>
+          <p className="mt-2">Conformidade LGPD by design</p>
         </div>
       </div>
     </footer>
