@@ -7,11 +7,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// MindMed price IDs
-const PRICES = {
-  mindmed_starter: "price_1SedBNRpmClnFRZodLtgM25d", // R$ 99,90/mês
-  mindmed_pro: "price_1SCj9YRpmClnFRZoaPfNUPRH",     // R$ 299,00/mês
+// MindMed price IDs (via secrets — nunca hardcoded)
+const PRICES: Record<string, string | undefined> = {
+  mindmed_starter:   Deno.env.get("STRIPE_PRICE_STARTER_MONTHLY"),
+  mindmed_pro:       Deno.env.get("STRIPE_PRICE_PRO_MONTHLY"),
+  mindmed_pro_anual: Deno.env.get("STRIPE_PRICE_PRO_ANNUAL"),
 };
+
+const PLAN_TO_DB: Record<string, string> = {
+  mindmed_starter:   "STARTER",
+  mindmed_pro:       "PRO",
+  mindmed_pro_anual: "PRO",
+};
+
+const ATTR_KEYS = ["utm_source","utm_medium","utm_campaign","utm_content","utm_term","fbclid","gclid","landing_path","referrer"];
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
