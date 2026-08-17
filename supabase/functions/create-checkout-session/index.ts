@@ -68,23 +68,36 @@ serve(async (req) => {
     });
 
     const body = await req.json();
-    const { name, whatsapp, plan = "mindmed_pro" } = body;
+    const { name, whatsapp, plan = "mindmed_pro", attribution = {} } = body;
+
+    // Sanitiza atribuição: só strings conhecidas, máximo 200 caracteres cada
+    const attr: Record<string, string> = {};
+    for (const k of ATTR_KEYS) {
+      const v = attribution?.[k];
+      if (typeof v === "string" && v.length > 0) attr[k] = v.slice(0, 200);
+    }
 
     // Never trust client-supplied user identity
     const userId = authedUserId;
     const email = authedEmail ?? body.email;
 
-    logStep("Received request", { userId, email, plan });
+    logStep("Received request", { userId, email, plan, attr });
 
     if (!userId || !email) {
       throw new Error("Authenticated user has no email");
     }
 
-    const priceId = PRICES[plan as keyof typeof PRICES];
-    if (!priceId) {
+    if (!(plan in PRICES)) {
       throw new Error(`Invalid plan: ${plan}`);
     }
 
+    const priceId = PRICES[plan];
+    if (!priceId) {
+      return new Response(
+        JSON.stringify({ error: `Price ID não configurado para o plano: ${plan}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
@@ -108,31 +121,50 @@ serve(async (req) => {
 
     // Create checkout session with 7-day trial
     const origin = req.headers.get("origin") || "https://acesso.mindmed.online";
-    
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
+      locale: "pt-BR",
       payment_method_types: ["card"],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
+      payment_method_collection: "always",
+      billing_address_collection: "auto",
+      allow_promotion_codes: true,
+
+      // Atribuição: permite ver no painel do Stripe de qual campanha veio cada assinatura
+      client_reference_id: userId,
+
+      line_items: [{ price: priceId, quantity: 1 }],
+
       subscription_data: {
         trial_period_days: 7,
+        trial_settings: {
+          end_behavior: { missing_payment_method: "cancel" },
+        },
         metadata: {
           user_id: userId,
           plan: plan,
+          ...attr,
         },
       },
+
       metadata: {
         user_id: userId,
         plan: plan,
+        ...attr,
       },
-      success_url: `${origin}/dashboard?checkout=success`,
+
+      custom_text: {
+        submit: {
+          message:
+            "Seus 7 dias de teste começam agora e nada é cobrado neste momento. " +
+            "Se você cancelar antes do fim do teste, não há cobrança. " +
+            "E se depois da primeira cobrança você não estiver satisfeito, devolvemos 100% do valor em até 30 dias.",
+        },
+      },
+
+      success_url: `${origin}/dashboard?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/medicos/teste-gratis?checkout=canceled`,
-      allow_promotion_codes: true,
     });
 
     logStep("Created checkout session", { sessionId: session.id, url: session.url });
@@ -144,7 +176,8 @@ serve(async (req) => {
       .upsert({
         user_id: userId,
         status: "PENDING_CHECKOUT",
-        plan: plan === "mindmed_starter" ? "STARTER" : "PRO",
+        plan: PLAN_TO_DB[plan] ?? "PRO",
+        billing_cycle: plan === "mindmed_pro_anual" ? "ANNUAL" : "MONTHLY",
         stripe_customer_id: customerId,
         current_period_start: now.toISOString(),
         current_period_end: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
