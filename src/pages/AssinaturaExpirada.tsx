@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,12 @@ export default function AssinaturaExpirada() {
     getSubscriptionPlanId(subscription?.plan, subscription?.billingCycle)
   );
   const isPendingCheckout = subscription?.status === 'PENDING_CHECKOUT';
+
+  useEffect(() => {
+    if (subscription) {
+      setSelectedPlan(getSubscriptionPlanId(subscription.plan, subscription.billingCycle));
+    }
+  }, [subscription]);
 
   const handleReactivate = async () => {
     if (!user) {
