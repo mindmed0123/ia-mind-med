@@ -5,16 +5,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { getAttribution } from '@/lib/attribution';
 import { Brain, Shield, Clock, FileText, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
+
+const PLANS = [
+  { id: 'mindmed_starter', label: 'Starter', price: 'R$ 149/mês', badge: null as string | null },
+  { id: 'mindmed_pro', label: 'Pro', price: 'R$ 299/mês', badge: 'Recomendado' },
+  { id: 'mindmed_pro_anual', label: 'Pro anual', price: 'R$ 2.990/ano', badge: '2 meses grátis' },
+];
 
 export default function MedicosTrial() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  
+  const [selectedPlan, setSelectedPlan] = useState('mindmed_pro');
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -38,8 +47,21 @@ export default function MedicosTrial() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      toast.error('A senha deve ter pelo menos 6 caracteres');
+    const pwd = formData.password;
+    if (pwd.length < 8) {
+      toast.error('A senha deve ter no mínimo 8 caracteres');
+      return;
+    }
+    if (!/[A-Z]/.test(pwd)) {
+      toast.error('A senha deve conter pelo menos uma letra maiúscula');
+      return;
+    }
+    if (!/[a-z]/.test(pwd)) {
+      toast.error('A senha deve conter pelo menos uma letra minúscula');
+      return;
+    }
+    if (!/[0-9]/.test(pwd)) {
+      toast.error('A senha deve conter pelo menos um número');
       return;
     }
 
@@ -86,11 +108,10 @@ export default function MedicosTrial() {
       // 3. Create checkout session
       const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout-session', {
         body: {
-          userId: authData.user.id,
-          email: formData.email,
           name: formData.name,
           whatsapp: formData.whatsapp,
-          plan: 'mindmed_pro',
+          plan: selectedPlan,
+          attribution: getAttribution(),
         },
       });
 
@@ -110,6 +131,7 @@ export default function MedicosTrial() {
       setLoading(false);
     }
   };
+
 
   const benefits = [
     { icon: Brain, text: 'IA que gera laudos completos automaticamente' },
