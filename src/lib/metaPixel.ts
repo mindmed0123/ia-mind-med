@@ -72,7 +72,7 @@ export function trackGA4(eventName: string, params: Record<string, string> = {})
 export function trackViewContent(contentName: string): void {
   const name = slug(contentName);
   if (!shouldFire(`view_${name}`)) return;
-  fbqTrack("ViewContent", { content_name: name, content_category: "signup" }, `view_${name}`);
+  fbqTrack("ViewContent", { content_name: name, content_category: "signup" }, `view_${name}_${PAGE_ID}`);
   trackGA4("view_content", { content_name: name });
 }
 
@@ -80,7 +80,7 @@ export function trackViewContent(contentName: string): void {
 export function trackInitiateCheckout(plan: string): void {
   const p = slug(plan);
   if (!shouldFire(`checkout_${p}`)) return;
-  fbqTrack("InitiateCheckout", { content_name: p, content_category: "signup" }, `checkout_${p}`);
+  fbqTrack("InitiateCheckout", { content_name: p, content_category: "signup" }, `checkout_${p}_${PAGE_ID}`);
   trackGA4("initiate_checkout", { plan: p });
 }
 
