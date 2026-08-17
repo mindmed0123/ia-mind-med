@@ -286,7 +286,7 @@ export default function MedicosTrial() {
                   <Input
                     id="password"
                     type="password"
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Mínimo 8 caracteres, com maiúscula, minúscula e número"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
