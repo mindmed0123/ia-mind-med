@@ -1442,6 +1442,7 @@ export type Database = {
       subscriptions: {
         Row: {
           amount_cents: number | null
+          billing_cycle: string
           billing_interval: string | null
           created_at: string
           currency: string | null
@@ -1463,6 +1464,7 @@ export type Database = {
         }
         Insert: {
           amount_cents?: number | null
+          billing_cycle?: string
           billing_interval?: string | null
           created_at?: string
           currency?: string | null
@@ -1484,6 +1486,7 @@ export type Database = {
         }
         Update: {
           amount_cents?: number | null
+          billing_cycle?: string
           billing_interval?: string | null
           created_at?: string
           currency?: string | null
