@@ -73,7 +73,7 @@ const TrialConvite = () => {
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: emailResult.data,
         password: formData.password,
         options: {
