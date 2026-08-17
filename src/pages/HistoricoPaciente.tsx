@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Activity, ArrowLeft, FileText, Pill, Calendar, 
   Download, User, ExternalLink, Image as ImageIcon,
-  TrendingUp, GitCompare, Microscope
+  TrendingUp, GitCompare
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -15,7 +15,6 @@ import { PatientDocuments } from '@/components/patient/PatientDocuments';
 import { PatientTimeline } from '@/components/patient/PatientTimeline';
 import { ImageComparison } from '@/components/patient/ImageComparison';
 import { PatientClinicalProfile } from '@/components/patient/PatientClinicalProfile';
-import { PatientHantavirusTriagens } from '@/components/patient/PatientHantavirusTriagens';
 import { FarmacovigilanciaButton } from '@/components/farmacovigilancia/FarmacovigilanciaButton';
 import { useSubscription } from '@/hooks/useSubscription';
 
