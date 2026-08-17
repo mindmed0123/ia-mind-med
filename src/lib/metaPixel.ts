@@ -16,6 +16,20 @@ declare global {
 
 const DEDUP_WINDOW_MS = 5000;
 
+function newId(): string {
+  try {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+      return crypto.randomUUID();
+    }
+  } catch { /* segue para o fallback */ }
+  return `${Date.now().toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`;
+}
+
+// Um por carregamento de página. Torna os eventos de navegador distinguíveis
+// entre si sem quebrar a deduplicação dos eventos de servidor, que continuam
+// derivados do subscription ID do Stripe.
+const PAGE_ID = newId();
+
 function shouldFire(key: string): boolean {
   if (typeof window === "undefined") return false;
   window.__mmPixelFired = window.__mmPixelFired || {};
