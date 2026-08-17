@@ -4,24 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, Mail, Lock, User } from "lucide-react";
+import { Activity, Mail, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
-import { trackSignupIntent } from "@/lib/metaPixel";
 
 const emailSchema = z.string().email({ message: "Email inválido" }).max(255, { message: "Email muito longo" }).trim().toLowerCase();
-const passwordSchema = z.string().min(8, { message: "Senha deve ter no mínimo 8 caracteres" }).max(128, { message: "Senha muito longa" }).regex(/[A-Z]/, { message: "Senha deve conter pelo menos uma letra maiúscula" }).regex(/[a-z]/, { message: "Senha deve conter pelo menos uma letra minúscula" }).regex(/[0-9]/, { message: "Senha deve conter pelo menos um número" });
-const nameSchema = z.string().min(3, { message: "Nome deve ter no mínimo 3 caracteres" }).max(100, { message: "Nome muito longo" }).trim();
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [loginData, setLoginData] = useState({ email: "", password: "" });
-  const [signupData, setSignupData] = useState({ name: "", email: "", password: "", confirmPassword: "" });
 
   const getNextPath = (): string => {
     const raw = new URLSearchParams(window.location.search).get("next");
@@ -71,58 +66,6 @@ const Auth = () => {
     }
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // Dispara Purchase no clique (intenção) — independente de validação/sucesso
-    trackSignupIntent('free');
-    setIsLoading(true);
-
-    const nameResult = nameSchema.safeParse(signupData.name);
-    if (!nameResult.success) {
-      toast.error(nameResult.error.errors[0].message);
-      setIsLoading(false);
-      return;
-    }
-
-    const emailResult = emailSchema.safeParse(signupData.email);
-    if (!emailResult.success) {
-      toast.error(emailResult.error.errors[0].message);
-      setIsLoading(false);
-      return;
-    }
-
-    const passwordResult = passwordSchema.safeParse(signupData.password);
-    if (!passwordResult.success) {
-      toast.error(passwordResult.error.errors[0].message);
-      setIsLoading(false);
-      return;
-    }
-
-    if (signupData.password !== signupData.confirmPassword) {
-      toast.error("As senhas não coincidem");
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const { error } = await signUp(emailResult.data, signupData.password, nameResult.data);
-      if (error) {
-        if (error.message.includes("already registered")) {
-          toast.error("Este email já está cadastrado");
-        } else {
-          toast.error("Erro ao criar conta");
-        }
-      } else {
-        toast.success("Conta criada com sucesso! Redirecionando...");
-        navigate("/dashboard");
-      }
-    } catch {
-      toast.error("Erro ao criar conta. Tente novamente.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleForgotPassword = async () => {
     if (!loginData.email) {
       toast.error("Digite seu email primeiro");
@@ -157,96 +100,46 @@ const Auth = () => {
         <Card className="shadow-large">
           <CardHeader className="text-center pb-4">
             <h1 className="text-2xl font-bold">Bem-vindo</h1>
-            <p className="text-muted-foreground">Acesse sua conta ou crie uma nova</p>
+            <p className="text-muted-foreground">Acesse sua conta</p>
           </CardHeader>
 
           <CardContent>
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="login">Entrar</TabsTrigger>
-                <TabsTrigger value="signup">Criar conta</TabsTrigger>
-              </TabsList>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <Label htmlFor="login-email">Email</Label>
+                <div className="relative mt-2">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input id="login-email" type="email" value={loginData.email} onChange={e => setLoginData({ ...loginData, email: e.target.value })} placeholder="seu@email.com" className="pl-10" required />
+                </div>
+              </div>
 
-              <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div>
-                    <Label htmlFor="login-email">Email</Label>
-                    <div className="relative mt-2">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                      <Input id="login-email" type="email" value={loginData.email} onChange={e => setLoginData({ ...loginData, email: e.target.value })} placeholder="seu@email.com" className="pl-10" required />
-                    </div>
-                  </div>
+              <div>
+                <Label htmlFor="login-password">Senha</Label>
+                <div className="relative mt-2">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input id="login-password" type="password" value={loginData.password} onChange={e => setLoginData({ ...loginData, password: e.target.value })} placeholder="••••••••" className="pl-10" required />
+                </div>
+              </div>
 
-                  <div>
-                    <Label htmlFor="login-password">Senha</Label>
-                    <div className="relative mt-2">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                      <Input id="login-password" type="password" value={loginData.password} onChange={e => setLoginData({ ...loginData, password: e.target.value })} placeholder="••••••••" className="pl-10" required />
-                    </div>
-                  </div>
+              <div className="text-right">
+                <button type="button" onClick={handleForgotPassword} className="text-sm text-primary hover:underline">
+                  Esqueceu a senha?
+                </button>
+              </div>
 
-                  <div className="text-right">
-                    <button type="button" onClick={handleForgotPassword} className="text-sm text-primary hover:underline">
-                      Esqueceu a senha?
-                    </button>
-                  </div>
+              <Button type="submit" className="w-full gradient-primary" disabled={isLoading}>
+                {isLoading ? "Entrando..." : "Entrar"}
+              </Button>
+            </form>
 
-                  <Button type="submit" className="w-full gradient-primary" disabled={isLoading}>
-                    {isLoading ? "Entrando..." : "Entrar"}
-                  </Button>
-                </form>
-              </TabsContent>
-
-              <TabsContent value="signup">
-                <form onSubmit={handleSignup} className="space-y-4">
-                  <div>
-                    <Label htmlFor="signup-name">Nome completo</Label>
-                    <div className="relative mt-2">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                      <Input id="signup-name" type="text" value={signupData.name} onChange={e => setSignupData({ ...signupData, name: e.target.value })} placeholder="Dr. João Silva" className="pl-10" required />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="signup-email">Email</Label>
-                    <div className="relative mt-2">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                      <Input id="signup-email" type="email" value={signupData.email} onChange={e => setSignupData({ ...signupData, email: e.target.value })} placeholder="seu@email.com" className="pl-10" required />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="signup-password">Senha</Label>
-                    <div className="relative mt-2">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                      <Input id="signup-password" type="password" value={signupData.password} onChange={e => setSignupData({ ...signupData, password: e.target.value })} placeholder="••••••••" className="pl-10" required />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Mínimo 8 caracteres, incluindo maiúscula, minúscula e número
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="signup-confirm">Confirmar senha</Label>
-                    <div className="relative mt-2">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                      <Input id="signup-confirm" type="password" value={signupData.confirmPassword} onChange={e => setSignupData({ ...signupData, confirmPassword: e.target.value })} placeholder="••••••••" className="pl-10" required />
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-muted-foreground">
-                    Ao criar uma conta, você concorda com nossos{" "}
-                    <Link to="/termos" className="text-primary hover:underline">Termos de Uso</Link>{" "}
-                    e{" "}
-                    <Link to="/privacidade" className="text-primary hover:underline">Política de Privacidade</Link>
-                  </p>
-
-                  <Button type="submit" className="w-full gradient-primary" disabled={isLoading} onClick={() => trackSignupIntent('free')}>
-                    {isLoading ? "Criando conta..." : "Criar conta grátis"}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+            <div className="mt-6 pt-4 border-t text-center">
+              <p className="text-sm text-muted-foreground">
+                Ainda não tem conta?{" "}
+                <Link to="/medicos/teste-gratis" className="text-primary font-medium hover:underline">
+                  Comece seu teste de 7 dias
+                </Link>
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
