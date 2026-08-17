@@ -65,6 +65,54 @@ serve(async (req) => {
     logStep("Event type", { type: event.type });
 
     switch (event.type) {
+      case "customer.subscription.created": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const userId = subscription.metadata?.user_id;
+        const plan = subscription.metadata?.plan || "mindmed_pro";
+        const customerId = subscription.customer as string;
+        const stripeStatus = subscription.status;
+
+        logStep("Subscription created", { userId, subscriptionId: subscription.id, stripeStatus, plan });
+
+        if (userId && stripeStatus === "trialing") {
+          const price = subscription.items?.data?.[0]?.price;
+          const { error } = await supabase
+            .from("subscriptions")
+            .update({
+              stripe_customer_id: customerId,
+              stripe_subscription_id: subscription.id,
+              status: "TRIALING",
+              plan: plan === "mindmed_starter" ? "STARTER" : "PRO",
+              billing_cycle: plan === "mindmed_pro_anual" ? "ANNUAL" : "MONTHLY",
+              trial_start: subscription.trial_start
+                ? new Date(subscription.trial_start * 1000).toISOString()
+                : new Date().toISOString(),
+              trial_end: subscription.trial_end
+                ? new Date(subscription.trial_end * 1000).toISOString()
+                : null,
+              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              payment_provider: "stripe",
+              remaining_starter_credits: plan === "mindmed_starter" ? 10 : null,
+              quota_used: 0,
+              ...(price?.unit_amount ? {
+                amount_cents: price.unit_amount,
+                currency: price.currency,
+                billing_interval: price.recurring?.interval ?? "month",
+              } : {}),
+            })
+            .eq("user_id", userId)
+            .eq("status", "PENDING_CHECKOUT");
+
+          if (error) {
+            logStep("Error promoting subscription to TRIALING", { error });
+          } else {
+            logStep("PENDING_CHECKOUT promoted to TRIALING");
+          }
+        }
+        break;
+      }
+
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.metadata?.user_id;

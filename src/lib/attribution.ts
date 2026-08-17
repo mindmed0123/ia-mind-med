@@ -11,6 +11,7 @@ export type Attribution = Partial<
     | "utm_term"
     | "fbclid"
     | "gclid"
+    | "mm_lp"
     | "landing_path"
     | "referrer",
     string

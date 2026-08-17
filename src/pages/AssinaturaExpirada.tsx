@@ -1,36 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppState } from '@/hooks/useAppState';
+import { getSubscriptionPlanId, SUBSCRIPTION_PLANS, type SubscriptionPlanId } from '@/lib/subscription-plans';
 import { Brain, AlertTriangle, CreditCard, MessageCircle, LogOut, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function AssinaturaExpirada() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { subscription } = useAppState();
   const [loading, setLoading] = useState(false);
-  const [hasSubscription, setHasSubscription] = useState<boolean | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanId>(() =>
+    getSubscriptionPlanId(subscription?.plan, subscription?.billingCycle)
+  );
+  const isPendingCheckout = subscription?.status === 'PENDING_CHECKOUT';
 
   useEffect(() => {
-    if (user) {
-      checkSubscription();
+    if (subscription) {
+      setSelectedPlan(getSubscriptionPlanId(subscription.plan, subscription.billingCycle));
     }
-  }, [user]);
-
-  const checkSubscription = async () => {
-    if (!user) return;
-    
-    const { data } = await supabase
-      .from('subscriptions')
-      .select('id')
-      .eq('user_id', user.id)
-      .limit(1)
-      .maybeSingle();
-    
-    setHasSubscription(!!data);
-  };
+  }, [subscription]);
 
   const handleReactivate = async () => {
     if (!user) {
@@ -56,7 +49,7 @@ export default function AssinaturaExpirada() {
           email: user.email,
           name: profile?.full_name || '',
           whatsapp: profile?.whatsapp || '',
-          plan: 'mindmed_pro',
+          plan: selectedPlan,
         },
       });
 
@@ -79,9 +72,6 @@ export default function AssinaturaExpirada() {
     navigate('/');
   };
 
-  // Different messaging based on whether user ever had a subscription
-  const isNewUser = hasSubscription === false;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
       <div className="max-w-lg w-full">
@@ -95,31 +85,47 @@ export default function AssinaturaExpirada() {
 
         <Card className="shadow-xl border-primary/20">
           <CardHeader className="text-center pb-4">
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${isNewUser ? 'bg-primary/10' : 'bg-amber-100'}`}>
-              {isNewUser ? (
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${isPendingCheckout ? 'bg-primary/10' : 'bg-amber-100'}`}>
+              {isPendingCheckout ? (
                 <Sparkles className="w-8 h-8 text-primary" />
               ) : (
                 <AlertTriangle className="w-8 h-8 text-amber-600" />
               )}
             </div>
             <CardTitle className="text-2xl text-foreground">
-              {isNewUser 
-                ? "Ative sua assinatura MindMed" 
-                : "Seu acesso à MindMed foi interrompido"}
+              {isPendingCheckout ? "Falta só o pagamento" : "Seu período de teste terminou"}
             </CardTitle>
             <CardDescription className="text-base mt-2">
-              {isNewUser
-                ? "Para acessar a plataforma, você precisa ativar sua assinatura com 7 dias grátis."
+              {isPendingCheckout
+                ? "Sua conta já está criada. Para liberar os 7 dias de teste, é só concluir o cadastro do cartão. Nada é cobrado agora."
                 : "Seu período de teste gratuito terminou ou sua assinatura não está ativa no momento."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="bg-muted/50 rounded-lg p-4 text-center">
               <p className="text-muted-foreground">
-                {isNewUser
-                  ? "Comece agora com 7 dias grátis e descubra como a IA pode transformar sua prática médica."
+                {isPendingCheckout
+                  ? "Escolha o plano e conclua o cadastro do cartão para iniciar seu teste."
                   : "Para continuar usando a IA que gera laudos, CID e receituário automaticamente, reative sua assinatura."}
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">Escolha seu plano</p>
+              <div className="grid gap-2">
+                {SUBSCRIPTION_PLANS.map((plan) => (
+                  <Button
+                    key={plan.id}
+                    type="button"
+                    variant={selectedPlan === plan.id ? 'default' : 'outline'}
+                    className="h-auto justify-between py-3"
+                    onClick={() => setSelectedPlan(plan.id)}
+                  >
+                    <span>{plan.label}</span>
+                    <span className="text-xs opacity-80">{plan.price}</span>
+                  </Button>
+                ))}
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -136,16 +142,16 @@ export default function AssinaturaExpirada() {
                 ) : (
                   <span className="flex items-center gap-2">
                     <CreditCard className="w-5 h-5" />
-                    {isNewUser ? "Começar 7 dias grátis" : "Reativar minha assinatura"}
+                    {isPendingCheckout ? "Concluir cadastro do cartão" : "Reativar minha assinatura"}
                     <ArrowRight className="w-5 h-5" />
                   </span>
                 )}
               </Button>
 
               <p className="text-xs text-center text-muted-foreground">
-                {isNewUser 
-                  ? "7 dias grátis • Depois R$ 299/mês • Cancele quando quiser"
-                  : "Plano PRO: R$ 299/mês • Cancele quando quiser"}
+                {isPendingCheckout
+                  ? "7 dias grátis após cadastrar o cartão • Nada é cobrado agora"
+                  : "Escolha o plano acima • Cancele quando quiser"}
               </p>
             </div>
 
