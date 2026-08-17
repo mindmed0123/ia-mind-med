@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { getAttribution } from '@/lib/attribution';
+import { getAttribution, getFbCookies } from '@/lib/attribution';
+import { trackViewContent, trackInitiateCheckout } from '@/lib/metaPixel';
 import { SUBSCRIPTION_PLANS, VALID_SUBSCRIPTION_PLAN_IDS } from '@/lib/subscription-plans';
 import { Brain, Shield, Clock, FileText, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
 
@@ -31,6 +32,10 @@ export default function MedicosTrial() {
   });
 
   const canceled = searchParams.get('checkout') === 'canceled';
+
+  useEffect(() => {
+    trackViewContent('trial_medicos');
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +69,7 @@ export default function MedicosTrial() {
     }
 
     setLoading(true);
+    trackInitiateCheckout(selectedPlan);
 
     try {
       // 1. Create user account
@@ -74,6 +80,7 @@ export default function MedicosTrial() {
           emailRedirectTo: `${window.location.origin}/dashboard`,
           data: {
             full_name: formData.name,
+            ...getAttribution(),
           },
         },
       });
@@ -110,7 +117,7 @@ export default function MedicosTrial() {
           name: formData.name,
           whatsapp: formData.whatsapp,
           plan: selectedPlan,
-          attribution: getAttribution(),
+          attribution: { ...getAttribution(), ...getFbCookies() },
         },
       });
 

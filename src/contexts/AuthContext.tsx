@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { trackSignupPurchase } from "@/lib/metaPixel";
+import { trackLead } from "@/lib/metaPixel";
 
 interface AuthContextType {
   user: User | null;
@@ -57,8 +57,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       // Send welcome email (fire-and-forget)
       if (!error && data?.user) {
-        // Meta Pixel: dispara Lead + Purchase em cadastro de novo médico
-        trackSignupPurchase('free');
+        trackLead(data.user.id);
         supabase.functions.invoke('send-transactional-email', {
           body: {
             templateName: 'welcome',
