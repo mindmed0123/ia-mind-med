@@ -4,6 +4,7 @@ import {
   Body, Button, Container, Head, Heading, Html, Preview, Section, Text, Hr,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
+import { APP_URL } from './config.ts'
 
 const SITE_NAME = "MindMed"
 
@@ -44,14 +45,14 @@ const WelcomeEmail = ({ doctorName }: WelcomeProps) => {
             </Section>
 
             <Section style={ctaSection}>
-              <Button style={ctaButton} href="https://ia-mind-med.lovable.app/dashboard">
+              <Button style={ctaButton} href={`${APP_URL}/dashboard`}>
                 Acessar Meu Dashboard
               </Button>
             </Section>
 
             <Section style={tipBox}>
               <Text style={tipText}>
-                💡 <strong>Dica:</strong> Seu trial de 15 dias inclui acesso completo a todas as funcionalidades Pro. Aproveite ao máximo!
+                💡 <strong>Dica:</strong> Seu teste de 7 dias inclui acesso completo a todas as funcionalidades Pro. Aproveite ao máximo!
               </Text>
             </Section>
 

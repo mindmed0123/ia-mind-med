@@ -28,6 +28,7 @@ const AssinaturaExpirada = lazy(() => import("./pages/AssinaturaExpirada"));
 const TrialConvite = lazy(() => import("./pages/TrialConvite"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const Termos = lazy(() => import("./pages/Termos"));
+const Precos = lazy(() => import("./pages/Precos"));
 const Privacidade = lazy(() => import("./pages/Privacidade"));
 const Agendamentos = lazy(() => import("./pages/Agendamentos"));
 const Agendar = lazy(() => import("./pages/Agendar"));
@@ -81,6 +82,7 @@ const App = () => (
                 <Route path="/medicos/assinatura-expirada" element={<AssinaturaExpirada />} />
                 <Route path="/convite/trial-vip-2024" element={<TrialConvite />} />
                 <Route path="/unsubscribe" element={<Unsubscribe />} />
+                <Route path="/precos" element={<Precos />} />
                 <Route path="/termos" element={<Termos />} />
                 <Route path="/privacidade" element={<Privacidade />} />
                 <Route path="/agendar" element={<Agendar />} />

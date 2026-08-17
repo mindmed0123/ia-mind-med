@@ -22,9 +22,9 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-  // Find all TRIALING subscriptions where trial_end is within 5 days or just expired
-  const fiveDaysFromNow = new Date()
-  fiveDaysFromNow.setDate(fiveDaysFromNow.getDate() + 5)
+  // Trial de 7 dias: lembretes quando faltam 2 dias e 1 dia, e o aviso de expirado.
+  const twoDaysFromNow = new Date()
+  twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2)
   
   const oneDayAgo = new Date()
   oneDayAgo.setDate(oneDayAgo.getDate() - 1)
@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     .select('user_id, trial_end, status')
     .in('status', ['TRIALING', 'EXPIRED'])
     .gte('trial_end', oneDayAgo.toISOString())
-    .lte('trial_end', fiveDaysFromNow.toISOString())
+    .lte('trial_end', twoDaysFromNow.toISOString())
 
   if (trialsError) {
     console.error('Failed to fetch trial subscriptions', trialsError)
@@ -61,8 +61,8 @@ Deno.serve(async (req) => {
     const diffMs = trialEnd.getTime() - now.getTime()
     const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
 
-    // Send trial-expired for day 0 or negative, trial-reminder for days 1-5
-    if (daysLeft < 0 || daysLeft > 5) {
+    // trial-expired no dia 0/negativo; trial-reminder apenas em D-2 e D-1
+    if (daysLeft < 0 || daysLeft > 2) {
       skipped++
       continue
     }

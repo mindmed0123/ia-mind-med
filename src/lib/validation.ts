@@ -39,6 +39,18 @@ export const validateEmail = (email: string): boolean => {
   return emailRegex.test(email) && email.length <= 255;
 };
 
+/**
+ * Regra única de senha do produto (login, cadastro e redefinição).
+ */
+export const validatePassword = (pwd: string): { ok: boolean; message?: string } => {
+  if (!pwd || pwd.length < 8) return { ok: false, message: 'A senha deve ter no mínimo 8 caracteres' };
+  if (pwd.length > 128) return { ok: false, message: 'A senha deve ter no máximo 128 caracteres' };
+  if (!/[A-Z]/.test(pwd)) return { ok: false, message: 'A senha deve conter pelo menos uma letra maiúscula' };
+  if (!/[a-z]/.test(pwd)) return { ok: false, message: 'A senha deve conter pelo menos uma letra minúscula' };
+  if (!/[0-9]/.test(pwd)) return { ok: false, message: 'A senha deve conter pelo menos um número' };
+  return { ok: true };
+};
+
 export const validatePhone = (phone: string): boolean => {
   const cleaned = phone.replace(/\D/g, '');
   return cleaned.length >= 10 && cleaned.length <= 11;

@@ -48,7 +48,7 @@ const Header = () => {
               <span className="text-lg sm:text-2xl font-bold text-primary-foreground">M</span>
             </div>
             <span className="text-base sm:text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              MindManage
+              MindMed
             </span>
           </Link>
 

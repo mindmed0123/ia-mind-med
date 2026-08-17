@@ -3,6 +3,7 @@ import * as React from 'npm:react@18.3.1'
 import { Body, Button, Container, Head, Heading, Html, Link, Preview, Section, Text } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 import { styles as s } from './_shared-styles.ts'
+import { APP_URL } from './config.ts'
 
 interface Props { firstName?: string; daysRemaining?: number }
 
@@ -30,7 +31,7 @@ const Email = ({ firstName, daysRemaining = 9 }: Props) => {
             <Text style={s.text}><strong>Opção 1 — Teste com um caso fictício agora:</strong><br/>Abra a MindMed, fale como se estivesse atendendo (pode inventar um caso clínico qualquer) e veja o laudo gerado. Zero risco, zero pressão.</Text>
             <Text style={s.text}><strong>Opção 2 — Fale comigo pelo WhatsApp:</strong><br/>Se quiser, posso fazer um onboarding de 5 minutos com você ao vivo. <Link href="https://wa.me/5511958890212">Clique aqui para conversar agora →</Link></Text>
             <Section style={s.ctaSection}>
-              <Button style={s.ctaButton} href="https://acesso.mindmed.online">Entrar na MindMed →</Button>
+              <Button style={s.ctaButton} href={`${APP_URL}`}>Entrar na MindMed →</Button>
             </Section>
             <Text style={s.text}>Você tem {daysRemaining} dias ainda. Dá tempo de sobra.</Text>
             <Text style={s.signature}>Abraço,<br/><strong>Equipe MindMed</strong></Text>

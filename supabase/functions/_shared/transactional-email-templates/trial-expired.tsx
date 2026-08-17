@@ -4,6 +4,7 @@ import {
   Body, Button, Container, Head, Heading, Html, Preview, Section, Text, Hr,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
+import { APP_URL, GUARANTEE_TEXT } from './config.ts'
 
 const SITE_NAME = "MindMed"
 
@@ -49,7 +50,7 @@ const TrialExpiredEmail = ({ doctorName, totalLaudos }: TrialExpiredProps) => {
             </Text>
 
             <Text style={text}>
-              Seu período de avaliação de 15 dias no MindMed terminou.
+              Seu período de teste de 7 dias no MindMed terminou.
               {totalLaudos && totalLaudos > 0
                 ? ` Durante esse tempo, você gerou ${totalLaudos} laudo${totalLaudos > 1 ? 's' : ''} com IA — um resultado incrível!`
                 : ' Esperamos que tenha gostado da experiência.'}
@@ -73,14 +74,14 @@ const TrialExpiredEmail = ({ doctorName, totalLaudos }: TrialExpiredProps) => {
             </Section>
 
             <Section style={ctaSection}>
-              <Button style={ctaButton} href="https://ia-mind-med.lovable.app/precos">
+              <Button style={ctaButton} href={`${APP_URL}/precos`}>
                 Assinar o Plano Pro
               </Button>
             </Section>
 
             <Section style={guaranteeBox}>
               <Text style={guaranteeText}>
-                🛡️ Seus laudos e dados estão salvos e seguros. Ao assinar, tudo volta a funcionar imediatamente.
+                🛡️ Seus laudos e dados estão salvos e seguros. Ao assinar, tudo volta a funcionar imediatamente. {GUARANTEE_TEXT}
               </Text>
             </Section>
 

@@ -3,10 +3,11 @@ import * as React from 'npm:react@18.3.1'
 import { Body, Button, Container, Head, Heading, Html, Preview, Section, Text } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 import { styles as s } from './_shared-styles.ts'
+import { APP_URL, GUARANTEE_TEXT } from './config.ts'
 
 interface Props { firstName?: string; daysRemaining?: number; trialEndDate?: string }
 
-const Email = ({ firstName, daysRemaining = 3, trialEndDate }: Props) => {
+const Email = ({ firstName, daysRemaining = 2, trialEndDate }: Props) => {
   const greet = firstName ? `Dr(a). ${firstName}` : 'Doutor(a)'
   return (
     <Html lang="pt-BR" dir="ltr">
@@ -44,8 +45,9 @@ const Email = ({ firstName, daysRemaining = 3, trialEndDate }: Props) => {
               </tbody>
             </table>
             <Text style={s.text}>Sem fidelidade. Sem multa de cancelamento. Você pode cancelar com um clique quando quiser.</Text>
+            <Text style={s.text}>{GUARANTEE_TEXT}</Text>
             <Section style={s.ctaSection}>
-              <Button style={s.ctaButton} href="https://acesso.mindmed.online/#planos">Escolher meu plano →</Button>
+              <Button style={s.ctaButton} href={`${APP_URL}/precos`}>Escolher meu plano →</Button>
             </Section>
             <Text style={s.text}>Se ainda tiver dúvidas sobre qual plano faz mais sentido para a sua realidade, responda este email com o número de consultas que você faz por mês. Eu te ajudo a escolher.</Text>
             <Text style={s.signature}>Abraço,<br/><strong>Equipe MindMed</strong></Text>
@@ -59,7 +61,7 @@ const Email = ({ firstName, daysRemaining = 3, trialEndDate }: Props) => {
 
 export const template = {
   component: Email,
-  subject: (d: Record<string, any>) => `Dr(a). ${d.firstName || 'Doutor(a)'}, seu trial acaba em ${d.daysRemaining || 3} dias — aqui está sua oferta`,
-  displayName: 'Oferta conversão — D+11',
-  previewData: { firstName: 'Maria', daysRemaining: 3, trialEndDate: '15/06/2026' },
+  subject: (d: Record<string, any>) => `Dr(a). ${d.firstName || 'Doutor(a)'}, seu trial acaba em ${d.daysRemaining || 2} dias — aqui está sua oferta`,
+  displayName: 'Oferta conversão — D+5',
+  previewData: { firstName: 'Maria', daysRemaining: 2, trialEndDate: '15/06/2026' },
 } satisfies TemplateEntry

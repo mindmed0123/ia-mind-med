@@ -4,6 +4,7 @@ import {
   Body, Button, Container, Head, Heading, Html, Preview, Section, Text, Hr,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
+import { APP_URL } from './config.ts'
 
 const SITE_NAME = "MindMed"
 
@@ -99,7 +100,7 @@ export const template = {
   previewData: {
     patientName: 'Maria Silva',
     doctorName: 'João Santos',
-    patientLink: 'https://acesso.mindmed.online/sala/abc-123?t=token',
+    patientLink: `${APP_URL}/sala/abc-123?t=token`,
     scheduledAt: new Date().toISOString(),
   },
 } satisfies TemplateEntry

@@ -4,6 +4,7 @@ import {
   Body, Button, Container, Head, Heading, Html, Preview, Section, Text, Hr,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
+import { APP_URL } from './config.ts'
 
 interface OrgInviteProps {
   organizationName?: string
@@ -69,7 +70,7 @@ export const template = {
     organizationName: 'Clínica Exemplo',
     inviterName: 'Dr. João Silva',
     recipientName: 'Maria',
-    inviteUrl: 'https://acesso.mindmed.online/aceitar-convite?token=demo',
+    inviteUrl: `${APP_URL}/aceitar-convite?token=demo`,
   },
 } satisfies TemplateEntry
 

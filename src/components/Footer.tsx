@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Mail, Phone, MapPin, Linkedin, Instagram, Youtube } from "lucide-react";
+import { Mail, Phone, MapPin, Instagram, Youtube } from "lucide-react";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -14,22 +14,13 @@ const Footer = () => {
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-secondary flex items-center justify-center shadow-glow">
                 <span className="text-lg sm:text-2xl font-bold text-secondary-foreground">M</span>
               </div>
-              <span className="text-base sm:text-xl font-bold">MindManage</span>
+              <span className="text-base sm:text-xl font-bold">MindMed</span>
             </div>
             <p className="text-xs sm:text-sm text-primary-foreground/80">
               Transforme papelada em faturamento. IA médica que automatiza laudos e
               transcrições para você focar no que realmente importa.
             </p>
             <div className="flex gap-3 sm:gap-4">
-              <a
-                href="https://linkedin.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary-light flex items-center justify-center hover:bg-secondary transition-colors"
-                aria-label="LinkedIn"
-              >
-                <Linkedin className="w-5 h-5" />
-              </a>
               <a
                 href="https://instagram.com"
                 target="_blank"
@@ -128,10 +119,10 @@ const Footer = () => {
               <li className="flex items-start gap-2">
                 <Mail className="w-4 h-4 sm:w-5 sm:h-5 mt-0.5 text-secondary flex-shrink-0" />
                 <a
-                  href="mailto:contato@mindmanage.com.br"
+                  href="mailto:contato@mindmed.online"
                   className="text-xs sm:text-sm text-primary-foreground/80 hover:text-secondary transition-colors break-all"
                 >
-                  contato@mindmanage.com.br
+                  contato@mindmed.online
                 </a>
               </li>
               <li className="flex items-start gap-2">
@@ -156,7 +147,7 @@ const Footer = () => {
         <div className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-primary-light">
           <div className="flex flex-col md:flex-row justify-between items-center gap-3 sm:gap-4 text-center md:text-left">
             <p className="text-xs sm:text-sm text-primary-foreground/60">
-              © {currentYear} MindManage. Todos os direitos reservados.
+              © {currentYear} MindMed. Todos os direitos reservados.
             </p>
             <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
               <Link
