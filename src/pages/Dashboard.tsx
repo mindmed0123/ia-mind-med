@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { TrialReminderBanner } from "@/components/trial/TrialReminderBanner";
 import { getCloudFunctionHeaders } from "@/lib/cloud-function-auth";
 import { useOrganization } from "@/hooks/useOrganization";
-import { HantavirusButton } from "@/components/hantavirus/HantavirusButton";
+
 
 const Dashboard = () => {
   const { user, signOut, loading } = useAuth();
@@ -203,7 +203,7 @@ const Dashboard = () => {
 
         {/* Alerta Hantavírus */}
         <div className="mb-6">
-          <HantavirusButton variant="alert" />
+          
         </div>
 
         {/* Upgrade Banner */}

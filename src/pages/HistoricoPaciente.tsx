@@ -253,10 +253,6 @@ export default function HistoricoPaciente() {
               <Pill className="w-4 h-4 mr-2" />
               Receitas ({prescriptions.length})
             </TabsTrigger>
-            <TabsTrigger value="hantavirus">
-              <Microscope className="w-4 h-4 mr-2" />
-              Hantavírus
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="perfil" className="mt-6">
@@ -410,9 +406,6 @@ export default function HistoricoPaciente() {
             )}
           </TabsContent>
 
-          <TabsContent value="hantavirus" className="mt-6">
-            <PatientHantavirusTriagens patientId={patient.id} />
-          </TabsContent>
         </Tabs>
       </main>
 
