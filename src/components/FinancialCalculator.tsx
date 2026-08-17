@@ -1,3 +1,4 @@
+import { STARTER_PLAN } from "@/lib/subscription-plans";
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ interface CalculatorResult {
 }
 
 const FinancialCalculator = () => {
+
   const [patientsPerDay, setPatientsPerDay] = useState<number>(10);
   const [paperworkHours, setPaperworkHours] = useState<number>(2);
   const [avgTicket, setAvgTicket] = useState<number>(300);
@@ -45,7 +47,7 @@ const FinancialCalculator = () => {
     setResult(calculatedResult);
 
     // Salvar no localStorage
-    localStorage.setItem("mindmanage_calculator", JSON.stringify({
+    localStorage.setItem("mindmed_calculator", JSON.stringify({
       inputs: { patientsPerDay, paperworkHours, avgTicket },
       result: calculatedResult,
       timestamp: new Date().toISOString(),
@@ -66,7 +68,7 @@ const FinancialCalculator = () => {
 
   useEffect(() => {
     // Carregar do localStorage ao montar
-    const saved = localStorage.getItem("mindmanage_calculator");
+    const saved = localStorage.getItem("mindmed_calculator");
     if (saved) {
       try {
         const data = JSON.parse(saved);
@@ -202,9 +204,9 @@ const FinancialCalculator = () => {
               <div className="mt-6 p-4 bg-secondary/10 rounded-lg text-center">
                 <p className="text-sm text-muted-foreground">
                   A MindMed custa{" "}
-                  <strong className="text-foreground">R$ 149,00/mês</strong>. O retorno é imediato — ROI de{" "}
+                  <strong className="text-foreground">a partir de {STARTER_PLAN.price}</strong>. O retorno é imediato — ROI de{" "}
                   <strong className="text-success">
-                    {((result.monthlyRevenue / 149 - 1) * 100).toFixed(0)}%
+                    {((result.monthlyRevenue / STARTER_PLAN.priceValue - 1) * 100).toFixed(0)}%
                   </strong>
                   .
                 </p>

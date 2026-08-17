@@ -3,6 +3,7 @@ import * as React from 'npm:react@18.3.1'
 import { Body, Button, Container, Head, Heading, Html, Preview, Section, Text } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 import { styles as s } from './_shared-styles.ts'
+import { APP_URL } from './config.ts'
 
 interface Props { firstName?: string }
 
@@ -30,7 +31,7 @@ const Email = ({ firstName }: Props) => {
             </ul>
             <Text style={s.text}>O Pro custa <strong>R$ 299/mês</strong> — R$ 150 a mais que seu plano atual. Se você usa a MindMed em 30 consultas por mês, são R$ 5 extras por consulta para ter prescrição automática junto com o laudo.</Text>
             <Section style={s.ctaSection}>
-              <Button style={s.ctaButton} href="https://acesso.mindmed.online/precos">Fazer upgrade para o Pro →</Button>
+              <Button style={s.ctaButton} href={`${APP_URL}/precos`}>Fazer upgrade para o Pro →</Button>
             </Section>
             <Text style={s.text}>Se quiser, responda este email e te explico em detalhe como a prescrição automática funciona na prática.</Text>
             <Text style={s.signature}>Abraço,<br/><strong>Equipe MindMed</strong></Text>

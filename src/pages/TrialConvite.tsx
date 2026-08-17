@@ -9,10 +9,10 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+import { validatePassword } from "@/lib/validation";
 import { trackLead } from "@/lib/metaPixel";
 
 const emailSchema = z.string().email({ message: "Email inválido" }).max(255).trim().toLowerCase();
-const passwordSchema = z.string().min(8, { message: "Senha deve ter no mínimo 8 caracteres" }).max(128).regex(/[A-Z]/, { message: "Precisa de letra maiúscula" }).regex(/[a-z]/, { message: "Precisa de letra minúscula" }).regex(/[0-9]/, { message: "Precisa de número" });
 const nameSchema = z.string().min(3, { message: "Nome deve ter no mínimo 3 caracteres" }).max(100).trim();
 
 const TRIAL_BENEFITS = [
@@ -59,9 +59,9 @@ const TrialConvite = () => {
       return;
     }
 
-    const passwordResult = passwordSchema.safeParse(formData.password);
-    if (!passwordResult.success) {
-      toast.error(passwordResult.error.errors[0].message);
+    const pwdCheck = validatePassword(formData.password);
+    if (!pwdCheck.ok) {
+      toast.error(pwdCheck.message);
       setIsLoading(false);
       return;
     }

@@ -9,10 +9,10 @@ const corsHeaders = {
  * Hourly funnel email dispatcher.
  *
  * Sends 7 lifecycle emails based on profile/subscription state:
- *  - activation-nudge   (D+2 sem laudo)
- *  - activation-d5      (D+5 sem laudo, requires activation-nudge sent)
- *  - mid-trial-value    (trial D+7)
- *  - conversion-offer   (trial D+11)
+ *  - activation-nudge   (D+1 sem laudo)
+ *  - activation-d5      (D+3 sem laudo, requires activation-nudge sent)
+ *  - mid-trial-value    (trial D+3)
+ *  - conversion-offer   (trial D+5)
  *  - winback-d3         (3 dias após trial_end, sem conversão)
  *  - winback-d15        (15 dias após trial_end, sem conversão, requires winback-d3)
  *  - upgrade-prompt     (30d ACTIVE em Starter com >=15 laudos último mês)
@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
   }
 
   // ---------------------------------------------
-  // 1 & 2. activation-nudge (D+2) & activation-d5 (D+5)
+  // 1 & 2. activation-nudge (D+1) & activation-d5 (D+3)
   //   Eligible profiles: created_at in window AND no laudos yet.
   // ---------------------------------------------
   const activationChecks: Array<{
@@ -113,8 +113,8 @@ Deno.serve(async (req) => {
     daysRemaining: number
     requiresPrior?: TemplateName
   }> = [
-    { template: 'activation-nudge', minHours: 47, maxHours: 49, daysRemaining: 12 },
-    { template: 'activation-d5', minHours: 119, maxHours: 121, daysRemaining: 9, requiresPrior: 'activation-nudge' },
+    { template: 'activation-nudge', minHours: 23, maxHours: 25, daysRemaining: 6 },
+    { template: 'activation-d5', minHours: 71, maxHours: 73, daysRemaining: 4, requiresPrior: 'activation-nudge' },
   ]
 
   for (const check of activationChecks) {
@@ -147,12 +147,12 @@ Deno.serve(async (req) => {
   }
 
   // ---------------------------------------------
-  // 3 & 4. mid-trial-value (D+7) & conversion-offer (D+11)
+  // 3 & 4. mid-trial-value (D+3) & conversion-offer (D+5)
   //   Based on TRIALING subscriptions with trial_start in 2h window.
   // ---------------------------------------------
   const trialChecks: Array<{ template: TemplateName; days: number }> = [
-    { template: 'mid-trial-value', days: 7 },
-    { template: 'conversion-offer', days: 11 },
+    { template: 'mid-trial-value', days: 3 },
+    { template: 'conversion-offer', days: 5 },
   ]
 
   for (const check of trialChecks) {
@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
 
       const daysRemaining = sub.trial_end
         ? Math.max(0, Math.ceil((new Date(sub.trial_end).getTime() - now) / 86_400_000))
-        : 14 - check.days
+        : 7 - check.days
 
       const data: Record<string, unknown> = {
         firstName: firstName(profile.full_name),

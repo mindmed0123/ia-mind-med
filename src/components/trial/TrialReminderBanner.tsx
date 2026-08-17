@@ -12,6 +12,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { X, Clock, Sparkles, Zap, Brain, FileText, Shield, CheckCircle2 } from "lucide-react";
+import { PRO_ANNUAL_PLAN, PRO_PLAN, STARTER_PLAN } from "@/lib/subscription-plans";
 
 const PRO_BENEFITS = [
   { icon: Brain, text: "Laudos ilimitados com IA avançada" },
@@ -135,8 +136,10 @@ export function TrialReminderBanner() {
             </div>
 
             <div className="bg-muted/50 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-primary">R$ 299,00</p>
-              <p className="text-xs text-muted-foreground">por mês — cancele quando quiser</p>
+              <p className="text-2xl font-bold text-primary">{PRO_PLAN.price}</p>
+              <p className="text-xs text-muted-foreground">
+                Starter {STARTER_PLAN.price} · {PRO_ANNUAL_PLAN.label} {PRO_ANNUAL_PLAN.price} — cancele quando quiser
+              </p>
             </div>
 
             <Button

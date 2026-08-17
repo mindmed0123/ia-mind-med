@@ -8,11 +8,8 @@ const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { href: "/produto", label: "Produto" },
-    { href: "/integracoes", label: "Integrações" },
     { href: "/precos", label: "Preços" },
-    { href: "/blog", label: "Blog" },
-    { href: "/contato", label: "Contato" },
+    { href: "/", label: "Entrar" },
   ];
 
   return (

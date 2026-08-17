@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+import { validatePassword } from "@/lib/validation";
 
 const emailSchema = z.string().email({ message: "Email inválido" }).max(255, { message: "Email muito longo" }).trim().toLowerCase();
 
@@ -41,8 +42,9 @@ const Auth = () => {
       return;
     }
 
-    if (!loginData.password || loginData.password.length < 8) {
-      toast.error("Senha deve ter no mínimo 8 caracteres");
+    const pwdCheck = validatePassword(loginData.password);
+    if (!pwdCheck.ok) {
+      toast.error(pwdCheck.message);
       setIsLoading(false);
       return;
     }
@@ -90,7 +92,7 @@ const Auth = () => {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12 gradient-subtle">
       <div className="w-full max-w-md">
-        <Link to="/home" className="flex items-center justify-center gap-2 text-2xl font-bold mb-8">
+        <Link to="/" className="flex items-center justify-center gap-2 text-2xl font-bold mb-8">
           <Activity className="w-8 h-8 text-primary" />
           <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             MindMed

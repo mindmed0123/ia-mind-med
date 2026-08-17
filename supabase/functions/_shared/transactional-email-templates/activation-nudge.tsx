@@ -3,6 +3,7 @@ import * as React from 'npm:react@18.3.1'
 import { Body, Button, Container, Head, Heading, Html, Preview, Section, Text } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 import { styles as s } from './_shared-styles.ts'
+import { APP_URL } from './config.ts'
 
 interface Props { firstName?: string; daysRemaining?: number }
 
@@ -31,7 +32,7 @@ const Email = ({ firstName, daysRemaining = 12 }: Props) => {
             </ol>
             <Text style={s.text}>Sem configurar nada. Sem curva de aprendizado.</Text>
             <Section style={s.ctaSection}>
-              <Button style={s.ctaButton} href="https://acesso.mindmed.online">Gerar meu primeiro laudo agora →</Button>
+              <Button style={s.ctaButton} href={`${APP_URL}`}>Gerar meu primeiro laudo agora →</Button>
             </Section>
             <Text style={s.text}>Se tiver qualquer dúvida, responda este email. Estou aqui.</Text>
             <Text style={s.signature}>Abraço,<br/><strong>Equipe MindMed</strong></Text>

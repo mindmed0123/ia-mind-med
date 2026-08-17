@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getAttribution, getFbCookies } from '@/lib/attribution';
 import { trackViewContent, trackInitiateCheckout } from '@/lib/metaPixel';
 import { SUBSCRIPTION_PLANS, VALID_SUBSCRIPTION_PLAN_IDS } from '@/lib/subscription-plans';
+import { validatePassword } from '@/lib/validation';
 import { Brain, Shield, Clock, FileText, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 export default function MedicosTrial() {
@@ -50,21 +51,9 @@ export default function MedicosTrial() {
       return;
     }
 
-    const pwd = formData.password;
-    if (pwd.length < 8) {
-      toast.error('A senha deve ter no mínimo 8 caracteres');
-      return;
-    }
-    if (!/[A-Z]/.test(pwd)) {
-      toast.error('A senha deve conter pelo menos uma letra maiúscula');
-      return;
-    }
-    if (!/[a-z]/.test(pwd)) {
-      toast.error('A senha deve conter pelo menos uma letra minúscula');
-      return;
-    }
-    if (!/[0-9]/.test(pwd)) {
-      toast.error('A senha deve conter pelo menos um número');
+    const pwdCheck = validatePassword(formData.password);
+    if (!pwdCheck.ok) {
+      toast.error(pwdCheck.message);
       return;
     }
 
@@ -211,7 +200,7 @@ export default function MedicosTrial() {
             </Card>
 
             <div className="text-center text-sm text-muted-foreground">
-              <p>Planos: <strong>Starter R$ 149/mês</strong> · <strong>Pro R$ 299/mês</strong> · <strong>Pro anual R$ 2.990/ano</strong></p>
+              <p>Planos: {SUBSCRIPTION_PLANS.map((p) => `${p.label} ${p.price}`).join(' · ')}</p>
               <p>Escolha seu plano no formulário ao lado</p>
             </div>
 

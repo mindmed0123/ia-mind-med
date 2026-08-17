@@ -4,6 +4,7 @@ import {
   Body, Button, Container, Head, Heading, Html, Preview, Section, Text, Hr,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
+import { APP_URL, GUARANTEE_TEXT } from './config.ts'
 
 const SITE_NAME = "MindMed"
 
@@ -21,8 +22,8 @@ const benefits = [
   "📊 Relatórios de evolução do paciente",
 ]
 
-const TrialReminderEmail = ({ doctorName, daysLeft = 5 }: TrialReminderProps) => {
-  const isUrgent = daysLeft <= 3
+const TrialReminderEmail = ({ doctorName, daysLeft = 2 }: TrialReminderProps) => {
+  const isUrgent = daysLeft <= 2
   const greeting = doctorName ? `Dr(a). ${doctorName}` : 'Doutor(a)'
 
   return (
@@ -62,7 +63,7 @@ const TrialReminderEmail = ({ doctorName, daysLeft = 5 }: TrialReminderProps) =>
             <Text style={text}>
               {isUrgent
                 ? "Seu período de avaliação está acabando. Não perca acesso às ferramentas que estão transformando sua prática clínica."
-                : "Esperamos que esteja aproveitando o MindMed! Queremos garantir que você não perca acesso a todas as funcionalidades."}
+                : "Esperamos que esteja aproveitando o MindMed! Seu teste de 7 dias está chegando ao fim e queremos garantir que você não perca acesso."}
             </Text>
 
             <Section style={benefitsBox}>
@@ -79,14 +80,14 @@ const TrialReminderEmail = ({ doctorName, daysLeft = 5 }: TrialReminderProps) =>
             </Section>
 
             <Section style={ctaSection}>
-              <Button style={ctaButton} href="https://ia-mind-med.lovable.app/precos">
+              <Button style={ctaButton} href={`${APP_URL}/precos`}>
                 Assinar o Plano Pro
               </Button>
             </Section>
 
             <Section style={guaranteeBox}>
               <Text style={guaranteeText}>
-                🛡️ Garantia de satisfação: cancele a qualquer momento, sem burocracia.
+                🛡️ {GUARANTEE_TEXT}
               </Text>
             </Section>
 
@@ -108,13 +109,13 @@ const TrialReminderEmail = ({ doctorName, daysLeft = 5 }: TrialReminderProps) =>
 export const template = {
   component: TrialReminderEmail,
   subject: (data: Record<string, any>) => {
-    const days = data.daysLeft || 5
+    const days = data.daysLeft || 2
     return days === 1
       ? '⚠️ Último dia do seu trial MindMed!'
       : `Faltam ${days} dias para o fim do seu trial MindMed`
   },
   displayName: 'Lembrete de trial',
-  previewData: { doctorName: 'Maria Silva', daysLeft: 3 },
+  previewData: { doctorName: 'Maria Silva', daysLeft: 2 },
 } satisfies TemplateEntry
 
 // Styles
