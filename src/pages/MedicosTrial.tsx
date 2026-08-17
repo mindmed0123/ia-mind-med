@@ -195,18 +195,20 @@ export default function MedicosTrial() {
                   <span className="font-semibold text-foreground">Garantia total</span>
                 </div>
                 <ul className="space-y-2 text-muted-foreground">
-                  <li>• 7 dias grátis para testar tudo</li>
-                  <li>• Cancele quando quiser, sem burocracia</li>
-                  <li>• Sem cobrança durante o período de teste</li>
+                  <li>• 7 dias de teste com acesso completo</li>
+                  <li>• Nada é cobrado hoje</li>
+                  <li>• Cancele em dois cliques, dentro da plataforma</li>
+                  <li>• Garantia de 30 dias após a primeira cobrança</li>
                   <li>• Suporte prioritário via WhatsApp</li>
                 </ul>
               </CardContent>
             </Card>
 
             <div className="text-center text-sm text-muted-foreground">
-              <p>Após o período de teste: <strong>R$ 299/mês</strong></p>
-              <p>Plano PRO com acesso ilimitado a todas as funcionalidades</p>
+              <p>Planos: <strong>Starter R$ 149/mês</strong> · <strong>Pro R$ 299/mês</strong> · <strong>Pro anual R$ 2.990/ano</strong></p>
+              <p>Escolha seu plano no formulário ao lado</p>
             </div>
+
           </div>
 
           {/* Form */}
