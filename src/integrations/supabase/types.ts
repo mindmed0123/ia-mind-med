@@ -358,6 +358,27 @@ export type Database = {
         }
         Relationships: []
       }
+      conversion_events_sent: {
+        Row: {
+          created_at: string
+          event_name: string
+          id: string
+          stripe_subscription_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_name: string
+          id?: string
+          stripe_subscription_id: string
+        }
+        Update: {
+          created_at?: string
+          event_name?: string
+          id?: string
+          stripe_subscription_id?: string
+        }
+        Relationships: []
+      }
       doctor_availability: {
         Row: {
           created_at: string
@@ -1343,19 +1364,29 @@ export type Database = {
           crm_uf: string | null
           email: string
           email_public: string | null
+          fbc: string | null
+          fbp: string | null
           full_name: string | null
+          gclid: string | null
           id: string
+          landing_page: string | null
           lgpd_consent_date: string | null
           lgpd_consent_given: boolean | null
           lgpd_consent_ip: string | null
           lgpd_consent_version: string | null
           logo_url: string | null
+          mm_lp: string | null
           phone: string | null
           prescription_footer_text: string | null
           signature_image_url: string | null
           specialty: string | null
           stamp_image_url: string | null
           updated_at: string
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
           whatsapp: string | null
         }
         Insert: {
@@ -1366,19 +1397,29 @@ export type Database = {
           crm_uf?: string | null
           email: string
           email_public?: string | null
+          fbc?: string | null
+          fbp?: string | null
           full_name?: string | null
+          gclid?: string | null
           id: string
+          landing_page?: string | null
           lgpd_consent_date?: string | null
           lgpd_consent_given?: boolean | null
           lgpd_consent_ip?: string | null
           lgpd_consent_version?: string | null
           logo_url?: string | null
+          mm_lp?: string | null
           phone?: string | null
           prescription_footer_text?: string | null
           signature_image_url?: string | null
           specialty?: string | null
           stamp_image_url?: string | null
           updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
           whatsapp?: string | null
         }
         Update: {
@@ -1389,19 +1430,29 @@ export type Database = {
           crm_uf?: string | null
           email?: string
           email_public?: string | null
+          fbc?: string | null
+          fbp?: string | null
           full_name?: string | null
+          gclid?: string | null
           id?: string
+          landing_page?: string | null
           lgpd_consent_date?: string | null
           lgpd_consent_given?: boolean | null
           lgpd_consent_ip?: string | null
           lgpd_consent_version?: string | null
           logo_url?: string | null
+          mm_lp?: string | null
           phone?: string | null
           prescription_footer_text?: string | null
           signature_image_url?: string | null
           specialty?: string | null
           stamp_image_url?: string | null
           updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
           whatsapp?: string | null
         }
         Relationships: []
