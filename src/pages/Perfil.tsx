@@ -22,6 +22,7 @@ import {
   validateFile,
   sanitizeText
 } from '@/lib/validation';
+import { getProfileImageUrl, buildProfileImagePublicUrl } from '@/lib/profile-images';
 
 export default function Perfil() {
   const { user } = useAuth();
@@ -32,6 +33,11 @@ export default function Perfil() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [imageUrls, setImageUrls] = useState<Record<string, string | null>>({
+    logo_url: null,
+    signature_image_url: null,
+    stamp_image_url: null
+  });
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -81,6 +87,14 @@ export default function Perfil() {
           stamp_image_url: data.stamp_image_url || '',
           prescription_footer_text: data.prescription_footer_text || 'Uso conforme orientação médica. Não se automedique.'
         });
+
+        // Gerar URLs assinadas para exibição (bucket privado)
+        const [logo_url, signature_image_url, stamp_image_url] = await Promise.all([
+          getProfileImageUrl(data.logo_url),
+          getProfileImageUrl(data.signature_image_url),
+          getProfileImageUrl(data.stamp_image_url)
+        ]);
+        setImageUrls({ logo_url, signature_image_url, stamp_image_url });
       }
     } catch (error) {
       toast({
@@ -106,23 +120,21 @@ export default function Perfil() {
         throw new Error(validation.error);
       }
 
-      // Upload para Supabase Storage
+      // Upload para o bucket dedicado a imagens de perfil
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user?.id}/${type}-${Date.now()}.${fileExt}`;
+      const filePath = `${user?.id}/${type}-${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('audio-files')
-        .upload(fileName, file, {
+        .from('profile-images')
+        .upload(filePath, file, {
           cacheControl: '3600',
           upsert: true
         });
 
       if (uploadError) throw uploadError;
 
-      // Obter URL pública
-      const { data: urlData } = supabase.storage
-        .from('audio-files')
-        .getPublicUrl(fileName);
+      // Armazena a URL pública (útil para referência/extração de caminho em buckets privados)
+      const publicUrl = buildProfileImagePublicUrl(filePath);
 
       const fieldMap = {
         logo: 'logo_url',
@@ -132,8 +144,14 @@ export default function Perfil() {
 
       setFormData(prev => ({
         ...prev,
-        [fieldMap[type]]: urlData.publicUrl
+        [fieldMap[type]]: publicUrl
       }));
+
+      // Gera URL assinada para exibição imediata
+      const signedUrl = await getProfileImageUrl(publicUrl);
+      if (signedUrl) {
+        setImageUrls(prev => ({ ...prev, [fieldMap[type]]: signedUrl }));
+      }
 
       toast({
         title: 'Sucesso',
@@ -160,6 +178,10 @@ export default function Perfil() {
     setFormData(prev => ({
       ...prev,
       [fieldMap[type]]: ''
+    }));
+    setImageUrls(prev => ({
+      ...prev,
+      [fieldMap[type]]: null
     }));
   };
 
@@ -373,9 +395,9 @@ export default function Perfil() {
               <div>
                 <Label>Logo da Clínica (opcional)</Label>
                 <p className="text-xs text-muted-foreground mb-2">PNG, JPG ou SVG - Máx 5MB</p>
-                {formData.logo_url ? (
+                {imageUrls.logo_url ? (
                   <div className="relative w-48 h-48 border rounded-lg p-4">
-                    <img src={formData.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                    <img src={imageUrls.logo_url} alt="Logo" className="w-full h-full object-contain" />
                     <Button
                       variant="destructive"
                       size="icon"
@@ -410,9 +432,9 @@ export default function Perfil() {
               <div>
                 <Label>Assinatura Digital *</Label>
                 <p className="text-xs text-muted-foreground mb-2">PNG ou JPG transparente - Máx 5MB</p>
-                {formData.signature_image_url ? (
+                {imageUrls.signature_image_url ? (
                   <div className="relative w-64 h-32 border rounded-lg p-4 bg-white">
-                    <img src={formData.signature_image_url} alt="Assinatura" className="w-full h-full object-contain" />
+                    <img src={imageUrls.signature_image_url} alt="Assinatura" className="w-full h-full object-contain" />
                     <Button
                       variant="destructive"
                       size="icon"
@@ -447,9 +469,9 @@ export default function Perfil() {
               <div>
                 <Label>Carimbo (opcional)</Label>
                 <p className="text-xs text-muted-foreground mb-2">PNG ou JPG - Máx 5MB</p>
-                {formData.stamp_image_url ? (
+                {imageUrls.stamp_image_url ? (
                   <div className="relative w-48 h-48 border rounded-lg p-4">
-                    <img src={formData.stamp_image_url} alt="Carimbo" className="w-full h-full object-contain" />
+                    <img src={imageUrls.stamp_image_url} alt="Carimbo" className="w-full h-full object-contain" />
                     <Button
                       variant="destructive"
                       size="icon"
