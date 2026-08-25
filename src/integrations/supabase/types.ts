@@ -2006,6 +2006,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      fundador_vagas: { Args: never; Returns: Json }
       get_agenda_metrics: {
         Args: {
           p_doctor_id?: string
