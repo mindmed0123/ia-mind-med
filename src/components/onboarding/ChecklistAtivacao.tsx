@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,13 +12,30 @@ interface ChecklistAtivacaoProps {
   onLaudoCreated: (laudoId: string) => void;
 }
 
-export const ChecklistAtivacao = ({ hasPatients = false, onLaudoCreated }: ChecklistAtivacaoProps) => {
+export const ChecklistAtivacao = ({ hasPatients, onLaudoCreated }: ChecklistAtivacaoProps) => {
   const [open, setOpen] = useState(false);
+  const { user } = useAuth();
+  const [patients, setPatients] = useState(!!hasPatients);
+
+  useEffect(() => {
+    if (hasPatients !== undefined || !user) return;
+    let active = true;
+    supabase
+      .from("patients")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .then(({ count }) => {
+        if (active) setPatients((count ?? 0) > 0);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user, hasPatients]);
 
   const items = [
     { label: "Conta criada", done: true, action: null as null | (() => void) },
     { label: "Gerar seu primeiro laudo", done: false, action: () => setOpen(true) },
-    { label: "Cadastrar seu primeiro paciente", done: hasPatients, action: null },
+    { label: "Cadastrar seu primeiro paciente", done: patients, action: null },
   ];
   const doneCount = items.filter((i) => i.done).length;
 

@@ -3,6 +3,28 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
 const skipKey = (userId: string) => `mm_onboarding_snoozed_${userId}`;
+const firstRealKey = (userId: string) => `mm_first_real_laudo_${userId}`;
+
+/** Registra uma única vez o primeiro laudo com paciente de verdade. */
+async function logFirstRealLaudo(userId: string) {
+  try {
+    if (localStorage.getItem(firstRealKey(userId)) === "1") return;
+    const { count } = await supabase
+      .from("laudos")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .not("patient_id", "is", null);
+    if (!count || count < 1) return;
+    localStorage.setItem(firstRealKey(userId), "1");
+    await supabase.from("analytics_events" as any).insert({
+      user_id: userId,
+      event_name: "first_real_laudo",
+      event_data: { laudos_com_paciente: count },
+    });
+  } catch {
+    /* instrumentação nunca pode quebrar o app */
+  }
+}
 
 export const useOnboarding = () => {
   const { user } = useAuth();
@@ -75,6 +97,7 @@ export const useOnboarding = () => {
         if (count && count > 0) {
           setNeedsWelcome(false);
           setLoading(false);
+          void logFirstRealLaudo(user.id);
           return;
         }
 
