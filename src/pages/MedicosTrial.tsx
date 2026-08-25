@@ -231,7 +231,7 @@ export default function MedicosTrial() {
                 <div className="space-y-2">
                   <Label>Escolha seu plano</Label>
                   <div className="grid gap-2">
-                    {SUBSCRIPTION_PLANS.map((p) => (
+                    {planosVisiveis.map((p) => (
                       <button
                         key={p.id}
                         type="button"
@@ -245,6 +245,14 @@ export default function MedicosTrial() {
                         <div>
                           <p className="font-medium text-foreground">{p.label}</p>
                           <p className="text-sm text-muted-foreground">{p.price}</p>
+                          {'nota' in p && p.nota && (
+                            <p className="text-xs text-muted-foreground mt-1">{p.nota}</p>
+                          )}
+                          {p.id === 'mindmed_fundador' && (
+                            <p className="text-xs text-primary mt-1">
+                              Restam {vagasRestantes} de 100 vagas
+                            </p>
+                          )}
                         </div>
                         {p.badge && <Badge variant="secondary">{p.badge}</Badge>}
                       </button>
