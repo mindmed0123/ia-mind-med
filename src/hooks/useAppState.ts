@@ -13,6 +13,7 @@ export type SubscriptionStatus = 'ACTIVE' | 'TRIALING' | 'PENDING_CHECKOUT' | 'I
 
 export interface SubscriptionInfo {
   plan: PlanType;
+  planOrigem?: string;
   status: SubscriptionStatus;
   isActive: boolean;
   isPro: boolean;
@@ -57,7 +58,7 @@ async function fetchSubscription(userId: string): Promise<SubscriptionInfo | nul
       const [subRes, invitedRes] = await Promise.all([
         supabase
           .from('subscriptions')
-          .select('status, plan, trial_end, remaining_starter_credits, quota_used, current_period_end, stripe_subscription_id, billing_cycle')
+          .select('status, plan, plan_origem, trial_end, remaining_starter_credits, quota_used, current_period_end, stripe_subscription_id, billing_cycle')
           .eq('user_id', userId)
           .order('created_at', { ascending: false })
           .limit(1)
@@ -71,6 +72,7 @@ async function fetchSubscription(userId: string): Promise<SubscriptionInfo | nul
       if (isInvitedDoctor) {
         const info: SubscriptionInfo = {
           plan: 'PRO',
+          planOrigem: undefined,
           status: 'ACTIVE',
           isActive: true,
           isPro: true,
@@ -89,7 +91,7 @@ async function fetchSubscription(userId: string): Promise<SubscriptionInfo | nul
       const { data, error } = subRes;
       if (error || !data) {
         const fallback: SubscriptionInfo = {
-          plan: 'STARTER', status: 'PENDING_CHECKOUT', isActive: false,
+          plan: 'STARTER', planOrigem: undefined, status: 'PENDING_CHECKOUT', isActive: false,
           isPro: false, isTrial: false, remainingCredits: 0, quotaUsed: 0,
           billingCycle: 'MONTHLY',
           currentPeriodEnd: null, trialEnd: null,
@@ -106,6 +108,7 @@ async function fetchSubscription(userId: string): Promise<SubscriptionInfo | nul
       const isActiveOrTrial = currentStatus === 'ACTIVE' || currentStatus === 'TRIALING';
       const info: SubscriptionInfo = {
         plan: data.plan as PlanType,
+        planOrigem: data.plan_origem ?? undefined,
         status: currentStatus,
         isActive: isActiveOrTrial,
         isPro: data.plan === 'PRO' || data.plan === 'CLINIC',
