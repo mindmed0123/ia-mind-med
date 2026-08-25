@@ -47,6 +47,22 @@ export const SUBSCRIPTION_PLANS = [
       'Preço travado por 12 meses',
     ],
   },
+  {
+    id: 'mindmed_fundador',
+    label: 'Fundador',
+    price: 'R$ 1.990/ano',
+    priceValue: 1990,
+    badge: '100 vagas' as string | null,
+    recommended: true,
+    description: 'Oferta de fundador — preço travado enquanto a assinatura durar',
+    nota: 'Preço travado enquanto a assinatura durar · Kit CFM incluído',
+    features: [
+      'Tudo do plano Pro',
+      'Preço travado enquanto a assinatura durar',
+      'Kit CFM incluído',
+      'Cobrança imediata, com garantia de 30 dias',
+    ],
+  },
 ] as const;
 
 export type SubscriptionPlanId = (typeof SUBSCRIPTION_PLANS)[number]['id'];
@@ -56,6 +72,7 @@ export const VALID_SUBSCRIPTION_PLAN_IDS: readonly string[] = SUBSCRIPTION_PLANS
 export const STARTER_PLAN = SUBSCRIPTION_PLANS[0];
 export const PRO_PLAN = SUBSCRIPTION_PLANS[1];
 export const PRO_ANNUAL_PLAN = SUBSCRIPTION_PLANS[2];
+export const FUNDADOR_PLAN = SUBSCRIPTION_PLANS[3];
 
 export const GUARANTEE_TEXT =
   'Garantia de 30 dias. Se você não estiver satisfeito depois da primeira cobrança, devolvemos 100% do valor.';
