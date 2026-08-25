@@ -103,6 +103,35 @@ serve(async (req) => {
       );
     }
 
+    // Fundador: corte automático quando as vagas acabam
+    if (plan === "mindmed_fundador") {
+      const { data: vagas } = await supabase.rpc("fundador_vagas");
+      const totais = Number((vagas as any)?.totais ?? 100);
+      const ocupadas = Number((vagas as any)?.ocupadas ?? 0);
+      if (totais - ocupadas <= 0) {
+        return new Response(
+          JSON.stringify({ error: `As ${totais} vagas de fundador foram preenchidas.` }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // Fundador nunca tem trial: a garantia de 30 dias cobre o risco.
+    // Nos demais planos, só concede trial para quem nunca teve um.
+    let trialDays: number | undefined = undefined;
+
+    if (plan !== "mindmed_fundador") {
+      const { data: subAtual } = await supabase
+        .from("subscriptions")
+        .select("trial_start")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const jaTeveTrial = !!subAtual?.trial_start;
+      if (!jaTeveTrial) trialDays = 7;
+    }
+    logStep("Trial policy", { plan, trialDays: trialDays ?? 0 });
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     // Check if customer already exists
