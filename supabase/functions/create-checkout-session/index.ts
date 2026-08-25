@@ -12,13 +12,17 @@ const PRICES: Record<string, string | undefined> = {
   mindmed_starter:   Deno.env.get("STRIPE_PRICE_STARTER_MONTHLY"),
   mindmed_pro:       Deno.env.get("STRIPE_PRICE_PRO_MONTHLY"),
   mindmed_pro_anual: Deno.env.get("STRIPE_PRICE_PRO_ANNUAL"),
+  mindmed_fundador:  Deno.env.get("STRIPE_PRICE_FUNDADOR"),
 };
 
 const PLAN_TO_DB: Record<string, string> = {
   mindmed_starter:   "STARTER",
   mindmed_pro:       "PRO",
   mindmed_pro_anual: "PRO",
+  mindmed_fundador:  "PRO",
 };
+
+const PLANOS_ANUAIS = ["mindmed_pro_anual", "mindmed_fundador"];
 
 const ATTR_KEYS = ["utm_source","utm_medium","utm_campaign","utm_content","utm_term","fbclid","gclid","mm_lp","landing_path","referrer","fbc","fbp"];
 
@@ -99,6 +103,35 @@ serve(async (req) => {
       );
     }
 
+    // Fundador: corte automático quando as vagas acabam
+    if (plan === "mindmed_fundador") {
+      const { data: vagas } = await supabase.rpc("fundador_vagas");
+      const totais = Number((vagas as any)?.totais ?? 100);
+      const ocupadas = Number((vagas as any)?.ocupadas ?? 0);
+      if (totais - ocupadas <= 0) {
+        return new Response(
+          JSON.stringify({ error: `As ${totais} vagas de fundador foram preenchidas.` }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // Fundador nunca tem trial: a garantia de 30 dias cobre o risco.
+    // Nos demais planos, só concede trial para quem nunca teve um.
+    let trialDays: number | undefined = undefined;
+
+    if (plan !== "mindmed_fundador") {
+      const { data: subAtual } = await supabase
+        .from("subscriptions")
+        .select("trial_start")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const jaTeveTrial = !!subAtual?.trial_start;
+      if (!jaTeveTrial) trialDays = 7;
+    }
+    logStep("Trial policy", { plan, trialDays: trialDays ?? 0 });
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     // Check if customer already exists
@@ -137,10 +170,12 @@ serve(async (req) => {
       line_items: [{ price: priceId, quantity: 1 }],
 
       subscription_data: {
-        trial_period_days: 7,
-        trial_settings: {
-          end_behavior: { missing_payment_method: "cancel" },
-        },
+        ...(trialDays ? {
+          trial_period_days: trialDays,
+          trial_settings: {
+            end_behavior: { missing_payment_method: "cancel" as const },
+          },
+        } : {}),
         metadata: {
           user_id: userId,
           plan: plan,
@@ -156,12 +191,14 @@ serve(async (req) => {
 
       custom_text: {
         submit: {
-          message:
-            "Seus 7 dias de teste começam agora e nada é cobrado neste momento. " +
-            "Se você cancelar antes do fim do teste, não há cobrança. " +
-            "E se depois da primeira cobrança você não estiver satisfeito, devolvemos 100% do valor em até 30 dias.",
+          message: trialDays
+            ? "Seus 7 dias de teste começam agora e nada é cobrado neste momento. " +
+              "Se você cancelar antes do fim do teste, não há cobrança. " +
+              "E se depois da primeira cobrança você não estiver satisfeito, devolvemos 100% do valor em até 30 dias."
+            : "A cobrança acontece agora. Garantia de 30 dias: se não estiver satisfeito, devolvemos 100% do valor, sem formulário e sem pergunta.",
         },
       },
+
 
       success_url: `${origin}/dashboard?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/medicos/teste-gratis?checkout=canceled`,
@@ -177,7 +214,8 @@ serve(async (req) => {
         user_id: userId,
         status: "PENDING_CHECKOUT",
         plan: PLAN_TO_DB[plan] ?? "PRO",
-        billing_cycle: plan === "mindmed_pro_anual" ? "ANNUAL" : "MONTHLY",
+        plan_origem: plan,
+        billing_cycle: PLANOS_ANUAIS.includes(plan) ? "ANNUAL" : "MONTHLY",
         stripe_customer_id: customerId,
         current_period_start: now.toISOString(),
         current_period_end: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),

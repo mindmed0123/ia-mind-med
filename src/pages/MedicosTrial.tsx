@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getAttribution, getFbCookies } from '@/lib/attribution';
 import { trackViewContent, trackInitiateCheckout } from '@/lib/metaPixel';
 import { SUBSCRIPTION_PLANS, VALID_SUBSCRIPTION_PLAN_IDS } from '@/lib/subscription-plans';
+import { useVagasFundador } from '@/hooks/useVagasFundador';
 import { validatePassword } from '@/lib/validation';
 import { Brain, Shield, Clock, FileText, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
 
@@ -20,9 +21,20 @@ export default function MedicosTrial() {
   const planFromUrl = searchParams.get('plan');
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const { restantes: vagasRestantes } = useVagasFundador();
+  const fundadorDisponivel = vagasRestantes > 0;
+  const planosVisiveis = SUBSCRIPTION_PLANS.filter(
+    (p) => p.id !== 'mindmed_fundador' || fundadorDisponivel
+  );
   const [selectedPlan, setSelectedPlan] = useState(
     planFromUrl && VALID_SUBSCRIPTION_PLAN_IDS.includes(planFromUrl) ? planFromUrl : 'mindmed_pro'
   );
+
+  useEffect(() => {
+    if (selectedPlan === 'mindmed_fundador' && !fundadorDisponivel) {
+      setSelectedPlan('mindmed_pro');
+    }
+  }, [selectedPlan, fundadorDisponivel]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -200,7 +212,7 @@ export default function MedicosTrial() {
             </Card>
 
             <div className="text-center text-sm text-muted-foreground">
-              <p>Planos: {SUBSCRIPTION_PLANS.map((p) => `${p.label} ${p.price}`).join(' · ')}</p>
+              <p>Planos: {planosVisiveis.map((p) => `${p.label} ${p.price}`).join(' · ')}</p>
               <p>Escolha seu plano no formulário ao lado</p>
             </div>
 
@@ -219,7 +231,7 @@ export default function MedicosTrial() {
                 <div className="space-y-2">
                   <Label>Escolha seu plano</Label>
                   <div className="grid gap-2">
-                    {SUBSCRIPTION_PLANS.map((p) => (
+                    {planosVisiveis.map((p) => (
                       <button
                         key={p.id}
                         type="button"
@@ -233,6 +245,14 @@ export default function MedicosTrial() {
                         <div>
                           <p className="font-medium text-foreground">{p.label}</p>
                           <p className="text-sm text-muted-foreground">{p.price}</p>
+                          {'nota' in p && p.nota && (
+                            <p className="text-xs text-muted-foreground mt-1">{p.nota}</p>
+                          )}
+                          {p.id === 'mindmed_fundador' && (
+                            <p className="text-xs text-primary mt-1">
+                              Restam {vagasRestantes} de 100 vagas
+                            </p>
+                          )}
                         </div>
                         {p.badge && <Badge variant="secondary">{p.badge}</Badge>}
                       </button>
