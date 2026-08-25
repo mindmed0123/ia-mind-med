@@ -212,7 +212,7 @@ export default function MedicosTrial() {
             </Card>
 
             <div className="text-center text-sm text-muted-foreground">
-              <p>Planos: {SUBSCRIPTION_PLANS.map((p) => `${p.label} ${p.price}`).join(' · ')}</p>
+              <p>Planos: {planosVisiveis.map((p) => `${p.label} ${p.price}`).join(' · ')}</p>
               <p>Escolha seu plano no formulário ao lado</p>
             </div>
 
