@@ -41,12 +41,10 @@ export const StepConfirmation = ({ firstLaudoId, onFinish, onGoToLaudo }: StepCo
                 </p>
               </div>
 
-              <div className="flex items-center justify-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
-                <Trash2 className="w-4 h-4 text-amber-600 shrink-0" />
-                <p className="text-sm text-amber-700 dark:text-amber-300">
-                  O laudo de teste será <strong>apagado automaticamente</strong> ao concluir o guia.
-                </p>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                O laudo de demonstração fica salvo no seu histórico. Você pode editá-lo ou
+                excluí-lo quando quiser.
+              </p>
             </>
           )}
 
