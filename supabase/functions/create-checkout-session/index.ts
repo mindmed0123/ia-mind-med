@@ -170,10 +170,12 @@ serve(async (req) => {
       line_items: [{ price: priceId, quantity: 1 }],
 
       subscription_data: {
-        trial_period_days: 7,
-        trial_settings: {
-          end_behavior: { missing_payment_method: "cancel" },
-        },
+        ...(trialDays ? {
+          trial_period_days: trialDays,
+          trial_settings: {
+            end_behavior: { missing_payment_method: "cancel" as const },
+          },
+        } : {}),
         metadata: {
           user_id: userId,
           plan: plan,
@@ -189,12 +191,14 @@ serve(async (req) => {
 
       custom_text: {
         submit: {
-          message:
-            "Seus 7 dias de teste começam agora e nada é cobrado neste momento. " +
-            "Se você cancelar antes do fim do teste, não há cobrança. " +
-            "E se depois da primeira cobrança você não estiver satisfeito, devolvemos 100% do valor em até 30 dias.",
+          message: trialDays
+            ? "Seus 7 dias de teste começam agora e nada é cobrado neste momento. " +
+              "Se você cancelar antes do fim do teste, não há cobrança. " +
+              "E se depois da primeira cobrança você não estiver satisfeito, devolvemos 100% do valor em até 30 dias."
+            : "A cobrança acontece agora. Garantia de 30 dias: se não estiver satisfeito, devolvemos 100% do valor, sem formulário e sem pergunta.",
         },
       },
+
 
       success_url: `${origin}/dashboard?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/medicos/teste-gratis?checkout=canceled`,
