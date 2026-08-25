@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
+const skipKey = (userId: string) => `mm_onboarding_snoozed_${userId}`;
+
 export const useOnboarding = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -9,6 +11,16 @@ export const useOnboarding = () => {
   const [needsLgpdConsent, setNeedsLgpdConsent] = useState(false);
   const [lgpdConsentLoading, setLgpdConsentLoading] = useState(true);
   const [isFirstLaudo, setIsFirstLaudo] = useState(false);
+  const [laudoCount, setLaudoCount] = useState<number | null>(null);
+
+  const isSnoozed = useCallback(() => {
+    if (!user) return false;
+    try {
+      return sessionStorage.getItem(skipKey(user.id)) === "1";
+    } catch {
+      return false;
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!user) {
@@ -58,6 +70,8 @@ export const useOnboarding = () => {
           return;
         }
 
+        setLaudoCount(count ?? 0);
+
         if (count && count > 0) {
           setNeedsWelcome(false);
           setLoading(false);
@@ -74,7 +88,8 @@ export const useOnboarding = () => {
         if (data && data.completed) {
           setNeedsWelcome(false);
         } else {
-          setNeedsWelcome(true);
+          // Snooze is per-session only: the invite returns on the next login.
+          setNeedsWelcome(!isSnoozed());
           if (!data) {
             try {
               await supabase.from("onboarding_progress").insert({
@@ -97,7 +112,7 @@ export const useOnboarding = () => {
     };
 
     check();
-  }, [user]);
+  }, [user, isSnoozed]);
 
   const markLgpdConsentGiven = useCallback(() => {
     setNeedsLgpdConsent(false);
@@ -110,6 +125,8 @@ export const useOnboarding = () => {
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id);
 
+      setLaudoCount(count ?? 0);
+
       if (count && count > 0) {
         setNeedsWelcome(false);
       } else {
@@ -119,25 +136,52 @@ export const useOnboarding = () => {
           .eq("user_id", user.id)
           .single();
 
-        setNeedsWelcome(!data?.completed);
+        setNeedsWelcome(!data?.completed && !isSnoozed());
       }
       setLoading(false);
     };
 
     recheck();
+  }, [user, isSnoozed]);
+
+  /** Fecha o convite apenas nesta sessão. Volta no próximo login. */
+  const snoozeOnboarding = useCallback(() => {
+    if (user) {
+      try {
+        sessionStorage.setItem(skipKey(user.id), "1");
+      } catch {
+        /* noop */
+      }
+    }
+    setNeedsWelcome(false);
   }, [user]);
 
-  const completeOnboarding = useCallback(async () => {
+  /** Marca definitivamente concluído — só ao gerar o primeiro laudo real. */
+  const completeOnboarding = useCallback(
+    async (laudoId?: string) => {
+      if (!user) return;
+      await supabase
+        .from("onboarding_progress")
+        .update({
+          completed: true,
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          ...(laudoId ? { first_laudo_id: laudoId } : {}),
+        } as any)
+        .eq("user_id", user.id);
+      setNeedsWelcome(false);
+      setLaudoCount((c) => (c === null ? 1 : Math.max(c, 1)));
+    },
+    [user]
+  );
+
+  const refreshLaudoCount = useCallback(async () => {
     if (!user) return;
-    await supabase
-      .from("onboarding_progress")
-      .update({
-        completed: true,
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as any)
+    const { count } = await supabase
+      .from("laudos")
+      .select("id", { count: "exact", head: true })
       .eq("user_id", user.id);
-    setNeedsWelcome(false);
+    setLaudoCount(count ?? 0);
   }, [user]);
 
   const checkFirstLaudo = useCallback(async () => {
@@ -159,8 +203,11 @@ export const useOnboarding = () => {
     needsLgpdConsent,
     lgpdConsentLoading,
     isFirstLaudo,
+    laudoCount,
     markLgpdConsentGiven,
+    snoozeOnboarding,
     completeOnboarding,
+    refreshLaudoCount,
     checkFirstLaudo,
   };
 };
