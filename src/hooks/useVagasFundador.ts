@@ -24,6 +24,7 @@ export function useVagasFundador() {
 
   return {
     ...query,
+    loading: query.isLoading,
     totais: query.data?.totais ?? 100,
     ocupadas: query.data?.ocupadas ?? 0,
     // Enquanto carrega, assume que há vagas para não esconder o plano por engano.
