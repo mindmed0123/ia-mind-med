@@ -14,7 +14,8 @@ import { QuotaDisplay } from "@/components/quota/QuotaDisplay";
 import { ProductivityMetrics } from "@/components/dashboard/ProductivityMetrics";
 import { LaudoHistory } from "@/components/dashboard/LaudoHistory";
 import { UpgradeBanner } from "@/components/upgrade/UpgradeBanner";
-import { InstantWelcome } from "@/components/onboarding/InstantWelcome";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { ChecklistAtivacao } from "@/components/onboarding/ChecklistAtivacao";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +29,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isAdmin, loading: adminLoading } = useAdmin();
-  const { needsWelcome, loading: onboardingChecking, completeOnboarding, needsLgpdConsent, lgpdConsentLoading, markLgpdConsentGiven } = useOnboarding();
+  const { needsWelcome, loading: onboardingChecking, completeOnboarding, needsLgpdConsent, lgpdConsentLoading, markLgpdConsentGiven, snoozeOnboarding, laudoCount, refreshLaudoCount } = useOnboarding();
   const { hasAccess: hasAgendaAccess } = useFeatureAccess("appointments");
   const { organization } = useOrganization();
   const isOrgOwner = !!organization && !!user && organization.owner_id === user.id;
@@ -215,10 +216,14 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Alerta Hantavírus */}
-        <div className="mb-6">
-          
-        </div>
+        {laudoCount === 0 && (
+          <ChecklistAtivacao
+            onLaudoCreated={async (laudoId) => {
+              await completeOnboarding(laudoId);
+              await refreshLaudoCount();
+            }}
+          />
+        )}
 
         {/* Upgrade Banner */}
         <div className="mb-6">
