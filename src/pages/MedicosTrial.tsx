@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getAttribution, getFbCookies } from '@/lib/attribution';
 import { trackViewContent, trackInitiateCheckout } from '@/lib/metaPixel';
 import { SUBSCRIPTION_PLANS, VALID_SUBSCRIPTION_PLAN_IDS } from '@/lib/subscription-plans';
+import { useVagasFundador } from '@/hooks/useVagasFundador';
 import { validatePassword } from '@/lib/validation';
 import { Brain, Shield, Clock, FileText, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
 
@@ -20,9 +21,20 @@ export default function MedicosTrial() {
   const planFromUrl = searchParams.get('plan');
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const { restantes: vagasRestantes } = useVagasFundador();
+  const fundadorDisponivel = vagasRestantes > 0;
+  const planosVisiveis = SUBSCRIPTION_PLANS.filter(
+    (p) => p.id !== 'mindmed_fundador' || fundadorDisponivel
+  );
   const [selectedPlan, setSelectedPlan] = useState(
     planFromUrl && VALID_SUBSCRIPTION_PLAN_IDS.includes(planFromUrl) ? planFromUrl : 'mindmed_pro'
   );
+
+  useEffect(() => {
+    if (selectedPlan === 'mindmed_fundador' && !fundadorDisponivel) {
+      setSelectedPlan('mindmed_pro');
+    }
+  }, [selectedPlan, fundadorDisponivel]);
 
   const [formData, setFormData] = useState({
     name: '',
