@@ -156,21 +156,19 @@ const Dashboard = () => {
     );
   }
 
-  // Step 2: Show instant welcome → redirect to novo-laudo
+  // Step 2: onboarding guiado — primeiro contato é o laudo de demonstração
   if (needsWelcome) {
     return (
-      <InstantWelcome
-        onStart={async () => {
-          await completeOnboarding();
-          navigate("/novo-laudo");
+      <OnboardingWizard
+        onComplete={async (laudoId) => {
+          await completeOnboarding(laudoId);
+          await refreshLaudoCount();
         }}
-        onSkip={async () => {
-          await completeOnboarding();
-        }}
-        userName={user.email?.split("@")[0]}
+        onSnooze={snoozeOnboarding}
       />
     );
   }
+
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
