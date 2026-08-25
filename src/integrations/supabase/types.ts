@@ -715,6 +715,21 @@ export type Database = {
         }
         Relationships: []
       }
+      fundadores_config: {
+        Row: {
+          id: boolean
+          vagas_totais: number
+        }
+        Insert: {
+          id?: boolean
+          vagas_totais?: number
+        }
+        Update: {
+          id?: boolean
+          vagas_totais?: number
+        }
+        Relationships: []
+      }
       laudos: {
         Row: {
           ai_model: string | null
@@ -1503,6 +1518,7 @@ export type Database = {
           id: string
           payment_provider: string | null
           plan: Database["public"]["Enums"]["plan_type"]
+          plan_origem: string | null
           quota_used: number | null
           remaining_starter_credits: number | null
           status: Database["public"]["Enums"]["subscription_status"]
@@ -1525,6 +1541,7 @@ export type Database = {
           id?: string
           payment_provider?: string | null
           plan?: Database["public"]["Enums"]["plan_type"]
+          plan_origem?: string | null
           quota_used?: number | null
           remaining_starter_credits?: number | null
           status?: Database["public"]["Enums"]["subscription_status"]
@@ -1547,6 +1564,7 @@ export type Database = {
           id?: string
           payment_provider?: string | null
           plan?: Database["public"]["Enums"]["plan_type"]
+          plan_origem?: string | null
           quota_used?: number | null
           remaining_starter_credits?: number | null
           status?: Database["public"]["Enums"]["subscription_status"]
