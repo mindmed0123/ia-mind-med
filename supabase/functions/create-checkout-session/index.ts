@@ -105,14 +105,24 @@ serve(async (req) => {
 
     // Fundador: corte automático quando as vagas acabam
     if (plan === "mindmed_fundador") {
-      const { data: vagas } = await supabase.rpc("fundador_vagas");
-      const totais = Number((vagas as any)?.totais ?? 100);
-      const ocupadas = Number((vagas as any)?.ocupadas ?? 0);
-      if (totais - ocupadas <= 0) {
-        return new Response(
-          JSON.stringify({ error: `As ${totais} vagas de fundador foram preenchidas.` }),
-          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      const { data: subAtual } = await supabase
+        .from("subscriptions")
+        .select("plan_origem")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const jaEraFundador = subAtual?.plan_origem === "mindmed_fundador";
+
+      if (!jaEraFundador) {
+        const { data: vagas } = await supabase.rpc("fundador_vagas");
+        const totais = Number((vagas as any)?.totais ?? 100);
+        const ocupadas = Number((vagas as any)?.ocupadas ?? 0);
+        if (totais - ocupadas <= 0) {
+          return new Response(
+            JSON.stringify({ error: `As ${totais} vagas de fundador foram preenchidas.` }),
+            { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
       }
     }
 

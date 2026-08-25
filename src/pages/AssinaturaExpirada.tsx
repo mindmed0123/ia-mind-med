@@ -15,13 +15,13 @@ export default function AssinaturaExpirada() {
   const { subscription } = useAppState();
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanId>(() =>
-    getSubscriptionPlanId(subscription?.plan, subscription?.billingCycle)
+    getSubscriptionPlanId(subscription?.plan, subscription?.billingCycle, subscription?.planOrigem)
   );
   const isPendingCheckout = subscription?.status === 'PENDING_CHECKOUT';
 
   useEffect(() => {
     if (subscription) {
-      setSelectedPlan(getSubscriptionPlanId(subscription.plan, subscription.billingCycle));
+      setSelectedPlan(getSubscriptionPlanId(subscription.plan, subscription.billingCycle, subscription.planOrigem));
     }
   }, [subscription]);
 

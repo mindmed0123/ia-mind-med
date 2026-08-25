@@ -77,7 +77,14 @@ export const FUNDADOR_PLAN = SUBSCRIPTION_PLANS[3];
 export const GUARANTEE_TEXT =
   'Garantia de 30 dias. Se você não estiver satisfeito depois da primeira cobrança, devolvemos 100% do valor.';
 
-export function getSubscriptionPlanId(plan: string | undefined, billingCycle: string | undefined): SubscriptionPlanId {
+export function getSubscriptionPlanId(
+  plan?: string,
+  billingCycle?: string,
+  planOrigem?: string
+): SubscriptionPlanId {
+  if (planOrigem && VALID_SUBSCRIPTION_PLAN_IDS.includes(planOrigem)) {
+    return planOrigem as SubscriptionPlanId;
+  }
   if (plan === 'STARTER') return 'mindmed_starter';
   if (plan === 'PRO' && billingCycle === 'ANNUAL') return 'mindmed_pro_anual';
   return 'mindmed_pro';
