@@ -20,8 +20,8 @@ export const SUBSCRIPTION_PLANS = [
     label: 'Pro',
     price: 'R$ 299/mês',
     priceValue: 299,
-    badge: 'Recomendado' as string | null,
-    recommended: true,
+    badge: 'Mais popular' as string | null,
+    recommended: false,
     description: 'Para quem atende todos os dias',
     features: [
       'Laudos ilimitados',
