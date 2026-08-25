@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { trackLead } from "@/lib/metaPixel";
 
 interface AuthContextType {
   user: User | null;
@@ -57,7 +56,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       // Send welcome email (fire-and-forget)
       if (!error && data?.user) {
-        trackLead(data.user.id);
+        // Lead do Pixel agora dispara na conclusão do laudo de demonstração,
+        // não no cadastro (ver StepGuidedLaudo).
         supabase.functions.invoke('send-transactional-email', {
           body: {
             templateName: 'welcome',

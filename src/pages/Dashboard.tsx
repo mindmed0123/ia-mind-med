@@ -14,7 +14,8 @@ import { QuotaDisplay } from "@/components/quota/QuotaDisplay";
 import { ProductivityMetrics } from "@/components/dashboard/ProductivityMetrics";
 import { LaudoHistory } from "@/components/dashboard/LaudoHistory";
 import { UpgradeBanner } from "@/components/upgrade/UpgradeBanner";
-import { InstantWelcome } from "@/components/onboarding/InstantWelcome";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { ChecklistAtivacao } from "@/components/onboarding/ChecklistAtivacao";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +29,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isAdmin, loading: adminLoading } = useAdmin();
-  const { needsWelcome, loading: onboardingChecking, completeOnboarding, needsLgpdConsent, lgpdConsentLoading, markLgpdConsentGiven } = useOnboarding();
+  const { needsWelcome, loading: onboardingChecking, completeOnboarding, needsLgpdConsent, lgpdConsentLoading, markLgpdConsentGiven, snoozeOnboarding, laudoCount, refreshLaudoCount } = useOnboarding();
   const { hasAccess: hasAgendaAccess } = useFeatureAccess("appointments");
   const { organization } = useOrganization();
   const isOrgOwner = !!organization && !!user && organization.owner_id === user.id;
@@ -156,21 +157,19 @@ const Dashboard = () => {
     );
   }
 
-  // Step 2: Show instant welcome → redirect to novo-laudo
+  // Step 2: onboarding guiado — primeiro contato é o laudo de demonstração
   if (needsWelcome) {
     return (
-      <InstantWelcome
-        onStart={async () => {
-          await completeOnboarding();
-          navigate("/novo-laudo");
+      <OnboardingWizard
+        onComplete={async (laudoId) => {
+          await completeOnboarding(laudoId);
+          await refreshLaudoCount();
         }}
-        onSkip={async () => {
-          await completeOnboarding();
-        }}
-        userName={user.email?.split("@")[0]}
+        onSnooze={snoozeOnboarding}
       />
     );
   }
+
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -210,6 +209,14 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
+        {laudoCount === 0 && (
+          <ChecklistAtivacao
+            onLaudoCreated={async (laudoId) => {
+              await completeOnboarding(laudoId);
+              await refreshLaudoCount();
+            }}
+          />
+        )}
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-1">Dashboard</h1>
           <p className="text-muted-foreground">
@@ -217,10 +224,6 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Alerta Hantavírus */}
-        <div className="mb-6">
-          
-        </div>
 
         {/* Upgrade Banner */}
         <div className="mb-6">
