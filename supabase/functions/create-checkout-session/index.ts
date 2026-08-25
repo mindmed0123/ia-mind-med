@@ -12,13 +12,17 @@ const PRICES: Record<string, string | undefined> = {
   mindmed_starter:   Deno.env.get("STRIPE_PRICE_STARTER_MONTHLY"),
   mindmed_pro:       Deno.env.get("STRIPE_PRICE_PRO_MONTHLY"),
   mindmed_pro_anual: Deno.env.get("STRIPE_PRICE_PRO_ANNUAL"),
+  mindmed_fundador:  Deno.env.get("STRIPE_PRICE_FUNDADOR"),
 };
 
 const PLAN_TO_DB: Record<string, string> = {
   mindmed_starter:   "STARTER",
   mindmed_pro:       "PRO",
   mindmed_pro_anual: "PRO",
+  mindmed_fundador:  "PRO",
 };
+
+const PLANOS_ANUAIS = ["mindmed_pro_anual", "mindmed_fundador"];
 
 const ATTR_KEYS = ["utm_source","utm_medium","utm_campaign","utm_content","utm_term","fbclid","gclid","mm_lp","landing_path","referrer","fbc","fbp"];
 
