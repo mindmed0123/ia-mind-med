@@ -12,7 +12,7 @@ const Email = ({ firstName, daysRemaining = 12 }: Props) => {
   return (
     <Html lang="pt-BR" dir="ltr">
       <Head />
-      <Preview>Leva 3 minutos. A maioria dos médicos fica surpresa com o resultado.</Preview>
+      <Preview>Leva 40 segundos com o exemplo pronto. A maioria dos médicos fica surpresa com o resultado.</Preview>
       <Body style={s.main}>
         <Container style={s.container}>
           <Section style={s.header}>
@@ -21,18 +21,18 @@ const Email = ({ firstName, daysRemaining = 12 }: Props) => {
           </Section>
           <Section style={s.content}>
             <Heading style={s.h1}>Seu primeiro laudo está esperando, {greet}</Heading>
-            <Text style={s.text}>Você criou sua conta na MindMed há 2 dias, mas ainda não gerou seu primeiro laudo.</Text>
-            <Text style={s.text}>Entendo que a agenda aperta. Mas isso vai levar menos de 3 minutos — e muitos médicos ficam surpresos com o resultado na primeira vez.</Text>
+            <Text style={s.text}>Você criou a conta mas ainda não gerou nenhum laudo. Leva 40 segundos com o exemplo que já deixamos pronto — não precisa de paciente nem de gravação.</Text>
+            <Text style={s.text}>É só abrir a MindMed: o caso de exemplo já está preenchido e a IA monta o laudo completo na hora.</Text>
             <Text style={s.text}><strong>É simples assim:</strong></Text>
             <ol style={s.list}>
-              <li>Abra a MindMed durante (ou logo após) uma consulta</li>
-              <li>Grave o áudio da conversa com o paciente</li>
-              <li>A IA transcreve e monta o laudo automaticamente</li>
+              <li>Abra a MindMed e clique em "Fazer agora" no bloco "Comece por aqui"</li>
+              <li>O caso de exemplo já vem pronto — ou cole o resumo de uma consulta sua</li>
+              <li>A IA estrutura o laudo automaticamente</li>
               <li>Você revisa e assina</li>
             </ol>
             <Text style={s.text}>Sem configurar nada. Sem curva de aprendizado.</Text>
             <Section style={s.ctaSection}>
-              <Button style={s.ctaButton} href={`${APP_URL}`}>Gerar meu primeiro laudo agora →</Button>
+              <Button style={s.ctaButton} href={`${APP_URL}`}>Gerar o laudo de exemplo →</Button>
             </Section>
             <Text style={s.text}>Se tiver qualquer dúvida, responda este email. Estou aqui.</Text>
             <Text style={s.signature}>Abraço,<br/><strong>Equipe MindMed</strong></Text>

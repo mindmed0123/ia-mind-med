@@ -209,13 +209,6 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-1">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Gerencie seus laudos e consultas de forma simples e eficiente
-          </p>
-        </div>
-
         {laudoCount === 0 && (
           <ChecklistAtivacao
             onLaudoCreated={async (laudoId) => {
@@ -224,6 +217,13 @@ const Dashboard = () => {
             }}
           />
         )}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold mb-1">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Gerencie seus laudos e consultas de forma simples e eficiente
+          </p>
+        </div>
+
 
         {/* Upgrade Banner */}
         <div className="mb-6">
