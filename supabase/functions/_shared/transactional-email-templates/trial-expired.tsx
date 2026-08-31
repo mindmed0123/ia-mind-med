@@ -1,97 +1,50 @@
 /// <reference types="npm:@types/react@18.3.1" />
 import * as React from 'npm:react@18.3.1'
-import {
-  Body, Button, Container, Head, Heading, Html, Preview, Section, Text, Hr,
-} from 'npm:@react-email/components@0.0.22'
+import { Body, Button, Container, Head, Heading, Html, Preview, Section, Text } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
-import { APP_URL, GUARANTEE_TEXT } from './config.ts'
+import { styles as s } from './_shared-styles.ts'
+import { APP_URL } from './config.ts'
 
-const SITE_NAME = "MindMed"
+const FUNDADOR_URL = `${APP_URL}/medicos/teste-gratis?plan=mindmed_fundador`
 
-interface TrialExpiredProps {
-  doctorName?: string
-  totalLaudos?: number
+interface Props { firstName?: string; doctorName?: string }
+
+const first = (p: Props) => {
+  const raw = (p.firstName || p.doctorName || '').trim()
+  return raw ? raw.split(/\s+/)[0] : ''
 }
 
-const benefits = [
-  "🧠 Laudos ilimitados com IA avançada",
-  "📋 Prescrições automáticas inteligentes",
-  "⚡ Embasamento teórico completo e CID-10",
-  "🛡️ Assinatura digital e carimbo no PDF",
-  "✨ MindChat — assistente médico com IA",
-  "📊 Relatórios de evolução do paciente",
-]
-
-const TrialExpiredEmail = ({ doctorName, totalLaudos }: TrialExpiredProps) => {
-  const greeting = doctorName ? `Dr(a). ${doctorName}` : 'Doutor(a)'
-
+const Email = (props: Props) => {
+  const n = first(props)
+  const greet = n ? `Dr(a). ${n},` : 'Doutor(a),'
   return (
     <Html lang="pt-BR" dir="ltr">
       <Head />
-      <Preview>Seu trial MindMed expirou — assine agora para continuar</Preview>
-      <Body style={main}>
-        <Container style={container}>
-          <Section style={headerSection}>
-            <Heading style={logo}>🧠 MindMed</Heading>
-            <Text style={logoSubtext}>Inteligência Artificial para Medicina</Text>
+      <Preview>A conta fica guardada se você quiser voltar</Preview>
+      <Body style={s.main}>
+        <Container style={s.container}>
+          <Section style={s.header}>
+            <Heading style={s.logo}>MindMed</Heading>
+            <Text style={s.logoSub}>Inteligência Artificial para Medicina</Text>
           </Section>
-
-          <Section style={contentSection}>
-            <Section style={expiredBanner}>
-              <Text style={expiredText}>
-                ⏰ Seu período de avaliação expirou
-              </Text>
+          <Section style={s.content}>
+            <Heading style={s.h1}>Seus documentos continuam salvos</Heading>
+            <Text style={s.text}>{greet}</Text>
+            <Text style={s.text}>Seu período de teste terminou e nenhuma cobrança foi feita.</Text>
+            <Text style={s.text}>Seus documentos e dados continuam salvos e seguros. Se um dia quiser voltar, tudo estará onde você deixou.</Text>
+            <Text style={s.text}>Se puder me responder uma linha sobre o que faltou, eu agradeço de verdade. Não é pesquisa automática — é para melhorar o produto mesmo.</Text>
+            <Text style={s.text}>E se for questão de momento, as vagas de fundador seguem abertas:</Text>
+            <Section style={offerBox}>
+              <Text style={offerTitle}>MindMed Pro Anual — Fundador</Text>
+              <Text style={offerPrice}>R$ 1.990/ano</Text>
+              <Text style={offerLine}>Preço travado · Kit de Adequação CFM incluído · Garantia de 30 dias</Text>
             </Section>
-
-            <Heading style={h1}>Seu trial chegou ao fim</Heading>
-
-            <Text style={text}>
-              Olá, {greeting}!
-            </Text>
-
-            <Text style={text}>
-              Seu período de teste de 7 dias no MindMed terminou.
-              {totalLaudos && totalLaudos > 0
-                ? ` Durante esse tempo, você gerou ${totalLaudos} laudo${totalLaudos > 1 ? 's' : ''} com IA — um resultado incrível!`
-                : ' Esperamos que tenha gostado da experiência.'}
-            </Text>
-
-            <Text style={text}>
-              Para continuar usando todas as funcionalidades, assine o Plano Pro e mantenha sua produtividade clínica no nível mais alto.
-            </Text>
-
-            <Section style={benefitsBox}>
-              <Heading style={h2}>✅ O que você mantém com o Plano Pro</Heading>
-              {benefits.map((benefit) => (
-                <Text key={benefit} style={benefitItem}>{benefit}</Text>
-              ))}
+            <Section style={s.ctaSection}>
+              <Button style={s.ctaButton} href={FUNDADOR_URL}>Ver as vagas restantes</Button>
             </Section>
-
-            <Section style={priceBox}>
-              <Text style={priceLabel}>Plano Pro</Text>
-              <Text style={priceValue}>R$ 299,00</Text>
-              <Text style={priceSubtext}>por mês — cancele quando quiser</Text>
-            </Section>
-
-            <Section style={ctaSection}>
-              <Button style={ctaButton} href={`${APP_URL}/precos`}>
-                Assinar o Plano Pro
-              </Button>
-            </Section>
-
-            <Section style={guaranteeBox}>
-              <Text style={guaranteeText}>
-                🛡️ Seus laudos e dados estão salvos e seguros. Ao assinar, tudo volta a funcionar imediatamente. {GUARANTEE_TEXT}
-              </Text>
-            </Section>
-
-            <Text style={footerText}>
-              Se tiver dúvidas, responda este e-mail — estamos aqui para ajudar.
-            </Text>
+            <Text style={s.text}>Obrigado por ter testado.</Text>
+            <Text style={s.signature}>Pedro Suassuna<br/>MindMed</Text>
           </Section>
-
-          <Hr style={hr} />
-          <Text style={disclaimer}>© {new Date().getFullYear()} MindMed — Todos os direitos reservados</Text>
         </Container>
       </Body>
     </Html>
@@ -99,33 +52,13 @@ const TrialExpiredEmail = ({ doctorName, totalLaudos }: TrialExpiredProps) => {
 }
 
 export const template = {
-  component: TrialExpiredEmail,
-  subject: '⏰ Seu trial MindMed expirou — assine para continuar',
-  displayName: 'Trial expirado',
-  previewData: { doctorName: 'Maria Silva', totalLaudos: 12 },
+  component: Email,
+  subject: 'Seus documentos continuam salvos',
+  displayName: 'Trial expirado — D+8',
+  previewData: { firstName: 'Maria' },
 } satisfies TemplateEntry
 
-const main = { backgroundColor: '#f8fafc', fontFamily: "'Segoe UI', 'Helvetica Neue', Arial, sans-serif" }
-const container = { maxWidth: '580px', margin: '0 auto', padding: '20px 0', backgroundColor: '#ffffff', borderRadius: '16px', overflow: 'hidden' as const, boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }
-const headerSection = { background: 'linear-gradient(135deg, hsl(220, 85%, 38%) 0%, hsl(190, 85%, 45%) 100%)', padding: '32px 40px', textAlign: 'center' as const }
-const logo = { color: '#ffffff', fontSize: '28px', fontWeight: 'bold' as const, margin: '0', letterSpacing: '-0.5px' }
-const logoSubtext = { color: 'rgba(255,255,255,0.85)', fontSize: '13px', margin: '4px 0 0', fontWeight: '400' as const }
-const contentSection = { padding: '40px 40px 32px' }
-const expiredBanner = { backgroundColor: '#fef2f2', borderRadius: '10px', padding: '12px 20px', margin: '0 0 24px', borderLeft: '4px solid #ef4444' }
-const expiredText = { fontSize: '14px', fontWeight: '700' as const, color: '#dc2626', margin: '0' }
-const h1 = { fontSize: '24px', fontWeight: 'bold' as const, color: 'hsl(220, 20%, 15%)', margin: '0 0 20px', letterSpacing: '-0.3px' }
-const h2 = { fontSize: '16px', fontWeight: '600' as const, color: 'hsl(220, 20%, 15%)', margin: '0 0 14px' }
-const text = { fontSize: '15px', color: 'hsl(220, 15%, 40%)', lineHeight: '1.7', margin: '0 0 18px' }
-const benefitsBox = { backgroundColor: '#f0f7ff', borderRadius: '10px', padding: '24px 28px', margin: '28px 0', borderLeft: '4px solid hsl(220, 85%, 38%)' }
-const benefitItem = { fontSize: '14px', color: 'hsl(220, 20%, 15%)', margin: '0 0 10px', lineHeight: '1.5' }
-const priceBox = { textAlign: 'center' as const, margin: '28px 0', padding: '24px', backgroundColor: '#f8fafc', borderRadius: '12px' }
-const priceLabel = { fontSize: '13px', fontWeight: '600' as const, color: 'hsl(220, 15%, 45%)', margin: '0 0 4px', textTransform: 'uppercase' as const, letterSpacing: '1px' }
-const priceValue = { fontSize: '40px', fontWeight: 'bold' as const, color: 'hsl(220, 85%, 38%)', margin: '0', lineHeight: '1.1' }
-const priceSubtext = { fontSize: '13px', color: 'hsl(220, 15%, 45%)', margin: '6px 0 0' }
-const ctaSection = { textAlign: 'center' as const, margin: '28px 0' }
-const ctaButton = { background: 'linear-gradient(135deg, hsl(220, 85%, 38%) 0%, hsl(190, 85%, 45%) 100%)', color: '#ffffff', padding: '18px 48px', borderRadius: '10px', fontSize: '17px', fontWeight: '700' as const, textDecoration: 'none', display: 'inline-block' as const, boxShadow: '0 4px 14px rgba(30, 64, 175, 0.25)' }
-const guaranteeBox = { backgroundColor: '#f0fdf4', borderRadius: '10px', padding: '14px 20px', margin: '0 0 24px', borderLeft: '4px solid #22c55e' }
-const guaranteeText = { fontSize: '13px', color: '#166534', margin: '0', lineHeight: '1.6' }
-const footerText = { fontSize: '13px', color: 'hsl(220, 15%, 55%)', margin: '0', lineHeight: '1.6' }
-const hr = { borderColor: 'hsl(220, 15%, 92%)', margin: '0 40px' }
-const disclaimer = { fontSize: '11px', color: 'hsl(220, 15%, 65%)', textAlign: 'center' as const, margin: '16px 40px', lineHeight: '1.5' }
+const offerBox = { backgroundColor: '#f0f7ff', borderRadius: '10px', padding: '24px 28px', margin: '28px 0', borderLeft: '4px solid hsl(220, 85%, 38%)', textAlign: 'center' as const }
+const offerTitle = { fontSize: '15px', fontWeight: '700' as const, color: 'hsl(220, 20%, 15%)', margin: '0 0 8px' }
+const offerPrice = { fontSize: '34px', fontWeight: 'bold' as const, color: 'hsl(220, 85%, 38%)', margin: '0', lineHeight: '1.1' }
+const offerLine = { fontSize: '13px', color: 'hsl(220, 15%, 40%)', margin: '8px 0 0', lineHeight: '1.5' }

@@ -5,38 +5,39 @@ import type { TemplateEntry } from './registry.ts'
 import { styles as s } from './_shared-styles.ts'
 import { APP_URL } from './config.ts'
 
-interface Props { firstName?: string; daysRemaining?: number }
+interface Props { firstName?: string; doctorName?: string; daysRemaining?: number }
 
-const Email = ({ firstName, daysRemaining = 12 }: Props) => {
-  const greet = firstName ? `Dr(a). ${firstName}` : 'Doutor(a)'
+const first = (p: Props) => {
+  const raw = (p.firstName || p.doctorName || '').trim()
+  return raw ? raw.split(/\s+/)[0] : ''
+}
+
+const Email = (props: Props) => {
+  const n = first(props)
+  const greet = n ? `Dr(a). ${n},` : 'Doutor(a),'
+  const days = props.daysRemaining
   return (
     <Html lang="pt-BR" dir="ltr">
       <Head />
-      <Preview>Leva 40 segundos com o exemplo pronto. A maioria dos médicos fica surpresa com o resultado.</Preview>
+      <Preview>O exemplo já está pronto — é só clicar</Preview>
       <Body style={s.main}>
         <Container style={s.container}>
           <Section style={s.header}>
-            <Heading style={s.logo}>🧠 MindMed</Heading>
+            <Heading style={s.logo}>MindMed</Heading>
             <Text style={s.logoSub}>Inteligência Artificial para Medicina</Text>
           </Section>
           <Section style={s.content}>
-            <Heading style={s.h1}>Seu primeiro laudo está esperando, {greet}</Heading>
-            <Text style={s.text}>Você criou a conta mas ainda não gerou nenhum laudo. Leva 40 segundos com o exemplo que já deixamos pronto — não precisa de paciente nem de gravação.</Text>
-            <Text style={s.text}>É só abrir a MindMed: o caso de exemplo já está preenchido e a IA monta o laudo completo na hora.</Text>
-            <Text style={s.text}><strong>É simples assim:</strong></Text>
-            <ol style={s.list}>
-              <li>Abra a MindMed e clique em "Fazer agora" no bloco "Comece por aqui"</li>
-              <li>O caso de exemplo já vem pronto — ou cole o resumo de uma consulta sua</li>
-              <li>A IA estrutura o laudo automaticamente</li>
-              <li>Você revisa e assina</li>
-            </ol>
-            <Text style={s.text}>Sem configurar nada. Sem curva de aprendizado.</Text>
+            <Heading style={s.h1}>{n ? `Sobra um minuto hoje, Dr(a). ${n}?` : 'Sobra um minuto hoje?'}</Heading>
+            <Text style={s.text}>{greet}</Text>
+            <Text style={s.text}>Você criou a conta ontem mas ainda não gerou nenhum laudo. Imagino que o dia tenha sido cheio.</Text>
+            <Text style={s.text}>Se sobrar um minuto: deixamos um resumo de consulta já preenchido na plataforma. Você clica e vê o laudo sendo montado, com queixa, história, exame físico, hipótese e conduta.</Text>
+            <Text style={s.text}>Não precisa de gravação. Não precisa de paciente. Não precisa preparar nada.</Text>
             <Section style={s.ctaSection}>
-              <Button style={s.ctaButton} href={`${APP_URL}`}>Gerar o laudo de exemplo →</Button>
+              <Button style={s.ctaButton} href={`${APP_URL}/dashboard?onboarding=laudo-demo`}>Gerar meu primeiro laudo</Button>
             </Section>
-            <Text style={s.text}>Se tiver qualquer dúvida, responda este email. Estou aqui.</Text>
-            <Text style={s.signature}>Abraço,<br/><strong>Equipe MindMed</strong></Text>
-            <Text style={s.small}>Você tem {daysRemaining} dias de trial gratuito restantes.</Text>
+            <Text style={s.text}>Se preferir testar com um caso seu, tem um campo para colar o resumo de uma consulta que você já atendeu. O resultado costuma impressionar mais.</Text>
+            {typeof days === 'number' && <Text style={s.text}>Faltam {days} dias de teste.</Text>}
+            <Text style={s.signature}>Pedro Suassuna<br/>MindMed</Text>
           </Section>
         </Container>
       </Body>
@@ -46,7 +47,10 @@ const Email = ({ firstName, daysRemaining = 12 }: Props) => {
 
 export const template = {
   component: Email,
-  subject: (d: Record<string, any>) => `Seu primeiro laudo está esperando, Dr(a). ${d.firstName || 'Doutor(a)'}`,
-  displayName: 'Ativação — D+2 sem laudo',
-  previewData: { firstName: 'Maria', daysRemaining: 12 },
+  subject: (d: Record<string, any>) => {
+    const n = first(d as Props)
+    return n ? `Sobra um minuto hoje, Dr(a). ${n}?` : 'Sobra um minuto hoje?'
+  },
+  displayName: 'Ativação — D+1 sem laudo',
+  previewData: { firstName: 'Maria', daysRemaining: 6 },
 } satisfies TemplateEntry
