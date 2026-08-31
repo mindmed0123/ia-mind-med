@@ -62,10 +62,24 @@ Deno.serve(async (req) => {
     const diffMs = trialEnd.getTime() - now.getTime()
     const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
 
-    // trial-expired no dia 0/negativo; trial-reminder apenas na véspera (D+6)
-    if (daysLeft < 0 || daysLeft > 1) {
-      skipped++
-      continue
+    // O estado decide o template, não a data. Isso evita que um usuário
+    // TRIALING receba "trial-expired" no instante em que o Stripe está cobrando
+    // mas o webhook ainda não atualizou o status para ACTIVE.
+    const isExpired = trial.status === 'EXPIRED'
+
+    if (isExpired) {
+      // trial-expired: só após o webhook marcar EXPIRED, a partir de D+8
+      // (um dia depois do fim do trial), dando tempo da cobrança ser processada.
+      if (daysLeft > -1) {
+        skipped++
+        continue
+      }
+    } else {
+      // trial-reminder: apenas na véspera (D+6), enquanto ainda está em trial.
+      if (daysLeft !== 1) {
+        skipped++
+        continue
+      }
     }
 
     // Get user profile for name and email
@@ -82,7 +96,6 @@ Deno.serve(async (req) => {
 
     // Idempotency key includes the date so we only send once per day per user
     const today = now.toISOString().slice(0, 10)
-    const isExpired = daysLeft <= 0
     const templateName = isExpired ? 'trial-expired' : 'trial-reminder'
     const idempotencyKey = `${templateName}-${trial.user_id}-${today}`
 
