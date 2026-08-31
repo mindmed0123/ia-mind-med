@@ -647,6 +647,7 @@ const systemPrompt = baseSystemPrompt + anamneseInstruction;
           prescricoes_sugeridas: prescricoesSugeridas,
           specialty_sections: specialtySections,
           template_sections: templateData?.sections || [],
+          avisos_legais_clinicos: avisosLegaisClinicos,
         },
         complementary_exams: exames,
         red_flags: redFlags,
