@@ -13,6 +13,9 @@ function log(cid: string, step: string, data?: Record<string, unknown>) {
 }
 function now() { return Date.now(); }
 
+const DISCLAIMER_PADRAO =
+  'Documento estruturado com auxílio de inteligência artificial e revisado pelo médico responsável. Não substitui o julgamento clínico.';
+
 // ===== TOOL SCHEMA for structured output =====
 const LAUDO_TOOL = {
   type: "function",
