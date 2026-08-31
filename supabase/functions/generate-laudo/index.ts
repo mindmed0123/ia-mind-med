@@ -491,7 +491,7 @@ const systemPrompt = baseSystemPrompt + anamneseInstruction;
     const textoLaudo = laudoData.texto_laudo_md || '';
     const textoPaciente = laudoData.texto_paciente_md || '';
     const resumo = laudoData.resumo_clinico || '';
-    const disclaimer = laudoData.avisos_legais || 'Conteúdo gerado por IA para apoio à decisão clínica. Não substitui julgamento médico.';
+    const disclaimer = laudoData.avisos_legais || 'Documento estruturado com auxílio de inteligência artificial e revisado pelo médico responsável. Não substitui o julgamento clínico.';
     const specialtySections = laudoData.specialty_sections || {};
 
     // Anamnese estruturada — fallback para campos antigos quando o modelo não retornar o objeto
