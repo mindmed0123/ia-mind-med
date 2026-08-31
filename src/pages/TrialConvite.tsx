@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import { validatePassword } from "@/lib/validation";
-import { trackLead } from "@/lib/metaPixel";
+import { trackCompleteRegistration } from "@/lib/metaPixel";
 
 const emailSchema = z.string().email({ message: "Email inválido" }).max(255).trim().toLowerCase();
 const nameSchema = z.string().min(3, { message: "Nome deve ter no mínimo 3 caracteres" }).max(100).trim();
@@ -92,7 +92,7 @@ const TrialConvite = () => {
           toast.error("Erro ao criar conta");
         }
       } else {
-        if (data?.user) trackLead(data.user.id);
+        if (data?.user) trackCompleteRegistration(data.user.id);
         toast.success("Conta criada com sucesso! Redirecionando...");
         navigate("/dashboard");
       }

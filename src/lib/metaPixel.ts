@@ -85,7 +85,7 @@ export function trackInitiateCheckout(plan: string): void {
 }
 
 /**
- * Conta criada com sucesso — evento de topo de funil.
+ * Médico gerou o laudo de demonstração — evento de otimização.
  * @param userId id do Supabase; usado como eventId determinístico.
  */
 export function trackLead(userId: string): void {
@@ -93,4 +93,15 @@ export function trackLead(userId: string): void {
   if (!shouldFire(`lead_${userId}`)) return;
   fbqTrack("Lead", { content_category: "signup" }, `lead_${userId}`);
   trackGA4("lead", { user_id: userId });
+}
+
+/**
+ * Conta criada com sucesso — evento de topo de funil. Não é o evento de otimização.
+ * @param userId id do Supabase; eventId determinístico, um por usuário.
+ */
+export function trackCompleteRegistration(userId: string): void {
+  if (!userId) return;
+  if (!shouldFire(`signup_${userId}`)) return;
+  fbqTrack("CompleteRegistration", { content_category: "signup" }, `signup_${userId}`);
+  trackGA4("sign_up", { user_id: userId });
 }

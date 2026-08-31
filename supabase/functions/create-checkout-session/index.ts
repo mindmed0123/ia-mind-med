@@ -172,7 +172,7 @@ serve(async (req) => {
       payment_method_types: ["card"],
       payment_method_collection: "always",
       billing_address_collection: "auto",
-      allow_promotion_codes: true,
+      allow_promotion_codes: false,
 
       // Atribuição: permite ver no painel do Stripe de qual campanha veio cada assinatura
       client_reference_id: userId,

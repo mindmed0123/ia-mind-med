@@ -28,7 +28,7 @@ const Termos = () => {
 
           <section>
             <h2 className="text-2xl font-semibold text-foreground mb-3">3. Responsabilidade Clínica</h2>
-            <p><strong className="text-foreground">A MindMed é uma ferramenta de apoio à decisão clínica.</strong> Todas as informações geradas pela IA devem ser revisadas e validadas pelo profissional de saúde responsável antes de qualquer uso clínico. A responsabilidade final por diagnósticos, prescrições e condutas médicas é exclusivamente do profissional habilitado.</p>
+            <p><strong className="text-foreground">A MindMed é uma ferramenta de documentação clínica.</strong> Todas as informações geradas pela IA devem ser revisadas e validadas pelo profissional de saúde responsável antes de qualquer uso clínico. A responsabilidade final por diagnósticos, prescrições e condutas médicas é exclusivamente do profissional habilitado.</p>
           </section>
 
           <section>
