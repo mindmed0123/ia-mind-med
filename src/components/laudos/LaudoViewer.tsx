@@ -889,6 +889,15 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
               <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-primary prose-strong:text-foreground">
                 <ReactMarkdown>{laudo.report_markdown || 'Laudo não disponível'}</ReactMarkdown>
               </div>
+              {laudo.sections?.avisos_legais_clinicos && (
+                <>
+                  <Separator className="my-4" />
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+                    <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1">Avisos clínicos</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300">{String(laudo.sections.avisos_legais_clinicos)}</p>
+                  </div>
+                </>
+              )}
               {isSectionVisible('disclaimer') && laudo.legal_disclaimer && (
                 <>
                   <Separator className="my-4" />
