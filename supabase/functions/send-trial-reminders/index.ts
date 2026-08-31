@@ -22,12 +22,13 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-  // Trial de 7 dias: lembretes quando faltam 2 dias e 1 dia, e o aviso de expirado.
+  // Trial de 7 dias: lembrete na véspera (TRIALING) e aviso de expirado somente
+  // após o webhook do Stripe já ter marcado a assinatura como EXPIRED.
   const twoDaysFromNow = new Date()
   twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2)
-  
-  const oneDayAgo = new Date()
-  oneDayAgo.setDate(oneDayAgo.getDate() - 1)
+
+  const twoDaysAgo = new Date()
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
 
   const now = new Date()
 
@@ -35,7 +36,7 @@ Deno.serve(async (req) => {
     .from('subscriptions')
     .select('user_id, trial_end, status, plan, plan_origem')
     .in('status', ['TRIALING', 'EXPIRED'])
-    .gte('trial_end', oneDayAgo.toISOString())
+    .gte('trial_end', twoDaysAgo.toISOString())
     .lte('trial_end', twoDaysFromNow.toISOString())
 
   if (trialsError) {
