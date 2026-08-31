@@ -494,7 +494,10 @@ const systemPrompt = baseSystemPrompt + anamneseInstruction;
     const textoLaudo = laudoData.texto_laudo_md || '';
     const textoPaciente = laudoData.texto_paciente_md || '';
     const resumo = laudoData.resumo_clinico || '';
-    const disclaimer = laudoData.avisos_legais || 'Documento estruturado com auxílio de inteligência artificial e revisado pelo médico responsável. Não substitui o julgamento clínico.';
+    // Disclaimer institucional fixo. Avisos legais específicos do caso (quando
+    // o modelo os retornar) são preservados como campo clínico separado.
+    const disclaimer = DISCLAIMER_PADRAO;
+    const avisosLegaisClinicos = laudoData.avisos_legais || undefined;
     const specialtySections = laudoData.specialty_sections || {};
 
     // Anamnese estruturada — fallback para campos antigos quando o modelo não retornar o objeto
