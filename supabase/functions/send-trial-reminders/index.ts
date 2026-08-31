@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
 
   const { data: trials, error: trialsError } = await supabase
     .from('subscriptions')
-    .select('user_id, trial_end, status')
+    .select('user_id, trial_end, status, plan, plan_origem')
     .in('status', ['TRIALING', 'EXPIRED'])
     .gte('trial_end', oneDayAgo.toISOString())
     .lte('trial_end', twoDaysFromNow.toISOString())
@@ -61,8 +61,8 @@ Deno.serve(async (req) => {
     const diffMs = trialEnd.getTime() - now.getTime()
     const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
 
-    // trial-expired no dia 0/negativo; trial-reminder apenas em D-2 e D-1
-    if (daysLeft < 0 || daysLeft > 2) {
+    // trial-expired no dia 0/negativo; trial-reminder apenas na véspera (D+6)
+    if (daysLeft < 0 || daysLeft > 1) {
       skipped++
       continue
     }
@@ -85,15 +85,23 @@ Deno.serve(async (req) => {
     const templateName = isExpired ? 'trial-expired' : 'trial-reminder'
     const idempotencyKey = `${templateName}-${trial.user_id}-${today}`
 
-    // For trial-expired, get total laudos count
-    let totalLaudos = 0
-    if (isExpired) {
-      const { count } = await supabase
-        .from('laudos')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', trial.user_id)
-      totalLaudos = count || 0
+    const { count: laudosCountRaw } = await supabase
+      .from('laudos')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', trial.user_id)
+    const laudosCount = laudosCountRaw || 0
+
+    // dd/mm do fim do trial
+    const trialEndDate = `${String(trialEnd.getDate()).padStart(2, '0')}/${String(trialEnd.getMonth() + 1).padStart(2, '0')}`
+
+    // Preço do plano escolhido
+    const planPriceMap: Record<string, string> = {
+      STARTER: 'R$ 149,00',
+      PRO: 'R$ 299,00',
     }
+    const planPrice = (trial as any).plan_origem === 'mindmed_fundador'
+      ? 'R$ 1.990,00'
+      : planPriceMap[(trial as any).plan as string] ?? undefined
 
     try {
       await supabase.functions.invoke('send-transactional-email', {
@@ -102,9 +110,9 @@ Deno.serve(async (req) => {
           recipientEmail: profile.email,
           idempotencyKey,
           templateData: {
+            firstName: (profile.full_name || '').trim().split(/\s+/)[0] || undefined,
             doctorName: profile.full_name || undefined,
-            daysLeft,
-            ...(isExpired ? { totalLaudos } : {}),
+            ...(isExpired ? {} : { trialEndDate, planPrice, laudosCount }),
           },
         },
       })
