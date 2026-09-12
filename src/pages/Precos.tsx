@@ -9,18 +9,35 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getAttribution } from '@/lib/attribution';
 import { trackViewContent, trackInitiateCheckout } from '@/lib/metaPixel';
 import { SUBSCRIPTION_PLANS, GUARANTEE_TEXT } from '@/lib/subscription-plans';
+import { useVagasFundador } from '@/hooks/useVagasFundador';
 import { Activity, Check, ShieldCheck, ArrowRight } from 'lucide-react';
+
+const PLAN_ORDER = ['mindmed_fundador', 'mindmed_pro_anual', 'mindmed_pro', 'mindmed_starter'];
 
 export default function Precos() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const { restantes: vagasRestantes } = useVagasFundador();
+  const fundadorDisponivel = vagasRestantes > 0;
+
+  const planosVisiveis = [...SUBSCRIPTION_PLANS]
+    .filter((p) => p.id !== 'mindmed_fundador' || fundadorDisponivel)
+    .sort((a, b) => PLAN_ORDER.indexOf(a.id) - PLAN_ORDER.indexOf(b.id));
+
+  const planoPadrao = fundadorDisponivel ? 'mindmed_fundador' : 'mindmed_pro_anual';
+  const [selectedPlan, setSelectedPlan] = useState(planoPadrao);
+
+  useEffect(() => {
+    setSelectedPlan(planoPadrao);
+  }, [planoPadrao]);
 
   useEffect(() => {
     trackViewContent('precos');
   }, []);
 
   const handleSelect = async (planId: string) => {
+    setSelectedPlan(planId);
     trackInitiateCheckout(planId);
 
     if (!user) {
