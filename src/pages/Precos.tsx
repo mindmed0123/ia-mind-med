@@ -68,7 +68,10 @@ export default function Precos() {
       if (!data?.url) throw new Error('Não foi possível criar a sessão de checkout');
       window.location.href = data.url;
     } catch (err: any) {
-      toast.error(err?.message || 'Erro ao iniciar o checkout');
+      console.error('checkout error', err);
+      toast.error(
+        'Não conseguimos abrir o pagamento agora. Sua conta continua ativa — tente de novo em instantes ou fale com o suporte no WhatsApp.'
+      );
     } finally {
       setLoadingPlan(null);
     }
