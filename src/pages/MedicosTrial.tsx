@@ -127,8 +127,8 @@ export default function MedicosTrial() {
 
   const benefits = [
     { icon: Brain, text: 'IA que gera laudos completos automaticamente' },
-    { icon: FileText, text: 'CID-10 e condutas sugeridas pela IA' },
-    { icon: Clock, text: 'Economize até 2h por dia em documentação' },
+    { icon: FileText, text: 'Laudo estruturado com CID-10 para você revisar e assinar' },
+    { icon: Clock, text: 'O prontuário pronto no fim da consulta' },
     { icon: Shield, text: 'Dados 100% seguros e criptografados' },
   ];
 
