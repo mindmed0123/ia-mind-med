@@ -93,46 +93,58 @@ export default function Precos() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-3 items-stretch">
-          {SUBSCRIPTION_PLANS.map((plan) => (
-            <Card
-              key={plan.id}
-              className={`flex flex-col ${plan.recommended ? 'border-primary border-2 shadow-large' : 'shadow-soft'}`}
-            >
-              <CardHeader>
-                <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-xl">{plan.label}</CardTitle>
-                  {plan.badge && <Badge variant={plan.recommended ? 'default' : 'secondary'}>{plan.badge}</Badge>}
-                </div>
-                <p className="text-3xl font-bold mt-2">{plan.price}</p>
-                <CardDescription>{plan.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col flex-1 justify-between gap-6">
-                <ul className="space-y-2">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2 text-sm">
-                      <Check className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  className={`w-full ${plan.recommended ? 'gradient-primary' : ''}`}
-                  variant={plan.recommended ? 'default' : 'outline'}
-                  disabled={loadingPlan === plan.id}
-                  onClick={() => handleSelect(plan.id)}
-                >
-                  {loadingPlan === plan.id ? (
-                    'Processando...'
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      {user ? 'Assinar agora' : 'Começar o teste'}
-                      <ArrowRight className="w-4 h-4" />
-                    </span>
+          {planosVisiveis.map((plan) => {
+            const isSelected = selectedPlan === plan.id;
+            return (
+              <Card
+                key={plan.id}
+                onClick={() => setSelectedPlan(plan.id)}
+                className={`flex flex-col cursor-pointer ${
+                  isSelected ? 'border-primary border-2 shadow-large ring-1 ring-primary' : 'shadow-soft'
+                }`}
+              >
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="text-xl">{plan.label}</CardTitle>
+                    {plan.badge && <Badge variant={isSelected ? 'default' : 'secondary'}>{plan.badge}</Badge>}
+                  </div>
+                  <p className="text-3xl font-bold mt-2">{plan.price}</p>
+                  <CardDescription>{plan.description}</CardDescription>
+                  {plan.id === 'mindmed_fundador' && (
+                    <p className="text-xs text-primary mt-1">Restam {vagasRestantes} de 100 vagas</p>
                   )}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                </CardHeader>
+                <CardContent className="flex flex-col flex-1 justify-between gap-6">
+                  <ul className="space-y-2">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2 text-sm">
+                        <Check className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    className={`w-full ${isSelected ? 'gradient-primary' : ''}`}
+                    variant={isSelected ? 'default' : 'outline'}
+                    disabled={loadingPlan === plan.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelect(plan.id);
+                    }}
+                  >
+                    {loadingPlan === plan.id ? (
+                      'Processando...'
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        {user ? 'Assinar agora' : 'Começar o teste'}
+                        <ArrowRight className="w-4 h-4" />
+                      </span>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         <div className="mt-10 max-w-2xl mx-auto rounded-lg border bg-card p-5 flex items-start gap-3">
