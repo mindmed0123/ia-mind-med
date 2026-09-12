@@ -1,47 +1,54 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { getAttribution, getFbCookies } from '@/lib/attribution';
-import { trackViewContent, trackInitiateCheckout } from '@/lib/metaPixel';
-import { SUBSCRIPTION_PLANS, VALID_SUBSCRIPTION_PLAN_IDS } from '@/lib/subscription-plans';
-import { useVagasFundador } from '@/hooks/useVagasFundador';
-import { validatePassword } from '@/lib/validation';
-import { Brain, Shield, Clock, FileText, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { getAttribution } from '@/lib/attribution';
+import { trackViewContent, trackCompleteRegistration } from '@/lib/metaPixel';
+import { validatePhone } from '@/lib/validation';
+import {
+  Brain,
+  Shield,
+  Clock,
+  FileText,
+  Sparkles,
+  ArrowRight,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Check,
+} from 'lucide-react';
+
+const maskPhone = (value: string) => {
+  const d = value.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2) return d.length ? `(${d}` : '';
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+};
+
+const PASSWORD_RULES = [
+  { label: 'Mínimo de 8 caracteres', test: (p: string) => p.length >= 8 },
+  { label: 'Uma letra maiúscula', test: (p: string) => /[A-Z]/.test(p) },
+  { label: 'Uma letra minúscula', test: (p: string) => /[a-z]/.test(p) },
+  { label: 'Um número', test: (p: string) => /[0-9]/.test(p) },
+];
 
 export default function MedicosTrial() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const planFromUrl = searchParams.get('plan');
   const [loading, setLoading] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const { restantes: vagasRestantes } = useVagasFundador();
-  const fundadorDisponivel = vagasRestantes > 0;
-  const planosVisiveis = SUBSCRIPTION_PLANS.filter(
-    (p) => p.id !== 'mindmed_fundador' || fundadorDisponivel
-  );
-  const [selectedPlan, setSelectedPlan] = useState(
-    planFromUrl && VALID_SUBSCRIPTION_PLAN_IDS.includes(planFromUrl) ? planFromUrl : 'mindmed_pro'
-  );
-
-  useEffect(() => {
-    if (selectedPlan === 'mindmed_fundador' && !fundadorDisponivel) {
-      setSelectedPlan('mindmed_pro');
-    }
-  }, [selectedPlan, fundadorDisponivel]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [touched, setTouched] = useState({ whatsapp: false, password: false });
 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     whatsapp: '',
     password: '',
-    confirmPassword: '',
   });
 
   const canceled = searchParams.get('checkout') === 'canceled';
@@ -50,30 +57,22 @@ export default function MedicosTrial() {
     trackViewContent('trial_medicos');
   }, []);
 
+  const phoneOk = validatePhone(formData.whatsapp);
+  const passwordChecks = useMemo(
+    () => PASSWORD_RULES.map((r) => ({ ...r, ok: r.test(formData.password) })),
+    [formData.password]
+  );
+  const passwordOk = passwordChecks.every((c) => c.ok);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!acceptedTerms) {
-      toast.error('Você precisa aceitar os termos de uso');
-      return;
-    }
+    setTouched({ whatsapp: true, password: true });
 
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('As senhas não coincidem');
-      return;
-    }
-
-    const pwdCheck = validatePassword(formData.password);
-    if (!pwdCheck.ok) {
-      toast.error(pwdCheck.message);
-      return;
-    }
+    if (!phoneOk || !passwordOk) return;
 
     setLoading(true);
-    trackInitiateCheckout(selectedPlan);
 
     try {
-      // 1. Create user account
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -87,9 +86,9 @@ export default function MedicosTrial() {
       });
 
       if (authError) {
-        if (authError.message.includes('already registered')) {
-          toast.error('Este email já está cadastrado. Faça login.');
-          navigate('/');
+        if (/already registered|already been registered/i.test(authError.message)) {
+          toast.error('Este e-mail já tem conta. Entre com sua senha para continuar.');
+          navigate('/?email=' + encodeURIComponent(formData.email));
           return;
         }
         throw authError;
@@ -99,7 +98,8 @@ export default function MedicosTrial() {
         throw new Error('Erro ao criar conta');
       }
 
-      // 2. Update profile with whatsapp
+      trackCompleteRegistration(authData.user.id);
+
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -109,36 +109,16 @@ export default function MedicosTrial() {
         .eq('id', authData.user.id);
 
       if (profileError) {
-        console.error('Erro ao atualizar perfil antes do checkout:', profileError);
+        console.error('Erro ao salvar WhatsApp no perfil:', profileError);
       }
 
-      // 3. Create checkout session
-      const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout-session', {
-        body: {
-          name: formData.name,
-          whatsapp: formData.whatsapp,
-          plan: selectedPlan,
-          attribution: { ...getAttribution(), ...getFbCookies() },
-        },
-      });
-
-      if (checkoutError) {
-        throw checkoutError;
-      }
-
-      if (checkoutData?.url) {
-        // Redirect to Stripe checkout
-        window.location.href = checkoutData.url;
-      } else {
-        throw new Error('Não foi possível criar a sessão de checkout');
-      }
+      navigate('/dashboard', { replace: true });
     } catch (error: any) {
-      toast.error(error.message || 'Erro ao processar cadastro');
+      toast.error(error.message || 'Erro ao criar sua conta. Tente novamente.');
     } finally {
       setLoading(false);
     }
   };
-
 
   const benefits = [
     { icon: Brain, text: 'IA que gera laudos completos automaticamente' },
@@ -157,10 +137,10 @@ export default function MedicosTrial() {
             <span className="text-3xl font-bold text-primary">MindMed</span>
           </div>
           <h1 className="text-2xl lg:text-4xl font-bold text-foreground mb-2">
-            Teste Grátis por 7 Dias
+            Crie sua conta gratuita
           </h1>
           <p className="text-muted-foreground text-lg">
-            Comece agora e descubra como a IA pode transformar sua prática médica
+            Leva menos de um minuto. Você escolhe o plano depois de testar.
           </p>
         </div>
 
@@ -175,7 +155,7 @@ export default function MedicosTrial() {
 
         <div className="grid lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
           {/* Benefits */}
-          <div className="space-y-6">
+          <div className="space-y-6 order-2 lg:order-1">
             <Card className="border-primary/20 bg-primary/5">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-primary">
@@ -210,61 +190,22 @@ export default function MedicosTrial() {
                 </ul>
               </CardContent>
             </Card>
-
-            <div className="text-center text-sm text-muted-foreground">
-              <p>Planos: {planosVisiveis.map((p) => `${p.label} ${p.price}`).join(' · ')}</p>
-              <p>Escolha seu plano no formulário ao lado</p>
-            </div>
-
           </div>
 
           {/* Form */}
-          <Card className="shadow-lg">
+          <Card className="shadow-lg order-1 lg:order-2">
             <CardHeader>
               <CardTitle>Criar sua conta</CardTitle>
-              <CardDescription>
-                Preencha seus dados para começar o teste grátis
-              </CardDescription>
+              <CardDescription>Sem cartão para criar a conta.</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 <div className="space-y-2">
-                  <Label>Escolha seu plano</Label>
-                  <div className="grid gap-2">
-                    {planosVisiveis.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setSelectedPlan(p.id)}
-                        className={`flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${
-                          selectedPlan === p.id
-                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                            : 'border-border hover:bg-muted/50'
-                        }`}
-                      >
-                        <div>
-                          <p className="font-medium text-foreground">{p.label}</p>
-                          <p className="text-sm text-muted-foreground">{p.price}</p>
-                          {'nota' in p && p.nota && (
-                            <p className="text-xs text-muted-foreground mt-1">{p.nota}</p>
-                          )}
-                          {p.id === 'mindmed_fundador' && (
-                            <p className="text-xs text-primary mt-1">
-                              Restam {vagasRestantes} de 100 vagas
-                            </p>
-                          )}
-                        </div>
-                        {p.badge && <Badge variant="secondary">{p.badge}</Badge>}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome completo</Label>
+                  <Label htmlFor="name">Nome</Label>
                   <Input
                     id="name"
                     type="text"
+                    autoComplete="name"
                     placeholder="Dr. João Silva"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -277,6 +218,7 @@ export default function MedicosTrial() {
                   <Input
                     id="email"
                     type="email"
+                    autoComplete="email"
                     placeholder="seu@email.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -289,80 +231,92 @@ export default function MedicosTrial() {
                   <Input
                     id="whatsapp"
                     type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel"
                     placeholder="(11) 99999-9999"
                     value={formData.whatsapp}
-                    onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, whatsapp: maskPhone(e.target.value) })
+                    }
+                    onBlur={() => setTouched((t) => ({ ...t, whatsapp: true }))}
+                    aria-invalid={touched.whatsapp && !phoneOk}
                     required
                   />
+                  {touched.whatsapp && !phoneOk ? (
+                    <p className="text-xs text-destructive">
+                      Informe um número válido com DDD, por exemplo (11) 99999-9999.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Para enviar seu acesso e tirar dúvidas. Não usamos para disparo em massa.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="password">Senha</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Mínimo 8 caracteres, com maiúscula, minúscula e número"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      placeholder="Crie uma senha"
+                      className="pr-10"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+                      aria-invalid={touched.password && !passwordOk}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <ul className="space-y-1 pt-1">
+                    {passwordChecks.map((rule) => (
+                      <li
+                        key={rule.label}
+                        className={`flex items-center gap-2 text-xs ${
+                          rule.ok ? 'text-green-600' : 'text-muted-foreground'
+                        }`}
+                      >
+                        <Check className={`w-3.5 h-3.5 ${rule.ok ? 'opacity-100' : 'opacity-40'}`} />
+                        {rule.label}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirmar senha</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="Repita a senha"
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="flex items-start space-x-2 pt-2">
-                  <Checkbox
-                    id="terms"
-                    checked={acceptedTerms}
-                    onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)}
-                  />
-                  <label htmlFor="terms" className="text-sm text-muted-foreground leading-tight cursor-pointer">
-                    Li e aceito os{' '}
-                    <a href="/termos" className="text-primary underline" target="_blank">
-                      Termos de Uso
-                    </a>{' '}
-                    e a{' '}
-                    <a href="/privacidade" className="text-primary underline" target="_blank">
-                      Política de Privacidade
-                    </a>
-                  </label>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full h-12 text-lg"
-                  disabled={loading || !acceptedTerms}
-                >
+                <Button type="submit" className="w-full h-12 text-lg" disabled={loading}>
                   {loading ? (
                     <span className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                      Processando...
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+                      Criando sua conta...
                     </span>
                   ) : (
                     <span className="flex items-center gap-2">
-                      Começar teste grátis de 7 dias
+                      Criar minha conta
                       <ArrowRight className="w-5 h-5" />
                     </span>
                   )}
                 </Button>
 
                 <p className="text-xs text-center text-muted-foreground leading-relaxed">
-                  7 dias de teste. Nada é cobrado hoje. Pedimos o cartão para que o acesso continue
-                  sem interrupção depois do teste. Você pode cancelar a qualquer momento em dois
-                  cliques, dentro da plataforma. Garantia de 30 dias: se depois da primeira cobrança
-                  você não estiver satisfeito, devolvemos 100% do valor. Sem perguntas.
+                  Ao criar a conta você aceita os{' '}
+                  <a href="/termos" className="text-primary underline" target="_blank" rel="noreferrer">
+                    Termos de Uso
+                  </a>{' '}
+                  e a{' '}
+                  <a href="/privacidade" className="text-primary underline" target="_blank" rel="noreferrer">
+                    Política de Privacidade
+                  </a>
+                  .
                 </p>
-
               </form>
 
               <div className="mt-6 pt-4 border-t text-center">
