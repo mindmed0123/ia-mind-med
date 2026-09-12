@@ -33,6 +33,8 @@ const Dashboard = () => {
   const { needsWelcome, loading: onboardingChecking, completeOnboarding, needsLgpdConsent, lgpdConsentLoading, markLgpdConsentGiven, snoozeOnboarding, laudoCount, refreshLaudoCount } = useOnboarding();
   const { hasAccess: hasAgendaAccess } = useFeatureAccess("appointments");
   const { organization } = useOrganization();
+  const { subscription } = useAppState();
+  const isPendingCheckout = subscription?.status === "PENDING_CHECKOUT";
   const isOrgOwner = !!organization && !!user && organization.owner_id === user.id;
 
   // After LGPD consent is given, trigger onboarding check
