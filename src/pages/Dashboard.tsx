@@ -164,10 +164,19 @@ const Dashboard = () => {
         onComplete={async (laudoId) => {
           await completeOnboarding(laudoId);
           await refreshLaudoCount();
+          if (isPendingCheckout) navigate("/precos", { replace: true });
         }}
-        onSnooze={snoozeOnboarding}
+        onSnooze={() => {
+          snoozeOnboarding();
+          if (isPendingCheckout) navigate("/precos", { replace: true });
+        }}
       />
     );
+  }
+
+  // Conta criada sem cartão: depois do onboarding, escolha do plano
+  if (isPendingCheckout) {
+    return <Navigate to="/precos" replace />;
   }
 
 
