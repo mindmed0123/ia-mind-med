@@ -114,7 +114,12 @@ export default function MedicosTrial() {
 
       navigate('/dashboard', { replace: true });
     } catch (error: any) {
-      toast.error(error.message || 'Erro ao criar sua conta. Tente novamente.');
+      const msg = String(error?.message || '');
+      if (/weak|pwned/i.test(msg)) {
+        toast.error('Essa senha é muito comum. Escolha outra, com números e letras variadas.');
+      } else {
+        toast.error('Não conseguimos criar sua conta agora. Confira os dados e tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
