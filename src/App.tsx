@@ -91,7 +91,7 @@ const App = () => (
                 <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                 
                 {/* Protected routes */}
-                <Route path="/dashboard" element={<SubscriptionGuard><Dashboard /></SubscriptionGuard>} />
+                <Route path="/dashboard" element={<SubscriptionGuard allowPendingCheckout><Dashboard /></SubscriptionGuard>} />
                 <Route path="/novo-laudo" element={<SubscriptionGuard allowEmbedded><NovoLaudo /></SubscriptionGuard>} />
                 <Route path="/perfil" element={<SubscriptionGuard><Perfil /></SubscriptionGuard>} />
                 <Route path="/receituarios" element={<SubscriptionGuard><Receituarios /></SubscriptionGuard>} />

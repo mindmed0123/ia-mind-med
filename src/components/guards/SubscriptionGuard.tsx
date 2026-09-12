@@ -7,15 +7,19 @@ import { Activity } from 'lucide-react';
 interface SubscriptionGuardProps {
   children: ReactNode;
   allowEmbedded?: boolean;
+  /** Conta recém-criada, ainda sem cartão: pode entrar para fazer o onboarding. */
+  allowPendingCheckout?: boolean;
 }
 
-export function SubscriptionGuard({ children, allowEmbedded }: SubscriptionGuardProps) {
+export function SubscriptionGuard({ children, allowEmbedded, allowPendingCheckout }: SubscriptionGuardProps) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const hasBridge = !!searchParams.get('bridge');
   const isEmbedded = allowEmbedded && (searchParams.get('embedded') === 'true' || hasBridge);
   const { user, loading: authLoading } = useAuth();
-  const { isAllowed, loading } = useAppState();
+  const { isAllowed: subscriptionActive, loading, subscription } = useAppState();
+  const isPendingCheckout = subscription?.status === 'PENDING_CHECKOUT';
+  const isAllowed = subscriptionActive || (!!allowPendingCheckout && isPendingCheckout);
   const [showTimeout, setShowTimeout] = useState(false);
 
   useEffect(() => {

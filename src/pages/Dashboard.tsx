@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
+import { useAppState } from "@/hooks/useAppState";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,6 +33,8 @@ const Dashboard = () => {
   const { needsWelcome, loading: onboardingChecking, completeOnboarding, needsLgpdConsent, lgpdConsentLoading, markLgpdConsentGiven, snoozeOnboarding, laudoCount, refreshLaudoCount } = useOnboarding();
   const { hasAccess: hasAgendaAccess } = useFeatureAccess("appointments");
   const { organization } = useOrganization();
+  const { subscription } = useAppState();
+  const isPendingCheckout = subscription?.status === "PENDING_CHECKOUT";
   const isOrgOwner = !!organization && !!user && organization.owner_id === user.id;
 
   // After LGPD consent is given, trigger onboarding check
@@ -164,10 +167,19 @@ const Dashboard = () => {
         onComplete={async (laudoId) => {
           await completeOnboarding(laudoId);
           await refreshLaudoCount();
+          if (isPendingCheckout) navigate("/precos", { replace: true });
         }}
-        onSnooze={snoozeOnboarding}
+        onSnooze={() => {
+          snoozeOnboarding();
+          if (isPendingCheckout) navigate("/precos", { replace: true });
+        }}
       />
     );
+  }
+
+  // Conta criada sem cartão: depois do onboarding, escolha do plano
+  if (isPendingCheckout) {
+    return <Navigate to="/precos" replace />;
   }
 
 
