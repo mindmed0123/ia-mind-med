@@ -355,7 +355,7 @@ serve(async (req) => {
     if (isCRP) templateData = null;
     // Use template system prompt if available, otherwise use default
     const baseSystemPrompt = isCRP ? CRP_SYSTEM_PROMPT : (templateData?.system_prompt ||
-      `Assistente clínico PT-BR. Gere laudo estruturado. Regras: sem diagnóstico definitivo, 2 hipóteses, red flags, CID-10. Disclaimer: "IA para apoio; não substitui avaliação clínica." Extraia TODOS os dados da transcrição: nome completo do paciente se mencionado, todos os sinais vitais citados, medicações, diagnóstico, conduta e prescricoes_sugeridas.`;
+      `Assistente clínico PT-BR. Gere laudo estruturado. Regras: sem diagnóstico definitivo, 2 hipóteses, red flags, CID-10. Disclaimer: "IA para apoio; não substitui avaliação clínica." Extraia TODOS os dados da transcrição: nome completo do paciente se mencionado, todos os sinais vitais citados, medicações, diagnóstico, conduta e prescricoes_sugeridas.`);
 
     // Hard requirement: anamnese precisa ser COMPLETA, não um resumo curto.
     const anamneseInstruction = `
@@ -379,7 +379,7 @@ REGRAS CRÍTICAS PARA A ANAMNESE (campo "anamnese") — siga TODAS:
     e) Se o caso for puramente diagnóstico/encaminhamento sem terapêutica farmacológica óbvia (ex.: dermatoses para biópsia, oncologia para encaminhamento), inclua ao menos 1 item de SUPORTE seguro e não controlado apropriado ao contexto (ex.: protetor solar FPS 60 para lesões dermatológicas fotoexpostas; paracetamol 500 mg s/n para dor leve; hidratante/emoliente; sais de reidratação oral). Origem="sugerida_ia" e observacoes com racional ("medida de suporte enquanto aguarda especialista"). NUNCA retorne array vazio.
     f) Máximo 6 itens.
 12. CONDUTA COMPLETA: capture TODA a conduta mencionada — solicitação de exames, encaminhamentos, orientações ao paciente, retorno, prescrições. Nada pode ficar de fora dos campos condutas e prescricoes_sugeridas.`;
-const systemPrompt = baseSystemPrompt + anamneseInstruction;
+const systemPrompt = isCRP ? baseSystemPrompt : baseSystemPrompt + anamneseInstruction;
 
     // Add template sections instruction if available
     let sectionsInstruction = '';
