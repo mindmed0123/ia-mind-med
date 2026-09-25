@@ -536,6 +536,71 @@ const systemPrompt = isCRP ? baseSystemPrompt : baseSystemPrompt + anamneseInstr
 
     await updateStage('structuring');
 
+    // ===== CRP: Registro de sessão — caminho próprio, sem interpretação =====
+    if (isCRP) {
+      const dpCrp = laudoData.dados_paciente_extraidos || {};
+      const registroSessao = {
+        identificacao: laudoData.identificacao || '',
+        avaliacao_demanda: laudoData.avaliacao_demanda || '',
+        evolucao: laudoData.evolucao || '',
+        encaminhamento_encerramento: laudoData.encaminhamento_encerramento || '',
+        instrumentos: laudoData.instrumentos || '',
+      };
+      const textoRegistro = laudoData.texto_registro_md || '';
+
+      const { error: crpUpdateError } = await supabase
+        .from('laudos')
+        .update({
+          patient_data: dpCrp,
+          clinical_context: { conselho: 'CRP', specialty: resolvedSpecialty },
+          summary: { registro_sessao: registroSessao },
+          hypotheses: null,
+          conducts: [],
+          sections: {
+            conselho: 'CRP',
+            retention_min_years: CRP_RETENTION_YEARS,
+            registro_sessao: registroSessao,
+          },
+          complementary_exams: [],
+          red_flags: [],
+          cid10_codes: [],
+          report_markdown: textoRegistro,
+          patient_markdown: '',
+          legal_disclaimer: DISCLAIMER_CRP,
+          ai_model: actualModel,
+          ai_usage: {
+            prompt_tokens: usage?.prompt_tokens,
+            completion_tokens: usage?.completion_tokens,
+            total_tokens: usage?.total_tokens,
+            latency_ms: llmMs,
+            latency_total_ms: now() - t0,
+            finish_reason: finishReason,
+            correlation_id: cid,
+            mode,
+            fell_back: llmResult.fellBack,
+            attempts: llmResult.attempts,
+          },
+          generation_mode: mode,
+          specialty: resolvedSpecialty || 'Psicologia',
+          last_update_type: 'complete',
+          status: 'completed',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', laudo_id).eq('user_id', user.id);
+
+      if (crpUpdateError) {
+        log(cid, 'db_error', { error: crpUpdateError.message });
+        throw new Error('Erro ao salvar.');
+      }
+
+      log(cid, 'complete', { laudo_id, conselho: 'CRP', model: actualModel, mode, total_ms: now() - t0 });
+      return new Response(JSON.stringify({
+        success: true,
+        metadata: { model: actualModel, mode, conselho: 'CRP', correlation_id: cid, total_ms: now() - t0 },
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+
     // ===== NORMALIZE =====
     const hipoteses = laudoData.hipoteses || {
       mais_provavel: laudoData.hipotese_principal || {},
