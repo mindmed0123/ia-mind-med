@@ -261,7 +261,7 @@ serve(async (req) => {
     };
 
     // ===== PARALLEL: claim + rate limit + template fetch =====
-    const profileRow = (await supabase.from('profiles').select('specialty, conselho').eq('id', user.id).single()).data;
+    const profileRow = (await supabase.from('profiles').select('specialty, conselho, especialidade').eq('id', user.id).single()).data;
     const resolvedSpecialty = template_specialty || profileRow?.specialty || null;
     // Perfil CRP (Psicologia) muda completamente o documento gerado
     const isCRP = profileRow?.conselho === 'CRP';
@@ -581,7 +581,7 @@ const systemPrompt = isCRP ? baseSystemPrompt : baseSystemPrompt + anamneseInstr
             attempts: llmResult.attempts,
           },
           generation_mode: mode,
-          specialty: resolvedSpecialty || 'Psicologia',
+          specialty: profileRow?.especialidade || resolvedSpecialty || 'Psicologia',
           last_update_type: 'complete',
           status: 'completed',
           updated_at: new Date().toISOString(),
