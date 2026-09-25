@@ -344,6 +344,75 @@ const CleanClinicalLaudo = ({
   );
 };
 
+// Registro de sessão (perfil CRP) — cinco componentes do Art. 2º da Resolução CFP nº 001/2009.
+// Não renderiza hipóteses, CID, conduta ou prescrições.
+const RegistroSessaoCRP = ({
+  laudo,
+  onCopy,
+}: {
+  laudo: any;
+  onCopy: (text: string) => void;
+}) => {
+  const rs = laudo.sections?.registro_sessao || {};
+  const componentes: Array<{ num: string; title: string; value: string }> = [
+    { num: 'I', title: 'Identificação da pessoa atendida', value: rs.identificacao || '' },
+    { num: 'II', title: 'Avaliação da demanda e definição dos objetivos do trabalho', value: rs.avaliacao_demanda || '' },
+    { num: 'III', title: 'Registro da evolução do trabalho', value: rs.evolucao || '' },
+    { num: 'IV', title: 'Registro de encaminhamento ou encerramento', value: rs.encaminhamento_encerramento || '' },
+    { num: 'V', title: 'Documentos de instrumentos de avaliação', value: rs.instrumentos || '' },
+  ];
+
+  const textoCompleto = [
+    'REGISTRO DE SESSÃO',
+    '',
+    ...componentes.flatMap((c) => [`${c.num} — ${c.title}`, c.value || '(sem conteúdo registrado nesta sessão)', '']),
+    laudo.legal_disclaimer || '',
+  ].join('\n');
+
+  return (
+    <div>
+      <article className="bg-background rounded-xl border border-border/50 shadow-sm p-6 md:p-8">
+        <header className="mb-6 pb-4 border-b border-border/40">
+          <h2 className="text-lg font-bold text-foreground">Registro de sessão</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Estrutura conforme Art. 2º da Resolução CFP nº 001/2009 · Resolução CFP nº 009/2024
+          </p>
+        </header>
+        <div className="space-y-5">
+          {componentes.map((c) => (
+            <section key={c.num}>
+              <h3 className="text-[13px] font-bold uppercase tracking-[0.12em] text-foreground mb-1.5">
+                {c.num} — {c.title}
+              </h3>
+              {c.value ? (
+                <p className="text-[14.5px] leading-[1.7] text-foreground/90 whitespace-pre-wrap">{c.value}</p>
+              ) : (
+                <p className="text-[13px] text-muted-foreground italic">Sem conteúdo registrado nesta sessão.</p>
+              )}
+            </section>
+          ))}
+        </div>
+        {laudo.legal_disclaimer && (
+          <footer className="mt-8 pt-5 border-t border-border/40">
+            <p className="text-xs text-muted-foreground italic leading-relaxed">
+              {laudo.legal_disclaimer}
+            </p>
+          </footer>
+        )}
+      </article>
+      <div className="flex justify-center mt-5">
+        <Button
+          size="lg"
+          onClick={() => onCopy(textoCompleto)}
+          className="gap-2 px-6 bg-primary hover:bg-primary/90"
+        >
+          <Copy className="w-4 h-4" /> Copiar Registro Completo
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }: LaudoViewerProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -538,7 +607,7 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
       <Tabs defaultValue="clinico" className="w-full">
         <TabsList className="grid w-full grid-cols-4 h-11 bg-muted/50 rounded-xl p-1">
           <TabsTrigger value="clinico" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <ClipboardList className="w-4 h-4" /> Laudo Clínico
+            <ClipboardList className="w-4 h-4" /> {laudo.sections?.conselho === 'CRP' ? 'Registro de sessão' : 'Laudo Clínico'}
           </TabsTrigger>
           <TabsTrigger value="resumo" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <Brain className="w-4 h-4" /> Resumo
@@ -553,7 +622,11 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
 
         {/* ══════ TAB: LAUDO CLÍNICO (copy-friendly premium view) ══════ */}
         <TabsContent value="clinico" className="mt-5">
-          <CleanClinicalLaudo laudo={laudo} onCopy={copyToClipboard} />
+          {laudo.sections?.conselho === 'CRP' ? (
+            <RegistroSessaoCRP laudo={laudo} onCopy={copyToClipboard} />
+          ) : (
+            <CleanClinicalLaudo laudo={laudo} onCopy={copyToClipboard} />
+          )}
         </TabsContent>
 
 
@@ -561,10 +634,12 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
         <TabsContent value="resumo" className="space-y-4 mt-5">
 
           {/* AI Microcopy */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Sparkles className="w-3 h-3 text-primary" />
-            <span>Análise clínica automatizada • Alta precisão</span>
-          </div>
+          {laudo.sections?.conselho !== 'CRP' && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Sparkles className="w-3 h-3 text-primary" />
+              <span>Análise clínica automatizada • Alta precisão</span>
+            </div>
+          )}
 
           {/* Specialty sections */}
           {laudo.sections?.template_sections && laudo.sections.template_sections.length > 0 && laudo.sections?.specialty_sections && (

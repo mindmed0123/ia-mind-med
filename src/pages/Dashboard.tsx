@@ -23,6 +23,9 @@ import { useToast } from "@/hooks/use-toast";
 import { TrialReminderBanner } from "@/components/trial/TrialReminderBanner";
 import { getCloudFunctionHeaders } from "@/lib/cloud-function-auth";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useProfessionalProfile } from "@/hooks/useProfessionalProfile";
+import { ProfessionalProfileGate } from "@/components/profile/ProfessionalProfileGate";
+import { docLabel } from "@/lib/professional-profile";
 
 
 const Dashboard = () => {
@@ -34,6 +37,8 @@ const Dashboard = () => {
   const { hasAccess: hasAgendaAccess } = useFeatureAccess("appointments");
   const { organization } = useOrganization();
   const { subscription } = useAppState();
+  const { profile: proProfile, loading: proLoading, needsProfile, isCRP, refresh: refreshProProfile } = useProfessionalProfile();
+  const [skippedProfile, setSkippedProfile] = useState(false);
   const isPendingCheckout = subscription?.status === "PENDING_CHECKOUT";
   const isOrgOwner = !!organization && !!user && organization.owner_id === user.id;
 
@@ -160,6 +165,18 @@ const Dashboard = () => {
     );
   }
 
+  // Step 1.5: perfil profissional (conselho/registro/especialidade) — reaparece
+  // a cada login enquanto não for respondido; "Preencher depois" só pula nesta sessão
+  if (!proLoading && needsProfile && !skippedProfile) {
+    return (
+      <ProfessionalProfileGate
+        initial={proProfile}
+        onSaved={() => refreshProProfile()}
+        onSkip={() => setSkippedProfile(true)}
+      />
+    );
+  }
+
   // Step 2: onboarding guiado — primeiro contato é o laudo de demonstração
   if (needsWelcome) {
     return (
@@ -274,7 +291,7 @@ const Dashboard = () => {
                     className="bg-gradient-to-r from-primary to-accent hover:opacity-90 h-auto py-3"
                   >
                     <FileText className="w-5 h-5 mr-2" />
-                    Novo Laudo
+                    {isCRP ? `Novo ${docLabel('CRP')}` : 'Novo Laudo'}
                   </Button>
                   <Button 
                     onClick={() => navigate("/pacientes")} 
@@ -284,14 +301,16 @@ const Dashboard = () => {
                     <Users className="w-5 h-5 mr-2" />
                     Pacientes
                   </Button>
-                  <Button 
-                    onClick={() => navigate("/receituarios")} 
-                    variant="outline"
-                    className="h-auto py-3"
-                  >
-                    <Pill className="w-5 h-5 mr-2" />
-                    Receituários
-                  </Button>
+                  {!isCRP && (
+                    <Button 
+                      onClick={() => navigate("/receituarios")} 
+                      variant="outline"
+                      className="h-auto py-3"
+                    >
+                      <Pill className="w-5 h-5 mr-2" />
+                      Receituários
+                    </Button>
+                  )}
                   {hasAgendaAccess && (
                     <Button 
                       onClick={() => navigate("/agendamentos")} 

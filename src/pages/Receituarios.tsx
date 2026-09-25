@@ -30,6 +30,7 @@ import {
   type TipoReceita,
 } from '@/lib/receita-classifier';
 import { FarmacovigilanciaButton } from '@/components/farmacovigilancia/FarmacovigilanciaButton';
+import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 
 interface PrescriptionItem {
   medicamento: string;
@@ -58,6 +59,12 @@ interface Prescription {
 }
 
 export default function Receituarios() {
+  const { isCRP, loading: proLoading } = useProfessionalProfile();
+  const navigateCrp = useNavigate();
+  // Psicólogo não prescreve — perfil CRP não acessa receituários
+  useEffect(() => {
+    if (!proLoading && isCRP) navigateCrp('/dashboard', { replace: true });
+  }, [proLoading, isCRP, navigateCrp]);
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();

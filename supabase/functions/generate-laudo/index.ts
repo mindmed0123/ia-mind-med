@@ -132,6 +132,58 @@ const LAUDO_TOOL = {
   },
 };
 
+// ===== CRP (Psicologia) — Registro de sessão =====
+// Resolução CFP nº 001/2009 (Art. 2º) e CFP nº 009/2024.
+// Regra absoluta: nenhum conteúdo interpretativo gerado pelo sistema.
+const DISCLAIMER_CRP =
+  'Registro elaborado com apoio de sistema de inteligência artificial para transcrição e estruturação do conteúdo da sessão. As interpretações, conclusões e a condução técnica são de autoria exclusiva da profissional signatária, que revisou integralmente o conteúdo antes da assinatura.';
+const CRP_RETENTION_YEARS = 20; // Lei nº 13.787/2018
+
+const REGISTRO_TOOL = {
+  type: "function",
+  function: {
+    name: "generate_registro",
+    description: "Gera um Registro de sessão de psicologia, organizando APENAS o que foi dito em voz alta pela profissional. Nunca interpreta, conclui ou sugere.",
+    parameters: {
+      type: "object",
+      properties: {
+        identificacao: { type: "string", description: "I — Identificação da pessoa atendida: apenas dados citados na sessão (nome, idade, etc.). Vazio se não citado." },
+        avaliacao_demanda: { type: "string", description: "II — Demanda trazida e objetivos do trabalho, com as palavras ditas na sessão. Vazio se não citado." },
+        evolucao: { type: "string", description: "III — Registro da evolução do trabalho: o que ocorreu na sessão, em linguagem descritiva e factual. Vazio se não houver conteúdo." },
+        encaminhamento_encerramento: { type: "string", description: "IV — Encaminhamento ou encerramento, somente se mencionado pela profissional. Vazio caso contrário." },
+        instrumentos: { type: "string", description: "V — Instrumentos de avaliação utilizados, somente se mencionados. Vazio caso contrário." },
+        dados_paciente_extraidos: {
+          type: "object",
+          properties: {
+            nome_completo: { type: "string", description: "Nome completo da pessoa atendida, exatamente como citado. Vazio se não citado — não invente." },
+            iniciais: { type: "string" },
+            idade: { type: "string" },
+            sexo: { type: "string" },
+          },
+        },
+        texto_registro_md: { type: "string", description: "Registro de sessão em Markdown com os cinco componentes (I a V) como seções. Sem interpretação, conclusão ou juízo clínico." },
+      },
+      required: ["identificacao", "avaliacao_demanda", "evolucao", "encaminhamento_encerramento", "instrumentos", "dados_paciente_extraidos", "texto_registro_md"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const CRP_SYSTEM_PROMPT = `Você organiza registros de sessão de psicologia em PT-BR, conforme a Resolução CFP nº 001/2009 (Art. 2º) e a Resolução CFP nº 009/2024.
+
+REGRAS ABSOLUTAS — violá-las torna o documento inválido:
+1. PROIBIDO gerar interpretação, conclusão, impressão clínica, sugestão de conduta ou qualquer juízo profissional que a profissional não tenha dito em voz alta na sessão.
+2. PROIBIDO usar os termos: "laudo", "avaliação psicológica", "testagem", "teste psicológico", "hipótese diagnóstica", "diagnóstico", "CID", "CID-10", "prescrição", "receita".
+3. O conteúdo clínico é de autoria exclusiva da profissional. Você apenas TRANSCREVE e ORGANIZA o que foi dito.
+4. Campo sem conteúdo falado fica VAZIO (""). NUNCA complete por inferência, NUNCA presuma, NUNCA preencha com linguagem clínica genérica.
+5. Estrutura obrigatória do registro (Art. 2º da Resolução CFP nº 001/2009):
+   I — Identificação da pessoa atendida
+   II — Avaliação da demanda e definição dos objetivos do trabalho
+   III — Registro da evolução do trabalho
+   IV — Registro de encaminhamento ou encerramento
+   V — Documentos de instrumentos de avaliação (quando houver)
+6. NOME DA PESSOA ATENDIDA: capture exatamente como citado em dados_paciente_extraidos.nome_completo. Vazio se não citado.`;
+
 // Models by mode — fast uses the lightest model for speed; long uses Flash for
 // large context windows. Each mode has a fallback model that takes over if the
 // primary times out or returns 5xx.
@@ -209,9 +261,10 @@ serve(async (req) => {
     };
 
     // ===== PARALLEL: claim + rate limit + template fetch =====
-    const resolvedSpecialty = template_specialty || 
-      (await supabase.from('profiles').select('specialty').eq('id', user.id).single()).data?.specialty || 
-      null;
+    const profileRow = (await supabase.from('profiles').select('specialty, conselho, especialidade').eq('id', user.id).single()).data;
+    const resolvedSpecialty = template_specialty || profileRow?.specialty || null;
+    // Perfil CRP (Psicologia) muda completamente o documento gerado
+    const isCRP = profileRow?.conselho === 'CRP';
 
     const [claimResult, rateLimitResult, templateResult, defaultTemplateResult] = await Promise.all([
       // Atomic claim
@@ -298,9 +351,11 @@ serve(async (req) => {
     }
 
     // ===== BUILD PROMPT =====
+    // Perfil CRP ignora templates de especialidade médica e usa prompt próprio
+    if (isCRP) templateData = null;
     // Use template system prompt if available, otherwise use default
-    const baseSystemPrompt = templateData?.system_prompt ||
-      `Assistente clínico PT-BR. Gere laudo estruturado. Regras: sem diagnóstico definitivo, 2 hipóteses, red flags, CID-10. Disclaimer: "IA para apoio; não substitui avaliação clínica." Extraia TODOS os dados da transcrição: nome completo do paciente se mencionado, todos os sinais vitais citados, medicações, diagnóstico, conduta e prescricoes_sugeridas.`;
+    const baseSystemPrompt = isCRP ? CRP_SYSTEM_PROMPT : (templateData?.system_prompt ||
+      `Assistente clínico PT-BR. Gere laudo estruturado. Regras: sem diagnóstico definitivo, 2 hipóteses, red flags, CID-10. Disclaimer: "IA para apoio; não substitui avaliação clínica." Extraia TODOS os dados da transcrição: nome completo do paciente se mencionado, todos os sinais vitais citados, medicações, diagnóstico, conduta e prescricoes_sugeridas.`);
 
     // Hard requirement: anamnese precisa ser COMPLETA, não um resumo curto.
     const anamneseInstruction = `
@@ -324,7 +379,7 @@ REGRAS CRÍTICAS PARA A ANAMNESE (campo "anamnese") — siga TODAS:
     e) Se o caso for puramente diagnóstico/encaminhamento sem terapêutica farmacológica óbvia (ex.: dermatoses para biópsia, oncologia para encaminhamento), inclua ao menos 1 item de SUPORTE seguro e não controlado apropriado ao contexto (ex.: protetor solar FPS 60 para lesões dermatológicas fotoexpostas; paracetamol 500 mg s/n para dor leve; hidratante/emoliente; sais de reidratação oral). Origem="sugerida_ia" e observacoes com racional ("medida de suporte enquanto aguarda especialista"). NUNCA retorne array vazio.
     f) Máximo 6 itens.
 12. CONDUTA COMPLETA: capture TODA a conduta mencionada — solicitação de exames, encaminhamentos, orientações ao paciente, retorno, prescrições. Nada pode ficar de fora dos campos condutas e prescricoes_sugeridas.`;
-const systemPrompt = baseSystemPrompt + anamneseInstruction;
+const systemPrompt = isCRP ? baseSystemPrompt : baseSystemPrompt + anamneseInstruction;
 
     // Add template sections instruction if available
     let sectionsInstruction = '';
@@ -383,8 +438,8 @@ const systemPrompt = baseSystemPrompt + anamneseInstruction;
             { role: 'system', content: fullSystemPrompt },
             { role: 'user', content: userPrompt },
           ],
-          tools: [LAUDO_TOOL],
-          toolChoice: { type: 'function', function: { name: 'generate_laudo' } },
+          tools: [isCRP ? REGISTRO_TOOL : LAUDO_TOOL],
+          toolChoice: { type: 'function', function: { name: isCRP ? 'generate_registro' : 'generate_laudo' } },
           maxTokens,
           temperature: 0.15,
           timeoutMs: mode === 'long' ? 90000 : 60000,
@@ -480,6 +535,71 @@ const systemPrompt = baseSystemPrompt + anamneseInstruction;
     }
 
     await updateStage('structuring');
+
+    // ===== CRP: Registro de sessão — caminho próprio, sem interpretação =====
+    if (isCRP) {
+      const dpCrp = laudoData.dados_paciente_extraidos || {};
+      const registroSessao = {
+        identificacao: laudoData.identificacao || '',
+        avaliacao_demanda: laudoData.avaliacao_demanda || '',
+        evolucao: laudoData.evolucao || '',
+        encaminhamento_encerramento: laudoData.encaminhamento_encerramento || '',
+        instrumentos: laudoData.instrumentos || '',
+      };
+      const textoRegistro = laudoData.texto_registro_md || '';
+
+      const { error: crpUpdateError } = await supabase
+        .from('laudos')
+        .update({
+          patient_data: dpCrp,
+          clinical_context: { conselho: 'CRP', specialty: resolvedSpecialty },
+          summary: { registro_sessao: registroSessao },
+          hypotheses: null,
+          conducts: [],
+          sections: {
+            conselho: 'CRP',
+            retention_min_years: CRP_RETENTION_YEARS,
+            registro_sessao: registroSessao,
+          },
+          complementary_exams: [],
+          red_flags: [],
+          cid10_codes: [],
+          report_markdown: textoRegistro,
+          patient_markdown: '',
+          legal_disclaimer: DISCLAIMER_CRP,
+          ai_model: actualModel,
+          ai_usage: {
+            prompt_tokens: usage?.prompt_tokens,
+            completion_tokens: usage?.completion_tokens,
+            total_tokens: usage?.total_tokens,
+            latency_ms: llmMs,
+            latency_total_ms: now() - t0,
+            finish_reason: finishReason,
+            correlation_id: cid,
+            mode,
+            fell_back: llmResult.fellBack,
+            attempts: llmResult.attempts,
+          },
+          generation_mode: mode,
+          specialty: profileRow?.especialidade || resolvedSpecialty || 'Psicologia',
+          last_update_type: 'complete',
+          status: 'completed',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', laudo_id).eq('user_id', user.id);
+
+      if (crpUpdateError) {
+        log(cid, 'db_error', { error: crpUpdateError.message });
+        throw new Error('Erro ao salvar.');
+      }
+
+      log(cid, 'complete', { laudo_id, conselho: 'CRP', model: actualModel, mode, total_ms: now() - t0 });
+      return new Response(JSON.stringify({
+        success: true,
+        metadata: { model: actualModel, mode, conselho: 'CRP', correlation_id: cid, total_ms: now() - t0 },
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
 
     // ===== NORMALIZE =====
     const hipoteses = laudoData.hipoteses || {

@@ -1374,11 +1374,14 @@ export type Database = {
         Row: {
           address: string | null
           clinic_name: string | null
+          conselho: string | null
           created_at: string
           crm: string | null
           crm_uf: string | null
           email: string
           email_public: string | null
+          especialidade: string | null
+          especialidade_outra: string | null
           fbc: string | null
           fbp: string | null
           full_name: string | null
@@ -1391,8 +1394,11 @@ export type Database = {
           lgpd_consent_version: string | null
           logo_url: string | null
           mm_lp: string | null
+          perfil_completo_em: string | null
           phone: string | null
           prescription_footer_text: string | null
+          registro_numero: string | null
+          registro_uf: string | null
           signature_image_url: string | null
           specialty: string | null
           stamp_image_url: string | null
@@ -1407,11 +1413,14 @@ export type Database = {
         Insert: {
           address?: string | null
           clinic_name?: string | null
+          conselho?: string | null
           created_at?: string
           crm?: string | null
           crm_uf?: string | null
           email: string
           email_public?: string | null
+          especialidade?: string | null
+          especialidade_outra?: string | null
           fbc?: string | null
           fbp?: string | null
           full_name?: string | null
@@ -1424,8 +1433,11 @@ export type Database = {
           lgpd_consent_version?: string | null
           logo_url?: string | null
           mm_lp?: string | null
+          perfil_completo_em?: string | null
           phone?: string | null
           prescription_footer_text?: string | null
+          registro_numero?: string | null
+          registro_uf?: string | null
           signature_image_url?: string | null
           specialty?: string | null
           stamp_image_url?: string | null
@@ -1440,11 +1452,14 @@ export type Database = {
         Update: {
           address?: string | null
           clinic_name?: string | null
+          conselho?: string | null
           created_at?: string
           crm?: string | null
           crm_uf?: string | null
           email?: string
           email_public?: string | null
+          especialidade?: string | null
+          especialidade_outra?: string | null
           fbc?: string | null
           fbp?: string | null
           full_name?: string | null
@@ -1457,8 +1472,11 @@ export type Database = {
           lgpd_consent_version?: string | null
           logo_url?: string | null
           mm_lp?: string | null
+          perfil_completo_em?: string | null
           phone?: string | null
           prescription_footer_text?: string | null
+          registro_numero?: string | null
+          registro_uf?: string | null
           signature_image_url?: string | null
           specialty?: string | null
           stamp_image_url?: string | null
