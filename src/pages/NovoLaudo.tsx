@@ -1076,8 +1076,8 @@ const NovoLaudo = () => {
               </CardContent>
             </Card>
 
-            {/* Template Config - only show when laudo is completed */}
-            {laudo?.status === 'completed' && (
+            {/* Template Config - only show when laudo is completed (não se aplica a registros CRP) */}
+            {laudo?.status === 'completed' && laudo?.sections?.conselho !== 'CRP' && (
               <LaudoTemplateConfig onConfigChange={setLaudoTemplateSections} />
             )}
           </div>
