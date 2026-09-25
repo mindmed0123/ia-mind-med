@@ -165,6 +165,18 @@ const Dashboard = () => {
     );
   }
 
+  // Step 1.5: perfil profissional (conselho/registro/especialidade) — reaparece
+  // a cada login enquanto não for respondido; "Preencher depois" só pula nesta sessão
+  if (!proLoading && needsProfile && !skippedProfile) {
+    return (
+      <ProfessionalProfileGate
+        initial={proProfile}
+        onSaved={() => refreshProProfile()}
+        onSkip={() => setSkippedProfile(true)}
+      />
+    );
+  }
+
   // Step 2: onboarding guiado — primeiro contato é o laudo de demonstração
   if (needsWelcome) {
     return (
@@ -279,7 +291,7 @@ const Dashboard = () => {
                     className="bg-gradient-to-r from-primary to-accent hover:opacity-90 h-auto py-3"
                   >
                     <FileText className="w-5 h-5 mr-2" />
-                    Novo Laudo
+                    {isCRP ? `Novo ${docLabel('CRP')}` : 'Novo Laudo'}
                   </Button>
                   <Button 
                     onClick={() => navigate("/pacientes")} 
@@ -289,14 +301,16 @@ const Dashboard = () => {
                     <Users className="w-5 h-5 mr-2" />
                     Pacientes
                   </Button>
-                  <Button 
-                    onClick={() => navigate("/receituarios")} 
-                    variant="outline"
-                    className="h-auto py-3"
-                  >
-                    <Pill className="w-5 h-5 mr-2" />
-                    Receituários
-                  </Button>
+                  {!isCRP && (
+                    <Button 
+                      onClick={() => navigate("/receituarios")} 
+                      variant="outline"
+                      className="h-auto py-3"
+                    >
+                      <Pill className="w-5 h-5 mr-2" />
+                      Receituários
+                    </Button>
+                  )}
                   {hasAgendaAccess && (
                     <Button 
                       onClick={() => navigate("/agendamentos")} 
