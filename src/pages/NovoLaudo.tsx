@@ -1097,9 +1097,11 @@ const NovoLaudo = () => {
                   <TabsTrigger value="exams" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                     <Upload className="w-3.5 h-3.5" /> Exames
                   </TabsTrigger>
-                  <TabsTrigger value="prescription" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                    <Pill className="w-3.5 h-3.5" /> Receita
-                  </TabsTrigger>
+                   {laudo?.sections?.conselho !== 'CRP' && (
+                     <TabsTrigger value="prescription" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                       <Pill className="w-3.5 h-3.5" /> Receita
+                     </TabsTrigger>
+                   )}
                 </TabsList>
                 
                 <TabsContent value="viewer" forceMount className="data-[state=inactive]:hidden">
@@ -1122,9 +1124,11 @@ const NovoLaudo = () => {
                   />
                 </TabsContent>
 
-                <TabsContent value="prescription" forceMount className="data-[state=inactive]:hidden">
-                  <PrescriptionTab laudoData={laudo} patientData={patientData} />
-                </TabsContent>
+                 {laudo?.sections?.conselho !== 'CRP' && (
+                   <TabsContent value="prescription" forceMount className="data-[state=inactive]:hidden">
+                     <PrescriptionTab laudoData={laudo} patientData={patientData} />
+                   </TabsContent>
+                 )}
               </Tabs>
             </>
             ) : isProcessing ? (
