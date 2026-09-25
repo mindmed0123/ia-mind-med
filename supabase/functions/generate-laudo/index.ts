@@ -351,8 +351,10 @@ serve(async (req) => {
     }
 
     // ===== BUILD PROMPT =====
+    // Perfil CRP ignora templates de especialidade médica e usa prompt próprio
+    if (isCRP) templateData = null;
     // Use template system prompt if available, otherwise use default
-    const baseSystemPrompt = templateData?.system_prompt ||
+    const baseSystemPrompt = isCRP ? CRP_SYSTEM_PROMPT : (templateData?.system_prompt ||
       `Assistente clínico PT-BR. Gere laudo estruturado. Regras: sem diagnóstico definitivo, 2 hipóteses, red flags, CID-10. Disclaimer: "IA para apoio; não substitui avaliação clínica." Extraia TODOS os dados da transcrição: nome completo do paciente se mencionado, todos os sinais vitais citados, medicações, diagnóstico, conduta e prescricoes_sugeridas.`;
 
     // Hard requirement: anamnese precisa ser COMPLETA, não um resumo curto.
