@@ -132,6 +132,58 @@ const LAUDO_TOOL = {
   },
 };
 
+// ===== CRP (Psicologia) — Registro de sessão =====
+// Resolução CFP nº 001/2009 (Art. 2º) e CFP nº 009/2024.
+// Regra absoluta: nenhum conteúdo interpretativo gerado pelo sistema.
+const DISCLAIMER_CRP =
+  'Registro elaborado com apoio de sistema de inteligência artificial para transcrição e estruturação do conteúdo da sessão. As interpretações, conclusões e a condução técnica são de autoria exclusiva da profissional signatária, que revisou integralmente o conteúdo antes da assinatura.';
+const CRP_RETENTION_YEARS = 20; // Lei nº 13.787/2018
+
+const REGISTRO_TOOL = {
+  type: "function",
+  function: {
+    name: "generate_registro",
+    description: "Gera um Registro de sessão de psicologia, organizando APENAS o que foi dito em voz alta pela profissional. Nunca interpreta, conclui ou sugere.",
+    parameters: {
+      type: "object",
+      properties: {
+        identificacao: { type: "string", description: "I — Identificação da pessoa atendida: apenas dados citados na sessão (nome, idade, etc.). Vazio se não citado." },
+        avaliacao_demanda: { type: "string", description: "II — Demanda trazida e objetivos do trabalho, com as palavras ditas na sessão. Vazio se não citado." },
+        evolucao: { type: "string", description: "III — Registro da evolução do trabalho: o que ocorreu na sessão, em linguagem descritiva e factual. Vazio se não houver conteúdo." },
+        encaminhamento_encerramento: { type: "string", description: "IV — Encaminhamento ou encerramento, somente se mencionado pela profissional. Vazio caso contrário." },
+        instrumentos: { type: "string", description: "V — Instrumentos de avaliação utilizados, somente se mencionados. Vazio caso contrário." },
+        dados_paciente_extraidos: {
+          type: "object",
+          properties: {
+            nome_completo: { type: "string", description: "Nome completo da pessoa atendida, exatamente como citado. Vazio se não citado — não invente." },
+            iniciais: { type: "string" },
+            idade: { type: "string" },
+            sexo: { type: "string" },
+          },
+        },
+        texto_registro_md: { type: "string", description: "Registro de sessão em Markdown com os cinco componentes (I a V) como seções. Sem interpretação, conclusão ou juízo clínico." },
+      },
+      required: ["identificacao", "avaliacao_demanda", "evolucao", "encaminhamento_encerramento", "instrumentos", "dados_paciente_extraidos", "texto_registro_md"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const CRP_SYSTEM_PROMPT = `Você organiza registros de sessão de psicologia em PT-BR, conforme a Resolução CFP nº 001/2009 (Art. 2º) e a Resolução CFP nº 009/2024.
+
+REGRAS ABSOLUTAS — violá-las torna o documento inválido:
+1. PROIBIDO gerar interpretação, conclusão, impressão clínica, sugestão de conduta ou qualquer juízo profissional que a profissional não tenha dito em voz alta na sessão.
+2. PROIBIDO usar os termos: "laudo", "avaliação psicológica", "testagem", "teste psicológico", "hipótese diagnóstica", "diagnóstico", "CID", "CID-10", "prescrição", "receita".
+3. O conteúdo clínico é de autoria exclusiva da profissional. Você apenas TRANSCREVE e ORGANIZA o que foi dito.
+4. Campo sem conteúdo falado fica VAZIO (""). NUNCA complete por inferência, NUNCA presuma, NUNCA preencha com linguagem clínica genérica.
+5. Estrutura obrigatória do registro (Art. 2º da Resolução CFP nº 001/2009):
+   I — Identificação da pessoa atendida
+   II — Avaliação da demanda e definição dos objetivos do trabalho
+   III — Registro da evolução do trabalho
+   IV — Registro de encaminhamento ou encerramento
+   V — Documentos de instrumentos de avaliação (quando houver)
+6. NOME DA PESSOA ATENDIDA: capture exatamente como citado em dados_paciente_extraidos.nome_completo. Vazio se não citado.`;
+
 // Models by mode — fast uses the lightest model for speed; long uses Flash for
 // large context windows. Each mode has a fallback model that takes over if the
 // primary times out or returns 5xx.
@@ -209,9 +261,10 @@ serve(async (req) => {
     };
 
     // ===== PARALLEL: claim + rate limit + template fetch =====
-    const resolvedSpecialty = template_specialty || 
-      (await supabase.from('profiles').select('specialty').eq('id', user.id).single()).data?.specialty || 
-      null;
+    const profileRow = (await supabase.from('profiles').select('specialty, conselho').eq('id', user.id).single()).data;
+    const resolvedSpecialty = template_specialty || profileRow?.specialty || null;
+    // Perfil CRP (Psicologia) muda completamente o documento gerado
+    const isCRP = profileRow?.conselho === 'CRP';
 
     const [claimResult, rateLimitResult, templateResult, defaultTemplateResult] = await Promise.all([
       // Atomic claim
