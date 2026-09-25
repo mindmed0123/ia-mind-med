@@ -23,6 +23,9 @@ import { useToast } from "@/hooks/use-toast";
 import { TrialReminderBanner } from "@/components/trial/TrialReminderBanner";
 import { getCloudFunctionHeaders } from "@/lib/cloud-function-auth";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useProfessionalProfile } from "@/hooks/useProfessionalProfile";
+import { ProfessionalProfileGate } from "@/components/profile/ProfessionalProfileGate";
+import { docLabel } from "@/lib/professional-profile";
 
 
 const Dashboard = () => {
@@ -34,6 +37,8 @@ const Dashboard = () => {
   const { hasAccess: hasAgendaAccess } = useFeatureAccess("appointments");
   const { organization } = useOrganization();
   const { subscription } = useAppState();
+  const { profile: proProfile, loading: proLoading, needsProfile, isCRP, refresh: refreshProProfile } = useProfessionalProfile();
+  const [skippedProfile, setSkippedProfile] = useState(false);
   const isPendingCheckout = subscription?.status === "PENDING_CHECKOUT";
   const isOrgOwner = !!organization && !!user && organization.owner_id === user.id;
 
