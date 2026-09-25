@@ -23,6 +23,8 @@ import {
   sanitizeText
 } from '@/lib/validation';
 import { getProfileImageUrl, buildProfileImagePublicUrl } from '@/lib/profile-images';
+import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
+import { ProfessionalProfileForm } from '@/components/profile/ProfessionalProfileForm';
 
 export default function Perfil() {
   const { user } = useAuth();
@@ -30,6 +32,7 @@ export default function Perfil() {
   const { toast } = useToast();
   const { subscription, loading: subLoading } = useSubscription();
   const { templates: specialtyTemplates, loading: templatesLoading } = useSpecialtyTemplates();
+  const { profile: proProfile, loading: proLoading, refresh: refreshProProfile } = useProfessionalProfile();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -331,6 +334,29 @@ export default function Perfil() {
                   )}
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Perfil profissional por conselho */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Perfil profissional</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Conselho, registro e especialidade — ajusta os documentos que a MindMed gera para você.
+              </p>
+            </CardHeader>
+            <CardContent>
+              {proLoading ? (
+                <p className="text-sm text-muted-foreground">Carregando...</p>
+              ) : (
+                <ProfessionalProfileForm
+                  initial={proProfile}
+                  onSaved={() => {
+                    refreshProProfile();
+                    loadProfile();
+                  }}
+                />
+              )}
             </CardContent>
           </Card>
 
