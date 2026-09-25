@@ -607,7 +607,7 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
       <Tabs defaultValue="clinico" className="w-full">
         <TabsList className="grid w-full grid-cols-4 h-11 bg-muted/50 rounded-xl p-1">
           <TabsTrigger value="clinico" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <ClipboardList className="w-4 h-4" /> Laudo Clínico
+            <ClipboardList className="w-4 h-4" /> {laudo.sections?.conselho === 'CRP' ? 'Registro de sessão' : 'Laudo Clínico'}
           </TabsTrigger>
           <TabsTrigger value="resumo" className="rounded-lg text-sm font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <Brain className="w-4 h-4" /> Resumo
@@ -622,7 +622,11 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
 
         {/* ══════ TAB: LAUDO CLÍNICO (copy-friendly premium view) ══════ */}
         <TabsContent value="clinico" className="mt-5">
-          <CleanClinicalLaudo laudo={laudo} onCopy={copyToClipboard} />
+          {laudo.sections?.conselho === 'CRP' ? (
+            <RegistroSessaoCRP laudo={laudo} onCopy={copyToClipboard} />
+          ) : (
+            <CleanClinicalLaudo laudo={laudo} onCopy={copyToClipboard} />
+          )}
         </TabsContent>
 
 
@@ -630,10 +634,12 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
         <TabsContent value="resumo" className="space-y-4 mt-5">
 
           {/* AI Microcopy */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Sparkles className="w-3 h-3 text-primary" />
-            <span>Análise clínica automatizada • Alta precisão</span>
-          </div>
+          {laudo.sections?.conselho !== 'CRP' && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Sparkles className="w-3 h-3 text-primary" />
+              <span>Análise clínica automatizada • Alta precisão</span>
+            </div>
+          )}
 
           {/* Specialty sections */}
           {laudo.sections?.template_sections && laudo.sections.template_sections.length > 0 && laudo.sections?.specialty_sections && (
