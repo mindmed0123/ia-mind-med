@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { resolverParceiro, PLANOS_COM_CUPOM } from "../_shared/parceiros.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -72,7 +73,12 @@ serve(async (req) => {
     });
 
     const body = await req.json();
-    const { name, whatsapp, plan = "mindmed_pro", attribution = {} } = body;
+    const { name, whatsapp, plan = "mindmed_pro", attribution = {}, parceiro } = body;
+
+    // Parceiro: token inválido/ausente é ignorado em silêncio
+    const p = resolverParceiro(parceiro);
+    const discounts = p && PLANOS_COM_CUPOM.includes(plan) ? [{ coupon: p.cupom }] : undefined;
+    const parceiroMeta: Record<string, string> = discounts && p ? { parceiro: p.slug } : {};
 
     // Sanitiza atribuição: só strings conhecidas, máximo 200 caracteres cada
     const attr: Record<string, string> = {};
@@ -173,6 +179,7 @@ serve(async (req) => {
       payment_method_collection: "always",
       billing_address_collection: "auto",
       allow_promotion_codes: false,
+      ...(discounts ? { discounts } : {}),
 
       // Atribuição: permite ver no painel do Stripe de qual campanha veio cada assinatura
       client_reference_id: userId,
@@ -190,6 +197,7 @@ serve(async (req) => {
           user_id: userId,
           plan: plan,
           ...attr,
+          ...parceiroMeta,
         },
       },
 
@@ -197,6 +205,7 @@ serve(async (req) => {
         user_id: userId,
         plan: plan,
         ...attr,
+        ...parceiroMeta,
       },
 
       custom_text: {

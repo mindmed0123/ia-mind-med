@@ -57,6 +57,14 @@ export default function MedicosTrial() {
     trackViewContent('trial_medicos');
   }, []);
 
+  // Parceiro: apenas carrega adiante; a validação é no servidor
+  useEffect(() => {
+    const parceiro = searchParams.get('parceiro');
+    if (parceiro) {
+      try { sessionStorage.setItem('mm_parceiro', parceiro.slice(0, 100)); } catch { /* ignore */ }
+    }
+  }, [searchParams]);
+
   const phoneOk = validatePhone(formData.whatsapp);
   const passwordChecks = useMemo(
     () => PASSWORD_RULES.map((r) => ({ ...r, ok: r.test(formData.password) })),

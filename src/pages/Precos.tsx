@@ -13,19 +13,48 @@ import { useVagasFundador } from '@/hooks/useVagasFundador';
 import { Activity, Check, ShieldCheck, ArrowRight } from 'lucide-react';
 
 const PLAN_ORDER = ['mindmed_fundador', 'mindmed_pro_anual', 'mindmed_pro', 'mindmed_starter'];
+const PLAN_ORDER_PARCEIRO = ['mindmed_pro_anual', 'mindmed_pro', 'mindmed_starter'];
+const PLANOS_COM_DESCONTO: string[] = ['mindmed_pro', 'mindmed_pro_anual'];
 
 export default function Precos() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const { restantes: vagasRestantes } = useVagasFundador();
-  const fundadorDisponivel = vagasRestantes > 0;
+  const [parceiroToken] = useState<string | null>(() => {
+    try { return sessionStorage.getItem('mm_parceiro'); } catch { return null; }
+  });
+  const [parceiro, setParceiro] = useState<{ percentual: number; rotulo: string } | null>(null);
+
+  useEffect(() => {
+    if (!parceiroToken) return;
+    let ativo = true;
+    supabase.functions
+      .invoke('validar-parceiro', { body: { parceiro: parceiroToken } })
+      .then(({ data }) => {
+        if (ativo && data?.valido && typeof data.percentual === 'number' && data.rotulo) {
+          setParceiro({ percentual: data.percentual, rotulo: String(data.rotulo) });
+        }
+      })
+      .catch(() => {});
+    return () => { ativo = false; };
+  }, [parceiroToken]);
+
+  const fundadorDisponivel = vagasRestantes > 0 && !parceiro;
+  const ordem = parceiro ? PLAN_ORDER_PARCEIRO : PLAN_ORDER;
 
   const planosVisiveis = [...SUBSCRIPTION_PLANS]
     .filter((p) => p.id !== 'mindmed_fundador' || fundadorDisponivel)
-    .sort((a, b) => PLAN_ORDER.indexOf(a.id) - PLAN_ORDER.indexOf(b.id));
+    .sort((a, b) => ordem.indexOf(a.id) - ordem.indexOf(b.id));
 
   const planoPadrao = fundadorDisponivel ? 'mindmed_fundador' : 'mindmed_pro_anual';
+
+  const precoComDesconto = (plan: (typeof SUBSCRIPTION_PLANS)[number]) => {
+    if (!parceiro || !PLANOS_COM_DESCONTO.includes(plan.id)) return null;
+    const valor = plan.priceValue * (1 - parceiro.percentual / 100);
+    const fmt = valor.toLocaleString('pt-BR', { minimumFractionDigits: valor % 1 ? 2 : 0, maximumFractionDigits: 2 });
+    return `R$ ${fmt}${plan.id === 'mindmed_pro_anual' ? '/ano' : '/mês'}`;
+  };
   const [selectedPlan, setSelectedPlan] = useState(planoPadrao);
 
   useEffect(() => {
@@ -61,6 +90,7 @@ export default function Precos() {
           whatsapp: profile?.whatsapp || '',
           plan: planId,
           attribution: getAttribution(),
+          ...(parceiroToken ? { parceiro: parceiroToken } : {}),
         },
       });
 
@@ -85,6 +115,12 @@ export default function Precos() {
           <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">MindMed</span>
         </Link>
 
+        {parceiro && (
+          <div className="mb-6 rounded-lg border border-primary/40 bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">
+            Condição exclusiva para associados da {parceiro.rotulo} aplicada.
+          </div>
+        )}
+
         <div className="text-center mb-10">
           <h1 className="text-3xl md:text-4xl font-bold mb-3">Planos MindMed</h1>
           <p className="text-muted-foreground text-lg">
@@ -108,7 +144,14 @@ export default function Precos() {
                     <CardTitle className="text-xl">{plan.label}</CardTitle>
                     {plan.badge && <Badge variant={isSelected ? 'default' : 'secondary'}>{plan.badge}</Badge>}
                   </div>
-                  <p className="text-3xl font-bold mt-2">{plan.price}</p>
+                  {precoComDesconto(plan) ? (
+                    <div className="mt-2 flex items-baseline gap-2 flex-wrap">
+                      <p className="text-3xl font-bold">{precoComDesconto(plan)}</p>
+                      <p className="text-sm text-muted-foreground line-through">{plan.price}</p>
+                    </div>
+                  ) : (
+                    <p className="text-3xl font-bold mt-2">{plan.price}</p>
+                  )}
                   <CardDescription>{plan.description}</CardDescription>
                   {plan.id === 'mindmed_fundador' && (
                     <p className="text-xs text-primary mt-1">Restam {vagasRestantes} de 100 vagas</p>
