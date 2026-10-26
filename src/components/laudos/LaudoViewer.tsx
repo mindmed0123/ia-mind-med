@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 import { useAppState } from "@/hooks/useAppState";
+import { ModeloDocumentViewer } from "@/components/laudos/ModeloDocumentViewer";
+import { AVISO_INFERENCIA } from "../../../supabase/functions/_shared/modelos-laudo";
 import { buildCleanLaudoText } from "@/lib/laudo-clean-text";
 
 interface LaudoSectionConfig {
@@ -155,7 +157,6 @@ const CleanClinicalLaudo = ({
     cid10_codes: laudo.cid10_codes,
     conducts: laudo.conducts,
     complementary_exams: laudo.complementary_exams,
-    red_flags: laudo.red_flags,
     diagnosis_main: laudo.diagnosis_main,
     diagnosis_diff: laudo.diagnosis_diff,
     summary: laudo.summary,
@@ -292,19 +293,6 @@ const CleanClinicalLaudo = ({
           {examesComplementares && (
             <ClinicalSection title="Exames Complementares" number={next()}>
               {examesComplementares}
-            </ClinicalSection>
-          )}
-
-          {laudo.red_flags && laudo.red_flags.length > 0 && (
-            <ClinicalSection title="Sinais de Alerta / Red Flags" number={next()}>
-              <ul className="space-y-1.5 list-none pl-0">
-                {laudo.red_flags.map((f: any, i: number) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
-                    <span>{typeof f === "string" ? f : f?.text || f?.description}</span>
-                  </li>
-                ))}
-              </ul>
             </ClinicalSection>
           )}
 
@@ -535,6 +523,7 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
 
   return (
     <div className="space-y-5 max-w-4xl mx-auto">
+      {laudo.sections?.inferencia === true && <div role="alert" className="border-l-4 border-primary bg-primary/5 p-4 text-sm text-foreground">{AVISO_INFERENCIA}</div>}
       {/* ── Status Bar ── */}
       <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-primary/5 via-primary/10 to-accent/5 border border-primary/15 px-5 py-3">
         <div className="flex items-center gap-4 flex-wrap">
@@ -625,7 +614,7 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
           {laudo.sections?.conselho === 'CRP' ? (
             <RegistroSessaoCRP laudo={laudo} onCopy={copyToClipboard} />
           ) : (
-            <CleanClinicalLaudo laudo={laudo} onCopy={copyToClipboard} />
+            laudo.sections?.modelo_campos ? <ModeloDocumentViewer laudo={laudo} onCopy={copyToClipboard} /> : <CleanClinicalLaudo laudo={laudo} onCopy={copyToClipboard} />
           )}
         </TabsContent>
 
@@ -770,20 +759,6 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
                   <Badge key={idx} className="bg-primary text-primary-foreground font-bold tracking-wider px-3 py-1 rounded-lg">{cid}</Badge>
                 ))}
               </div>
-            </SectionBlock>
-          )}
-
-          {/* Red Flags */}
-          {isSectionVisible('red_flags') && laudo.red_flags && laudo.red_flags.length > 0 && (
-            <SectionBlock icon={ShieldAlert} title="Sinais de Alerta" variant="alert" delay={300}>
-              <ul className="space-y-2.5">
-                {laudo.red_flags.map((flag: string, idx: number) => (
-                  <li key={idx} className="flex items-start gap-2.5 text-sm">
-                    <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
-                    <span className="text-destructive font-medium">{flag}</span>
-                  </li>
-                ))}
-              </ul>
             </SectionBlock>
           )}
 

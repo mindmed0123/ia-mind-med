@@ -21,7 +21,6 @@ const DEFAULT_SECTIONS: LaudoSectionConfig[] = [
   { key: 'hipotese', label: 'Hipótese Diagnóstica', enabled: true },
   { key: 'diferencial', label: 'Diagnóstico Diferencial', enabled: true },
   { key: 'cid10', label: 'CID-10', enabled: true },
-  { key: 'red_flags', label: 'Sinais de Alerta', enabled: true },
   { key: 'exames', label: 'Exames Complementares', enabled: true },
   { key: 'conduta', label: 'Conduta', enabled: true },
   { key: 'prescricoes', label: 'Prescrições Sugeridas', enabled: false },
@@ -33,7 +32,7 @@ const PRESETS: Record<string, { label: string; description: string; sections: st
   padrao: {
     label: 'Padrão Completo',
     description: 'Modelo mais usado no mercado — inclui todas as seções clínicas essenciais',
-    sections: ['patient_card', 'anamnese', 'hipotese', 'diferencial', 'cid10', 'red_flags', 'exames', 'conduta', 'disclaimer'],
+    sections: ['patient_card', 'anamnese', 'hipotese', 'diferencial', 'cid10', 'exames', 'conduta', 'disclaimer'],
   },
   resumido: {
     label: 'Resumido',
@@ -43,7 +42,7 @@ const PRESETS: Record<string, { label: string; description: string; sections: st
   completo: {
     label: 'Completo + Prescrição',
     description: 'Inclui prescrições sugeridas e resumo para o paciente',
-    sections: ['patient_card', 'anamnese', 'hipotese', 'diferencial', 'cid10', 'red_flags', 'exames', 'conduta', 'prescricoes', 'resumo_paciente', 'disclaimer'],
+    sections: ['patient_card', 'anamnese', 'hipotese', 'diferencial', 'cid10', 'exames', 'conduta', 'prescricoes', 'resumo_paciente', 'disclaimer'],
   },
 };
 
@@ -57,10 +56,10 @@ const STORAGE_KEY = 'mindmed_laudo_template';
 export const LaudoTemplateConfig = ({ onConfigChange, initialConfig }: LaudoTemplateConfigProps) => {
   const { toast } = useToast();
   const [sections, setSections] = useState<LaudoSectionConfig[]>(() => {
-    if (initialConfig) return initialConfig;
+    if (initialConfig) return initialConfig.filter(s => s.key !== 'red_flags');
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) return JSON.parse(saved).filter((s: LaudoSectionConfig) => s.key !== 'red_flags');
     } catch {}
     return DEFAULT_SECTIONS;
   });
