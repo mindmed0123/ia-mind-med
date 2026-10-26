@@ -64,11 +64,6 @@ const UPDATE_TOOL = {
           items: { type: "string" },
           description: "Novos códigos CID-10 a adicionar (sem duplicar existentes).",
         },
-        red_flags_added: {
-          type: "array",
-          items: { type: "string" },
-          description: "Novos sinais de alerta a adicionar (sem duplicar existentes).",
-        },
         complementary_exams_added: {
           type: "array",
           items: { type: "string" },
@@ -117,7 +112,6 @@ function buildPlainLaudo(laudo: any) {
   if (s.orientacoes) lines.push(`[Orientações]: ${s.orientacoes}`);
   if (s.observacoes) lines.push(`[Observações]: ${s.observacoes}`);
   if (laudo.cid10_codes?.length) lines.push(`[CID-10]: ${laudo.cid10_codes.join(", ")}`);
-  if (laudo.red_flags?.length) lines.push(`[Red Flags]: ${(laudo.red_flags as any[]).join(" | ")}`);
   return lines.join("\n");
 }
 
@@ -164,6 +158,11 @@ serve(async (req) => {
       });
     }
 
+    // Model documents are edited directly; do not switch a documentation-only
+    // document to the legacy clinical enrichment prompt on a later update.
+    if ((laudo.sections as any)?.scope_version === 'modelos-2026-10' && (laudo.sections as any)?.modelo_id !== 'padrao') {
+      return new Response(JSON.stringify({ error: 'Edite as seções diretamente na revisão deste modelo.' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
     if (!lovableKey) {
       return new Response(JSON.stringify({ error: "AI key missing" }), {
@@ -238,7 +237,7 @@ Atualize o laudo seguindo as regras. Devolva apenas seções modificadas via too
           ...(currentSections.hipoteses || {}),
           ...(value as any),
         };
-      } else {
+      } else if (!['modelo_id','modelo_nome','inferencia','scope_version','modelo_secoes_def'].includes(key)) {
         mergedSections[key] = value;
       }
     }
@@ -252,21 +251,6 @@ Atualize o laudo seguindo as regras. Devolva apenas seções modificadas via too
     const mergedCid = Array.from(
       new Set([...existingCid, ...newCid].map((c: any) => String(c).trim()).filter(Boolean)),
     );
-
-    // Merge red flags (dedup by lowercase)
-    const newFlags = Array.isArray(parsed.red_flags_added) ? parsed.red_flags_added : [];
-    const existingFlags = Array.isArray(laudo.red_flags) ? laudo.red_flags : [];
-    const seenFlags = new Set<string>();
-    const mergedFlags: any[] = [];
-    for (const f of [...existingFlags, ...newFlags]) {
-      const key = String(typeof f === "string" ? f : f?.text || JSON.stringify(f))
-        .toLowerCase()
-        .trim();
-      if (key && !seenFlags.has(key)) {
-        seenFlags.add(key);
-        mergedFlags.push(f);
-      }
-    }
 
     // Merge complementary exams (dedup)
     const newExams = Array.isArray(parsed.complementary_exams_added)
@@ -295,7 +279,7 @@ Atualize o laudo seguindo as regras. Devolva apenas seções modificadas via too
       .update({
         sections: mergedSections,
         cid10_codes: mergedCid,
-        red_flags: mergedFlags,
+        red_flags: [],
         complementary_exams: mergedExams,
         diagnosis_main: newDiagMain,
         diagnosis_diff: newDiagDiff,

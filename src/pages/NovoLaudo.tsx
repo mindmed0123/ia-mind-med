@@ -269,7 +269,7 @@ const NovoLaudo = () => {
       }
       return false;
     }
-  }, [selectedSpecialty, session?.access_token, toast]);
+  }, [selectedSpecialty, session?.access_token, toast, modelos.selected, modelos.conselho]);
 
   const handleLaudoUpdate = useCallback((updated: any) => {
     setLaudo(updated);
