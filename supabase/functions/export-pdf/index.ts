@@ -1,3 +1,4 @@
+import { normalizeDocumentFormat, formatHtml, escapeDocument } from "../_shared/document-format.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { crypto } from "https://deno.land/std@0.224.0/crypto/mod.ts";
 
@@ -93,6 +94,18 @@ Deno.serve(async (req) => {
       .eq('id', user.id)
       .single();
 
+    const { data: formatRow } = await supabase.from('preferencias_documento').select('*').eq('user_id', user.id).maybeSingle();
+    const documentFormat = normalizeDocumentFormat(formatRow);
+    const resolveImage = async (url: string | null) => {
+      if (!url) return null;
+      const marker = '/profile-images/';
+      const path = url.split(marker)[1]?.split('?')[0];
+      if (!path || !path.startsWith(user.id + '/')) return null;
+      const { data } = await supabase.storage.from('profile-images').createSignedUrl(path, 3600);
+      return data?.signedUrl || null;
+    };
+    const [logoUrl, letterheadUrl] = await Promise.all([resolveImage(profile?.logo_url),resolveImage(documentFormat.papel_timbrado)]);
+
     // Build sections
     let sections = laudo.sections as PdfSection || {};
     const isSectionsEmpty = !sections.hipoteses?.principal && !sections.conduta;
@@ -151,10 +164,14 @@ Deno.serve(async (req) => {
     const timeFormatted = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const dateShort = now.toLocaleDateString('pt-BR');
 
-    const redFlags = laudo.red_flags as string[] | null;
     const complementaryExams = laudo.complementary_exams as string[] | null;
 
-    const html = generateContentHtml(sections, dateShort, redFlags, complementaryExams);
+    let html = generateContentHtml(sections, dateShort, complementaryExams);
+    const modelSections = (laudo.sections as any);
+    if (modelSections?.modelo_campos && Array.isArray(modelSections.modelo_secoes_def)) {
+      html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"></head><body><h1>${escapeDocument(modelSections.modelo_nome)}</h1>${modelSections.modelo_secoes_def.map((f: any) => `<section style="break-inside:avoid;margin-bottom:16pt"><h2>${escapeDocument(f.rotulo)}</h2><p style="white-space:pre-wrap">${escapeDocument(modelSections.modelo_campos[f.chave] || '')}</p></section>`).join('')}<p>${escapeDocument(laudo.legal_disclaimer)}</p></body></html>`;
+    }
+    html = formatHtml(html, documentFormat);
 
     const pdfMeta = {
       doctorName: profile?.full_name || 'Médico Responsável',
@@ -167,6 +184,7 @@ Deno.serve(async (req) => {
       hash,
       dateFormatted,
       timeFormatted,
+      documentFormat, logoUrl, letterheadUrl,
     };
 
     const pdfData = {
@@ -184,7 +202,7 @@ Deno.serve(async (req) => {
     try {
       await supabase.rpc('log_audit_action', {
         p_entity: 'REPORT', p_entity_id: laudo.id, p_action: 'EXPORT',
-        p_diff: { hash, timestamp: new Date().toISOString() }
+        p_diff: { hash, timestamp: new Date().toISOString(), modelo_id: (laudo.sections as any)?.modelo_id, inferencia: (laudo.sections as any)?.inferencia, scope_version: (laudo.sections as any)?.scope_version }
       });
     } catch (e) {
       console.warn('Audit log failed:', e);
@@ -221,7 +239,6 @@ Deno.serve(async (req) => {
 function generateContentHtml(
   sections: PdfSection,
   dateShort: string,
-  redFlags: string[] | null,
   complementaryExams: string[] | null,
 ): string {
   const fmt = (text: string) => text ? text.replace(/\n/g, '<br>') : '';
@@ -442,15 +459,6 @@ function generateContentHtml(
         </div>
       </td>
     </tr></table>
-  </div>` : ''}
-
-  <!-- ═══════════ RED FLAGS ═══════════ -->
-  ${redFlags && redFlags.length > 0 ? `
-  <div class="section-block">
-    <div style="background: #FFF5F5; border: 1px solid #FECACA; border-left: 4px solid #DC2626; border-radius: 8px; padding: 14px 18px;">
-      <div style="font-family: 'Merriweather', serif; font-size: 9pt; font-weight: 700; color: #991B1B; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;">⚠ Sinais de Alerta</div>
-      ${redFlags.map(f => `<div style="font-size: 9pt; color: #7F1D1D; padding: 4px 0 4px 16px; line-height: 1.6; border-bottom: 1px solid #FEE2E2;">▸ ${f}</div>`).join('')}
-    </div>
   </div>` : ''}
 
   <!-- ═══════════ EXAMES COMPLEMENTARES ═══════════ -->

@@ -366,6 +366,7 @@ export default function Receituarios() {
         // Gerar PDF no cliente
         const pdfBlob = await generatePdf({
           html: data.html,
+          documentFormat: data.documentFormat, letterheadUrl: data.letterheadUrl,
           fileName,
           verifyUrl: `${window.location.origin}/r/${prescriptionId}`,
         });
@@ -419,6 +420,7 @@ export default function Receituarios() {
       const fileName = `receituario-${prescriptionId}-${Date.now()}.pdf`;
       const pdfBlob = await generatePdf({
         html: data.html,
+        documentFormat: data.documentFormat, letterheadUrl: data.letterheadUrl,
         fileName,
         verifyUrl: `${window.location.origin}/r/${prescriptionId}`,
       });
