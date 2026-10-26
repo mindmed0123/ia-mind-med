@@ -231,7 +231,6 @@ const NovoLaudo = () => {
           laudo_id: currentLaudoId,
           mode: 'fast',
           template_specialty: selectedSpecialty || undefined,
-          modelo_id: modelos.conselho === 'CRP' ? undefined : modelos.selected,
         },
         headers,
       });
@@ -528,7 +527,7 @@ const NovoLaudo = () => {
   }, [laudoId, transcript, toast, startPolling, invokeGenerateLaudo]);
 
   const handleTextGenerate = async (text: string) => {
-    if (!user || isSubmitting) return;
+    if (!user || isSubmitting || modelos.loading || modelos.error) return;
 
     setIsSubmitting(true);
     setPipelineStage('preparing');
@@ -576,7 +575,6 @@ const NovoLaudo = () => {
           laudo_id: newLaudo.id,
           mode: 'complete',
           template_specialty: selectedSpecialty || undefined,
-          modelo_id: modelos.conselho === 'CRP' ? undefined : modelos.selected,
         },
         headers,
       });
@@ -826,7 +824,6 @@ const NovoLaudo = () => {
           laudo_id: laudoId,
           mode: 'complete',
           template_specialty: selectedSpecialty || undefined,
-          modelo_id: modelos.conselho === 'CRP' ? undefined : modelos.selected,
         },
         headers,
       });
@@ -929,7 +926,6 @@ const NovoLaudo = () => {
                 </CardContent>
               </Card>
 
-              {modelos.conselho !== 'CRP' && <ModeloSelector models={modelos.models} value={modelos.selected} onChange={modelos.setSelected} disabled={modelos.locked || modelos.loading || !!modelos.error} error={modelos.error} />}
               <PatientDataForm initialData={patientData} onDataChange={setPatientData} autoSave={false} />
             </div>
 
