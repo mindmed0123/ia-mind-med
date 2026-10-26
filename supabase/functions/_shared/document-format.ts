@@ -12,6 +12,6 @@ export function normalizeDocumentFormat(raw?: any): DocumentFormat {
 }
 export function escapeDocument(text: unknown) { return String(text ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 export function formatHtml(html: string, f: DocumentFormat) {
-  const css = `<style>body{font-family:'${f.fonte}',Arial,sans-serif!important;font-size:${f.corpo}pt!important} .content-wrapper,.page{font-family:inherit!important} .document-footer{font-size:7pt;overflow-wrap:anywhere;margin-top:16pt} ${!f.cabecalho ? '.header{display:none!important}' : ''}${!f.logo ? '.header img[alt="Logo"]{display:none!important}' : ''} @page{margin:${f.margem_superior}mm ${f.margem_lateral}mm ${f.margem_inferior}mm}</style>`;
+  const css = `<style>body{font-family:'${f.fonte}',Arial,sans-serif!important;font-size:${f.corpo}pt!important} .content-wrapper,.page,.content-wrapper *,.page *{font-family:'${f.fonte}',Arial,sans-serif!important} .content-wrapper td,.content-wrapper p,.medication-item p,.patient-info p{font-size:${f.corpo}pt!important} .document-footer{font-size:7pt;overflow-wrap:anywhere;margin-top:16pt} ${!f.cabecalho ? '.header{display:none!important}' : ''}${!f.logo ? '.header img[alt="Logo"]{display:none!important}' : ''} @page{margin:${f.margem_superior}mm ${f.margem_lateral}mm ${f.margem_inferior}mm}</style>`;
   return html.replace('</head>',`${css}</head>`);
 }

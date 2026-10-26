@@ -76,6 +76,16 @@ const NovoLaudo = () => {
   const [laudoTemplateSections, setLaudoTemplateSections] = useState<LaudoSectionConfig[]>([]);
   const transcriptRef = useRef(transcript);
   const patientDataRef = useRef(patientData);
+  const chooseModelo = async (id: string) => {
+    if (modelos.locked) return;
+    if (laudoId) {
+      const { data: current, error: loadError } = await supabase.from('laudos').select('sections').eq('id',laudoId).single();
+      if (loadError) { toast({title:'Não foi possível trocar o modelo',variant:'destructive'}); return; }
+      const { error } = await supabase.from('laudos').update({sections:{...(current?.sections as any || {}),modelo_selecionado_id:id}}).eq('id',laudoId);
+      if (error) { toast({title:'Não foi possível trocar o modelo',variant:'destructive'}); return; }
+    }
+    modelos.setSelected(id);
+  };
 
   // Auto-fill patient data from embedded bridge token
   useEffect(() => {
@@ -596,7 +606,7 @@ const NovoLaudo = () => {
     meta?: { blob?: Blob; durationSec?: number },
   ) => {
     // Lock síncrono — evita race com múltiplos cliques rápidos
-    if (submitLockRef.current || isSubmitting) {
+    if (submitLockRef.current || isSubmitting || modelos.loading || modelos.error) {
       toast({
         title: "Já estamos processando seu laudo",
         description: "Aguarde, não é necessário enviar novamente.",
@@ -885,7 +895,7 @@ const NovoLaudo = () => {
 
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-4">
-              {modelos.conselho !== 'CRP' && (!laudo || laudo.status !== 'completed') && <ModeloSelector models={modelos.models} value={modelos.selected} onChange={modelos.setSelected} disabled={modelos.locked || modelos.loading || !!modelos.error} error={modelos.error} />}
+              {modelos.conselho !== 'CRP' && (!laudo || laudo.status !== 'completed') && <ModeloSelector models={modelos.models} value={modelos.selected} onChange={id => {void chooseModelo(id);}} disabled={modelos.locked || modelos.loading || !!modelos.error} error={modelos.error} />}
             {/* Specialty Selector */}
               <Card>
                 <CardContent className="pt-4">
@@ -1028,7 +1038,7 @@ const NovoLaudo = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
           {/* ── LEFT SIDEBAR ── */}
           <div className="lg:col-span-3 space-y-4">
-            {modelos.conselho !== 'CRP' && (!laudo || laudo.status !== 'completed') && <ModeloSelector models={modelos.models} value={modelos.selected} onChange={modelos.setSelected} disabled={modelos.locked || modelos.loading || !!modelos.error} error={modelos.error} />}
+            {modelos.conselho !== 'CRP' && (!laudo || laudo.status !== 'completed') && <ModeloSelector models={modelos.models} value={modelos.selected} onChange={id => {void chooseModelo(id);}} disabled={modelos.locked || modelos.loading || !!modelos.error} error={modelos.error} />}
             {/* Specialty Selector */}
             {!laudo?.status || laudo.status !== 'completed' ? (
               <Card className="border-border/60">
@@ -1084,7 +1094,7 @@ const NovoLaudo = () => {
 
             {/* Template Config - only show when laudo is completed (não se aplica a registros CRP) */}
             {laudo?.status === 'completed' && laudo?.sections?.conselho !== 'CRP' && (
-              <LaudoTemplateConfig onConfigChange={setLaudoTemplateSections} />
+              laudo?.sections?.modelo_campos ? <Badge variant="outline">{laudo.sections.modelo_nome}</Badge> : <LaudoTemplateConfig onConfigChange={setLaudoTemplateSections} />
             )}
           </div>
 

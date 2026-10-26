@@ -35,6 +35,12 @@ export function useModelosLaudo() {
         if (result.error) throw result.error;
         org = result.data;
       }
+      const personal = (models.data || []).map(customModelo);
+      if (org?.modelo_padrao_id && !MODELOS_LAUDO.some(m => m.id === org.modelo_padrao_id) && !personal.some(m => m.id === org.modelo_padrao_id)) {
+        const result = await supabase.from('modelos_laudo_usuario').select('*').eq('id',org.modelo_padrao_id).maybeSingle();
+        if (result.error || !result.data) throw new Error('Modelo da organização indisponível');
+        setCustom([...personal, customModelo(result.data)]);
+      }
       const pref = p.data?.modelo_padrao_id || 'padrao';
       setPreference(pref);
       setSelected(org?.modelo_padrao_id || pref);

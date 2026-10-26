@@ -259,10 +259,11 @@ function groupByReceita(items: any[]): Array<{ tipo: TipoReceita; items: any[] }
   for (const it of items) {
     const t = inferTipoReceita(it);
     if (!map.has(t)) map.set(t, []);
-    map.get(t)!.push(it);
+    const group = map.get(t);
+    if (group) group.push(it);
   }
   const order: TipoReceita[] = ['branca_comum', 'antimicrobiano', 'controle_especial', 'azul_b', 'amarela_a'];
-  return order.filter(t => map.has(t)).map(t => ({ tipo: t, items: map.get(t)! }));
+  return order.filter(t => map.has(t)).map(t => ({ tipo: t, items: map.get(t) || [] }));
 }
 
 function esc(s: any): string {

@@ -781,7 +781,7 @@ const systemPrompt = isCRP ? baseSystemPrompt : baseSystemPrompt + anamneseInstr
         conducts: condutas,
         sections: {
           ...(laudoData.sections || {}),
-          ...anamneseSections,
+          ...(selectedModelo.inferencia ? anamneseSections : {}),
           prescricoes_sugeridas: prescricoesSugeridas,
           specialty_sections: specialtySections,
           template_sections: templateData?.sections || [],
