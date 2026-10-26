@@ -1,6 +1,7 @@
 import { describe,it,expect } from 'vitest';
 import { MODELOS_LAUDO,modeloBase,buildModeloTool,customModelo,normalizeModeloFields,modeloSnapshot } from '../../supabase/functions/_shared/modelos-laudo';
 import { normalizeDocumentFormat } from '../../supabase/functions/_shared/document-format';
+import { resolveModelo } from '../../supabase/functions/_shared/resolve-modelo';
 
 const original = {type:'function',function:{name:'generate_laudo',parameters:{type:'object',properties:{hipotese_principal:{type:'object'},prescricoes_sugeridas:{type:'array',minItems:1,items:{type:'object',properties:{origem:{type:'string',enum:['mencionada','sugerida_ia']}},required:['origem']}}},required:['hipotese_principal','prescricoes_sugeridas']}}};
 describe('Regras dos modelos médicos',()=>{
@@ -17,4 +18,14 @@ describe('Regras dos modelos médicos',()=>{
   it('rejeita chaves duplicadas em modelos pessoais',()=>{expect(()=>customModelo({id:'x',nome:'Teste',base:'soap',secoes:[{chave:'a',rotulo:'A'},{chave:'a',rotulo:'B'}]})).toThrow();});
   it('SOAP possui exatamente as quatro seções previstas',()=>{expect(MODELOS_LAUDO.find(m=>m.id==='soap')?.secoes.map(s=>s.chave)).toEqual(['subjetivo','objetivo','avaliacao','plano']);});
   it('formatação permanece independente do modelo clínico',()=>{expect(normalizeDocumentFormat({fonte:'Arial',corpo:12,margem_lateral:20})).toMatchObject({fonte:'Arial',corpo:12,margem_lateral:20});});
+  it('organização travada prevalece sobre a escolha do médico',async()=>{
+    const values: Record<string,any> = {profiles:{modelo_padrao_id:'padrao'},laudos:{sections:{modelo_selecionado_id:'evolucao'}},organization_members:{organization_id:'org'},organizations:{modelo_padrao_id:'soap',modelo_padrao_travado:true,owner_id:'owner'}};
+    const client = {from:(table:string)=>{const chain:any={select:()=>chain,eq:()=>chain,order:()=>chain,limit:()=>chain,single:async()=>({data:values[table],error:null}),maybeSingle:async()=>({data:values[table],error:null})};return chain;}};
+    expect((await resolveModelo(client,'user','doc','exame')).id).toBe('soap');
+  });
+  it('organização sem trava permite trocar o modelo',async()=>{
+    const values: Record<string,any> = {profiles:{modelo_padrao_id:'padrao'},laudos:{sections:{}},organization_members:{organization_id:'org'},organizations:{modelo_padrao_id:'soap',modelo_padrao_travado:false,owner_id:'owner'}};
+    const client = {from:(table:string)=>{const chain:any={select:()=>chain,eq:()=>chain,order:()=>chain,limit:()=>chain,single:async()=>({data:values[table],error:null}),maybeSingle:async()=>({data:values[table],error:null})};return chain;}};
+    expect((await resolveModelo(client,'user','doc','exame')).id).toBe('exame');
+  });
 });
