@@ -22,7 +22,6 @@ const HistoricoPaciente = lazy(() => import("./pages/HistoricoPaciente"));
 const EvolutionReport = lazy(() => import("./pages/EvolutionReport"));
 const Admin = lazy(() => import("./pages/Admin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const DavChat = lazy(() => import("./pages/DavChat"));
 const MedicosTrial = lazy(() => import("./pages/MedicosTrial"));
 const AssinaturaExpirada = lazy(() => import("./pages/AssinaturaExpirada"));
 const TrialConvite = lazy(() => import("./pages/TrialConvite"));
@@ -99,7 +98,6 @@ const App = () => (
                 <Route path="/historico-paciente/:patientId" element={<SubscriptionGuard><HistoricoPaciente /></SubscriptionGuard>} />
                 <Route path="/evolucao/:patientId" element={<SubscriptionGuard><EvolutionReport /></SubscriptionGuard>} />
                 <Route path="/admin" element={<SubscriptionGuard><Admin /></SubscriptionGuard>} />
-                <Route path="/dav-chat" element={<SubscriptionGuard><DavChat /></SubscriptionGuard>} />
                 <Route path="/agendamentos" element={<SubscriptionGuard><Agendamentos /></SubscriptionGuard>} />
                 <Route path="/telemedicina" element={<SubscriptionGuard><Telemedicina /></SubscriptionGuard>} />
                 <Route path="/consulta/:id" element={<SubscriptionGuard><Consulta /></SubscriptionGuard>} />

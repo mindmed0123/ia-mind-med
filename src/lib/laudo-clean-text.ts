@@ -67,6 +67,9 @@ export interface LaudoCleanInput {
 
 export function buildCleanLaudoText(laudo: LaudoCleanInput): string {
   const s: AnyRec = laudo.sections || {};
+  if (s.modelo_campos && Array.isArray(s.modelo_secoes_def)) {
+    return [s.modelo_nome || 'Documento clínico', ...s.modelo_secoes_def.map((f: any) => `${f.rotulo}\n${s.modelo_campos[f.chave] || ''}`), laudo.legal_disclaimer || ''].join('\n\n');
+  }
   const h: AnyRec = laudo.hypotheses || {};
   const out: string[] = [];
 
@@ -136,11 +139,6 @@ export function buildCleanLaudoText(laudo: LaudoCleanInput): string {
       : "");
   if (examesText) {
     out.push(section("Exames complementares", examesText));
-  }
-
-  // Sinais de alerta / Red flags
-  if (laudo.red_flags && laudo.red_flags.length > 0) {
-    out.push(listSection("Sinais de alerta / Red flags", laudo.red_flags, false));
   }
 
   // Orientações ao paciente

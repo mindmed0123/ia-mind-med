@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
@@ -958,6 +958,36 @@ export type Database = {
         }
         Relationships: []
       }
+      modelos_laudo_usuario: {
+        Row: {
+          base: string
+          created_at: string
+          id: string
+          inferencia: boolean
+          nome: string
+          secoes: Json
+          user_id: string
+        }
+        Insert: {
+          base: string
+          created_at?: string
+          id?: string
+          inferencia: boolean
+          nome: string
+          secoes?: Json
+          user_id: string
+        }
+        Update: {
+          base?: string
+          created_at?: string
+          id?: string
+          inferencia?: boolean
+          nome?: string
+          secoes?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       onboarding_progress: {
         Row: {
           completed: boolean
@@ -1115,6 +1145,8 @@ export type Database = {
           created_at: string
           id: string
           logo_url: string | null
+          modelo_padrao_id: string | null
+          modelo_padrao_travado: boolean
           name: string
           owner_id: string
           phone: string | null
@@ -1128,6 +1160,8 @@ export type Database = {
           created_at?: string
           id?: string
           logo_url?: string | null
+          modelo_padrao_id?: string | null
+          modelo_padrao_travado?: boolean
           name: string
           owner_id: string
           phone?: string | null
@@ -1141,6 +1175,8 @@ export type Database = {
           created_at?: string
           id?: string
           logo_url?: string | null
+          modelo_padrao_id?: string | null
+          modelo_padrao_travado?: boolean
           name?: string
           owner_id?: string
           phone?: string | null
@@ -1305,6 +1341,48 @@ export type Database = {
           },
         ]
       }
+      preferencias_documento: {
+        Row: {
+          cabecalho: boolean
+          corpo: number
+          fonte: string
+          logo: boolean
+          margem_inferior: number
+          margem_lateral: number
+          margem_superior: number
+          papel_timbrado: string | null
+          rodape: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cabecalho?: boolean
+          corpo?: number
+          fonte?: string
+          logo?: boolean
+          margem_inferior?: number
+          margem_lateral?: number
+          margem_superior?: number
+          papel_timbrado?: string | null
+          rodape?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cabecalho?: boolean
+          corpo?: number
+          fonte?: string
+          logo?: boolean
+          margem_inferior?: number
+          margem_lateral?: number
+          margem_superior?: number
+          papel_timbrado?: string | null
+          rodape?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       prescriptions: {
         Row: {
           ai_generated: boolean
@@ -1394,6 +1472,7 @@ export type Database = {
           lgpd_consent_version: string | null
           logo_url: string | null
           mm_lp: string | null
+          modelo_padrao_id: string | null
           perfil_completo_em: string | null
           phone: string | null
           prescription_footer_text: string | null
@@ -1433,6 +1512,7 @@ export type Database = {
           lgpd_consent_version?: string | null
           logo_url?: string | null
           mm_lp?: string | null
+          modelo_padrao_id?: string | null
           perfil_completo_em?: string | null
           phone?: string | null
           prescription_footer_text?: string | null
@@ -1472,6 +1552,7 @@ export type Database = {
           lgpd_consent_version?: string | null
           logo_url?: string | null
           mm_lp?: string | null
+          modelo_padrao_id?: string | null
           perfil_completo_em?: string | null
           phone?: string | null
           prescription_footer_text?: string | null

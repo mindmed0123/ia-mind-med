@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793041800605,
+      "tag": "0000_report_models_and_formatting",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793042103476,
+      "tag": "0001_org_report_model_read_and_validation",
+      "breakpoints": true
+    }
+  ]
+}

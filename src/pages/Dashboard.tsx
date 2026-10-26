@@ -277,16 +277,6 @@ const Dashboard = () => {
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
                   <Button 
-                    onClick={() => navigate("/dav-chat")} 
-                    className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 h-auto py-3"
-                  >
-                    <Bot className="w-5 h-5 mr-2" />
-                    <span>
-                      MindChat
-                      <span className="ml-1 text-xs bg-white/20 px-1.5 py-0.5 rounded">PRO</span>
-                    </span>
-                  </Button>
-                  <Button 
                     onClick={() => navigate("/novo-laudo")} 
                     className="bg-gradient-to-r from-primary to-accent hover:opacity-90 h-auto py-3"
                   >

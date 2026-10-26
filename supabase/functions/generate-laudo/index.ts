@@ -1,6 +1,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { buildModeloTool, modeloPrompt, modeloSnapshot, normalizeModeloFields, modeloMarkdown, modeloBase } from "../_shared/modelos-laudo.ts";
+import { resolveModelo } from "../_shared/resolve-modelo.ts";
 import { callLlmWithFallback } from "../_shared/llm-call.ts";
 
 const corsHeaders = {
@@ -115,7 +117,6 @@ const LAUDO_TOOL = {
           maxItems: 6,
         },
         exames: { type: "array", items: { type: "string" }, description: "Máximo 5 exames" },
-        red_flags: { type: "array", items: { type: "string" }, description: "Máximo 4 red flags" },
         cid10: { type: "array", items: { type: "string" }, description: "Máximo 3 CID-10" },
         texto_laudo_md: { type: "string", description: "Laudo em Markdown, máximo 600 palavras" },
         texto_paciente_md: { type: "string", description: "Resumo acessível ao paciente, máximo 100 palavras" },
@@ -126,7 +127,7 @@ const LAUDO_TOOL = {
           additionalProperties: { type: "string" },
         },
       },
-      required: ["resumo_clinico", "anamnese", "dados_paciente_extraidos", "hipotese_principal", "hipotese_diferencial", "condutas", "prescricoes_sugeridas", "exames", "red_flags", "cid10", "texto_laudo_md", "texto_paciente_md"],
+      required: ["resumo_clinico", "anamnese", "dados_paciente_extraidos", "hipotese_principal", "hipotese_diferencial", "condutas", "prescricoes_sugeridas", "exames", "cid10", "texto_laudo_md", "texto_paciente_md"],
       additionalProperties: false,
     },
   },
@@ -244,7 +245,7 @@ serve(async (req) => {
     const {
       patient, specialty, chief_complaint, transcript, transcript_text, vitals, meds, allergies,
       exam_findings, contexto_clinico, historico, laudo_id, mode = 'fast',
-      template_specialty,
+      template_specialty, modelo_id,
     } = await req.json();
     currentLaudoId = laudo_id;
 
@@ -339,6 +340,9 @@ serve(async (req) => {
     const t2 = now();
     log(cid, 'checks_ok', { ms: t2 - t0, template: templateData?.specialty || 'default' });
 
+    const selectedModelo = isCRP ? modeloBase() : await resolveModelo(supabase, user.id, laudo_id, modelo_id);
+    const medicalTool = buildModeloTool(selectedModelo, LAUDO_TOOL);
+
     // ===== TRUNCATE TRANSCRIPT =====
     const transcriptText = typeof transcript === 'string' ? transcript : transcript?.text || transcript_text || '';
     const MAX_CHARS = (MAX_INPUT_CHARS as any)[mode] || MAX_INPUT_CHARS.fast;
@@ -393,7 +397,8 @@ const systemPrompt = isCRP ? baseSystemPrompt : baseSystemPrompt + anamneseInstr
       ? '\n\nIMPORTANTE: A entrada abaixo é um resumo consolidado de uma consulta longa (60-90 min) já estruturado por tópicos. Use TODOS os tópicos para construir o laudo final. Não invente dados que não estejam no resumo.'
       : '';
 
-    const fullSystemPrompt = systemPrompt + sectionsInstruction + longHint;
+    const originalPrompt = systemPrompt + sectionsInstruction + longHint;
+    const fullSystemPrompt = isCRP ? originalPrompt : modeloPrompt(selectedModelo, originalPrompt);
 
     const parts: string[] = [];
     parts.push(`PAC: ${patient?.iniciais || 'N/I'}, ${patient?.sexo || 'N/I'}, ${patient?.idade || 'N/I'}a`);
@@ -438,7 +443,7 @@ const systemPrompt = isCRP ? baseSystemPrompt : baseSystemPrompt + anamneseInstr
             { role: 'system', content: fullSystemPrompt },
             { role: 'user', content: userPrompt },
           ],
-          tools: [isCRP ? REGISTRO_TOOL : LAUDO_TOOL],
+          tools: [isCRP ? REGISTRO_TOOL : medicalTool],
           toolChoice: { type: 'function', function: { name: isCRP ? 'generate_registro' : 'generate_laudo' } },
           maxTokens,
           temperature: 0.15,
@@ -601,6 +606,19 @@ const systemPrompt = isCRP ? baseSystemPrompt : baseSystemPrompt + anamneseInstr
     }
 
 
+    // CRM-only model normalization; never runs in the Psychology branch.
+    const fields = selectedModelo.id !== 'padrao'
+      ? normalizeModeloFields(selectedModelo, selectedModelo.inferencia ? laudoData.modelo_secoes || {} : laudoData)
+      : null;
+    if (!selectedModelo.inferencia) {
+      laudoData = {
+        dados_paciente_extraidos: laudoData.dados_paciente_extraidos || {},
+        prescricoes_sugeridas: Array.isArray(laudoData.prescricoes_sugeridas)
+          ? laudoData.prescricoes_sugeridas.filter((p: any) => p?.origem === 'mencionada') : [],
+        texto_laudo_md: modeloMarkdown(selectedModelo, fields || {}),
+      };
+    }
+
     // ===== NORMALIZE =====
     const hipoteses = laudoData.hipoteses || {
       mais_provavel: laudoData.hipotese_principal || {},
@@ -609,7 +627,7 @@ const systemPrompt = isCRP ? baseSystemPrompt : baseSystemPrompt + anamneseInstr
     const condutas = laudoData.condutas_recomendadas || laudoData.condutas || [];
     let prescricoesSugeridas: any[] = laudoData.prescricoes_sugeridas || [];
     const exames = laudoData.exames_sugeridos || laudoData.exames || [];
-    const redFlags = laudoData.red_flags || [];
+
     const cid10 = laudoData.cid10_sugeridos || laudoData.cid10 || [];
     const textoLaudo = laudoData.texto_laudo_md || '';
     const textoPaciente = laudoData.texto_paciente_md || '';
@@ -763,14 +781,16 @@ const systemPrompt = isCRP ? baseSystemPrompt : baseSystemPrompt + anamneseInstr
         conducts: condutas,
         sections: {
           ...(laudoData.sections || {}),
-          ...anamneseSections,
+          ...(selectedModelo.inferencia ? anamneseSections : {}),
           prescricoes_sugeridas: prescricoesSugeridas,
           specialty_sections: specialtySections,
           template_sections: templateData?.sections || [],
           avisos_legais_clinicos: avisosLegaisClinicos,
+          ...modeloSnapshot(selectedModelo),
+          ...(fields ? { modelo_campos: fields } : {}),
         },
         complementary_exams: exames,
-        red_flags: redFlags,
+        red_flags: [],
         cid10_codes: cid10,
         report_markdown: textoLaudo,
         patient_markdown: textoPaciente,

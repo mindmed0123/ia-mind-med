@@ -28,7 +28,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FirstLaudoSuccess } from "@/components/onboarding/FirstLaudoSuccess";
-import { MindChatWidget } from "@/components/chat/MindChatWidget";
+import { useModelosLaudo } from "@/hooks/useModelosLaudo";
+import { ModeloSelector } from "@/components/laudos/ModeloSelector";
 import { getCloudFunctionHeaders } from "@/lib/cloud-function-auth";
 import { getPollingDelayMs, isReadyToGenerate, isTerminalLaudoState, shouldRetryDraftGeneration } from "@/lib/laudo-pipeline";
 
@@ -52,6 +53,7 @@ const NovoLaudo = () => {
   const { toast } = useToast();
   const { user, session } = useAuth();
   const { templates: specialtyTemplates } = useSpecialtyTemplates();
+  const modelos = useModelosLaudo();
   const { isEmbedded, bridgeToken, error: bridgeError, sendCompleted, sendCancelled } = useEmbeddedBridge();
   const chunkedTranscription = useChunkedTranscription();
   const [laudoId, setLaudoId] = useState<string | null>(searchParams.get('id'));
@@ -74,6 +76,16 @@ const NovoLaudo = () => {
   const [laudoTemplateSections, setLaudoTemplateSections] = useState<LaudoSectionConfig[]>([]);
   const transcriptRef = useRef(transcript);
   const patientDataRef = useRef(patientData);
+  const chooseModelo = async (id: string) => {
+    if (modelos.locked) return;
+    if (laudoId) {
+      const { data: current, error: loadError } = await supabase.from('laudos').select('sections').eq('id',laudoId).single();
+      if (loadError) { toast({title:'Não foi possível trocar o modelo',variant:'destructive'}); return; }
+      const { error } = await supabase.from('laudos').update({sections:{...(current?.sections as any || {}),modelo_selecionado_id:id}}).eq('id',laudoId);
+      if (error) { toast({title:'Não foi possível trocar o modelo',variant:'destructive'}); return; }
+    }
+    modelos.setSelected(id);
+  };
 
   // Auto-fill patient data from embedded bridge token
   useEffect(() => {
@@ -266,7 +278,7 @@ const NovoLaudo = () => {
       }
       return false;
     }
-  }, [selectedSpecialty, session?.access_token, toast]);
+  }, [selectedSpecialty, session?.access_token, toast, modelos.selected, modelos.conselho]);
 
   const handleLaudoUpdate = useCallback((updated: any) => {
     setLaudo(updated);
@@ -525,7 +537,7 @@ const NovoLaudo = () => {
   }, [laudoId, transcript, toast, startPolling, invokeGenerateLaudo]);
 
   const handleTextGenerate = async (text: string) => {
-    if (!user || isSubmitting) return;
+    if (!user || isSubmitting || modelos.loading || modelos.error) return;
 
     setIsSubmitting(true);
     setPipelineStage('preparing');
@@ -537,6 +549,7 @@ const NovoLaudo = () => {
           user_id: user.id,
           title: `Laudo - ${new Date().toLocaleString('pt-BR')}`,
           status: 'draft',
+          sections: modelos.conselho === 'CRP' ? {} : { modelo_selecionado_id: modelos.selected },
           transcript: { text, source: 'text_input' },
           transcript_status: 'completed',
           generation_mode: 'text',
@@ -593,7 +606,7 @@ const NovoLaudo = () => {
     meta?: { blob?: Blob; durationSec?: number },
   ) => {
     // Lock síncrono — evita race com múltiplos cliques rápidos
-    if (submitLockRef.current || isSubmitting) {
+    if (submitLockRef.current || isSubmitting || modelos.loading || modelos.error) {
       toast({
         title: "Já estamos processando seu laudo",
         description: "Aguarde, não é necessário enviar novamente.",
@@ -612,6 +625,7 @@ const NovoLaudo = () => {
           title: `Laudo com áudio - ${new Date().toLocaleString('pt-BR')}`,
           source_audio_url: url,
           status: 'draft',
+          sections: modelos.conselho === 'CRP' ? {} : { modelo_selecionado_id: modelos.selected },
           audio_processing_status: 'processing',
           transcript_status: 'processing',
         })
@@ -881,7 +895,8 @@ const NovoLaudo = () => {
 
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-4">
-              {/* Specialty Selector */}
+              {modelos.conselho !== 'CRP' && (!laudo || laudo.status !== 'completed') && <ModeloSelector models={modelos.models} value={modelos.selected} onChange={id => {void chooseModelo(id);}} disabled={modelos.locked || modelos.loading || !!modelos.error} error={modelos.error} />}
+            {/* Specialty Selector */}
               <Card>
                 <CardContent className="pt-4">
                   <Label className="flex items-center gap-2 mb-2">
@@ -1023,6 +1038,7 @@ const NovoLaudo = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
           {/* ── LEFT SIDEBAR ── */}
           <div className="lg:col-span-3 space-y-4">
+            {modelos.conselho !== 'CRP' && (!laudo || laudo.status !== 'completed') && <ModeloSelector models={modelos.models} value={modelos.selected} onChange={id => {void chooseModelo(id);}} disabled={modelos.locked || modelos.loading || !!modelos.error} error={modelos.error} />}
             {/* Specialty Selector */}
             {!laudo?.status || laudo.status !== 'completed' ? (
               <Card className="border-border/60">
@@ -1078,7 +1094,7 @@ const NovoLaudo = () => {
 
             {/* Template Config - only show when laudo is completed (não se aplica a registros CRP) */}
             {laudo?.status === 'completed' && laudo?.sections?.conselho !== 'CRP' && (
-              <LaudoTemplateConfig onConfigChange={setLaudoTemplateSections} />
+              laudo?.sections?.modelo_campos ? <Badge variant="outline">{laudo.sections.modelo_nome}</Badge> : <LaudoTemplateConfig onConfigChange={setLaudoTemplateSections} />
             )}
           </div>
 
@@ -1220,23 +1236,7 @@ const NovoLaudo = () => {
         navigate("/precos");
       }}
     />
-    <MindChatWidget
-      context={{
-        patientName: patientData?.nome_completo || patientData?.iniciais,
-        patientAge: patientData?.idade,
-        patientSex: patientData?.sexo,
-        chiefComplaint: patientData?.queixa_principal || (laudo?.clinical_context as any)?.chief_complaint,
-        transcript: transcript || (laudo?.transcript as any)?.text,
-        diagnosisMain: laudo?.diagnosis_main,
-        diagnosisDiff: laudo?.diagnosis_diff,
-        hypotheses: Array.isArray(laudo?.hypotheses) ? (laudo.hypotheses as any[]).map((h: any) => typeof h === 'string' ? h : h?.text || h?.title || '') : undefined,
-        redFlags: Array.isArray(laudo?.red_flags) ? (laudo.red_flags as any[]).map((r: any) => typeof r === 'string' ? r : r?.text || r?.description || '') : undefined,
-        cid10: Array.isArray(laudo?.cid10_codes) ? (laudo.cid10_codes as any[]).map((c: any) => typeof c === 'string' ? c : `${c?.code} - ${c?.description}`) : undefined,
-        medications: patientData?.medicacoes,
-        allergies: patientData?.alergias,
-        comorbidities: patientData?.comorbidades || (patientData?.contexto_clinico ? [patientData.contexto_clinico] : undefined),
-      }}
-    />
+
     </>
   );
 };

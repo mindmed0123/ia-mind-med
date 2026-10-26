@@ -1,7 +1,7 @@
 import { Bot, User, Search, BookOpen, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
-import type { Citation } from '@/hooks/useDavChat';
+import type { Citation } from '@/types/retired-chat';
 
 interface ChatMessageProps {
   role: 'user' | 'assistant';

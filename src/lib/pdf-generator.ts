@@ -1,3 +1,4 @@
+import { normalizeDocumentFormat, type DocumentFormat } from '../../supabase/functions/_shared/document-format';
 import html2pdf from 'html2pdf.js';
 import QRCode from 'qrcode';
 
@@ -28,6 +29,9 @@ export interface PdfMeta {
   hash: string;
   dateFormatted: string;
   timeFormatted: string;
+  documentFormat?: DocumentFormat;
+  logoUrl?: string | null;
+  letterheadUrl?: string | null;
 }
 
 interface PdfOptions {
@@ -35,6 +39,8 @@ interface PdfOptions {
   fileName: string;
   verifyUrl: string;
   pdfMeta?: PdfMeta;
+  documentFormat?: DocumentFormat;
+  letterheadUrl?: string | null;
 }
 
 // ── Gradient bar (simplified — fewer segments for speed) ──
@@ -111,6 +117,10 @@ function renderHeader(doc: any, meta: PdfMeta): void {
     doc.text(meta.doctorSpecialty, rightX, logoY + 12, { align: 'right' });
   }
 
+  if (meta.doctorAddress) {
+    doc.setFontSize(6); doc.setFont('helvetica','normal');
+    doc.text(doc.splitTextToSize(meta.doctorAddress, PAGE_W - 2 * SIDE_MARGIN).slice(0,2), SIDE_MARGIN, 24);
+  }
   const lineY = 20;
   doc.setDrawColor(...NAVY);
   doc.setLineWidth(0.5);
@@ -131,7 +141,7 @@ function renderFooter(doc: any, meta: PdfMeta, pageNum: number, totalPages: numb
   doc.setTextColor(...DARK_GRAY);
   doc.setFontSize(5);
   doc.setFont('helvetica', 'normal');
-  doc.text('MindMed AI · LGPD (Lei nº 13.709/2018)', SIDE_MARGIN, footerTop + 4);
+  doc.text('Documento com auxílio de IA · Revisão profissional · LGPD', SIDE_MARGIN, footerTop + 4);
   doc.setTextColor(...GRAY);
   doc.setFontSize(4.5);
   doc.text(`${meta.dateFormatted} às ${meta.timeFormatted}`, SIDE_MARGIN, footerTop + 7);
@@ -140,7 +150,8 @@ function renderFooter(doc: any, meta: PdfMeta, pageNum: number, totalPages: numb
   doc.setFont('courier', 'normal');
   doc.setFontSize(4);
   doc.setTextColor(...GRAY);
-  doc.text(meta.hash.substring(0, 24) + '...', rightX, footerTop + 4, { align: 'right' });
+  doc.setFontSize(3);
+  doc.text(meta.hash, rightX, footerTop + 4, { align: 'right' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
   doc.setTextColor(...DARK_GRAY);
@@ -164,7 +175,7 @@ async function getQrDataUrl(url: string): Promise<string> {
 }
 
 // ── Main Generator (optimized for speed) ──
-export const generatePdf = async ({ html, fileName, verifyUrl, pdfMeta }: PdfOptions): Promise<Blob> => {
+export const generatePdf = async ({ html, fileName, verifyUrl, pdfMeta, documentFormat, letterheadUrl }: PdfOptions): Promise<Blob> => {
   try {
     const placeholder = '📱 [QR Code seria gerado aqui]';
     let htmlWithQr = html;
@@ -177,8 +188,9 @@ export const generatePdf = async ({ html, fileName, verifyUrl, pdfMeta }: PdfOpt
       htmlWithQr = html.split(placeholder).join('');
     }
 
+    const format = normalizeDocumentFormat(documentFormat || pdfMeta?.documentFormat);
     const options = {
-      margin: [HEADER_RESERVE, SIDE_MARGIN, FOOTER_RESERVE, SIDE_MARGIN] as [number, number, number, number],
+      margin: [format.margem_superior, format.margem_lateral, format.margem_inferior, format.margem_lateral] as [number, number, number, number],
       filename: fileName,
       image: { type: 'jpeg' as const, quality: 0.85 },
       html2canvas: {
@@ -209,11 +221,27 @@ export const generatePdf = async ({ html, fileName, verifyUrl, pdfMeta }: PdfOpt
       const totalPages = pdfDoc.internal.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
         pdfDoc.setPage(i);
-        renderHeader(pdfDoc, pdfMeta);
-        renderFooter(pdfDoc, pdfMeta, i, totalPages);
+        if (format.cabecalho) renderHeader(pdfDoc, pdfMeta);
+        if (format.rodape) renderFooter(pdfDoc, pdfMeta, i, totalPages);
       }
     }
 
+    const loadImage = async (url: string) => {
+      const image = new Image(); image.crossOrigin = 'anonymous'; image.src = url;
+      await image.decode();
+      const canvas = document.createElement('canvas'); canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
+      const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Imagem indisponível');ctx.drawImage(image,0,0);
+      return canvas.toDataURL('image/png');
+    };
+    if (format.logo && pdfMeta?.logoUrl) {
+      const logo = await loadImage(pdfMeta.logoUrl);
+      for(let i=1;i<=pdfDoc.internal.getNumberOfPages();i++){pdfDoc.setPage(i);pdfDoc.addImage(logo,'PNG',SIDE_MARGIN,5,10,10);}
+    }
+    const letterhead = letterheadUrl || pdfMeta?.letterheadUrl;
+    if(letterhead){
+      const image = await loadImage(letterhead);
+      for(let i=1;i<=pdfDoc.internal.getNumberOfPages();i++){pdfDoc.setPage(i);pdfDoc.saveGraphicsState();pdfDoc.setGState(new pdfDoc.GState({opacity:0.12}));pdfDoc.addImage(image,'PNG',0,0,PAGE_W,PAGE_H);pdfDoc.restoreGraphicsState();}
+    }
     return pdfDoc.output('blob');
   } catch (error) {
     console.error('Erro ao gerar PDF:', error);

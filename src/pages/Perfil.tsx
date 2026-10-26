@@ -24,6 +24,8 @@ import {
 } from '@/lib/validation';
 import { getProfileImageUrl, buildProfileImagePublicUrl } from '@/lib/profile-images';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
+import { ModelosDocumentoSettings } from '@/components/profile/ModelosDocumentoSettings';
+import { PreferenciasDocumentoSettings } from '@/components/profile/PreferenciasDocumentoSettings';
 import { ProfessionalProfileForm } from '@/components/profile/ProfessionalProfileForm';
 
 export default function Perfil() {
@@ -359,6 +361,9 @@ export default function Perfil() {
               )}
             </CardContent>
           </Card>
+
+          <ModelosDocumentoSettings />
+          <PreferenciasDocumentoSettings />
 
           {/* Dados da Clínica */}
           <Card>

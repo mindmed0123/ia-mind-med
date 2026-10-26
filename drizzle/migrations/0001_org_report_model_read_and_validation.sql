@@ -1,0 +1,6 @@
+CREATE POLICY modelos_organization_read ON public.modelos_laudo_usuario FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM public.organizations o JOIN public.organization_members m ON m.organization_id = o.id WHERE m.user_id = auth.uid() AND m.is_active AND o.owner_id = modelos_laudo_usuario.user_id AND o.modelo_padrao_id = modelos_laudo_usuario.id::text));
+CREATE OR REPLACE FUNCTION public.validar_preferencias_documento() RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$ BEGIN
+IF NEW.fonte NOT IN ('Inter','Merriweather','Arial','Times New Roman') OR NEW.corpo < 8 OR NEW.corpo > 16 OR NEW.margem_superior < 25 OR NEW.margem_superior > 50 OR NEW.margem_inferior < 18 OR NEW.margem_inferior > 40 OR NEW.margem_lateral < 10 OR NEW.margem_lateral > 35 THEN RAISE EXCEPTION 'Formatação inválida'; END IF;
+IF NEW.papel_timbrado IS NOT NULL AND NEW.papel_timbrado NOT LIKE 'https://%' THEN RAISE EXCEPTION 'Papel timbrado inválido'; END IF;
+RETURN NEW; END; $$;
+CREATE TRIGGER validar_preferencias_documento BEFORE INSERT OR UPDATE ON public.preferencias_documento FOR EACH ROW EXECUTE FUNCTION public.validar_preferencias_documento();

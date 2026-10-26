@@ -1,3 +1,4 @@
+import { normalizeDocumentFormat, formatHtml, escapeDocument } from "../_shared/document-format.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
@@ -73,7 +74,21 @@ serve(async (req) => {
     }
 
     // Gerar HTML do receituário
-    const html = generatePrescriptionHTML(prescription, profile);
+    const { data: formatRow } = await userClient.from('preferencias_documento').select('*').eq('user_id',userId).maybeSingle();
+    const documentFormat = normalizeDocumentFormat(formatRow);
+    const hashBytes = await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify({prescription,documentFormat})));
+    const hash = Array.from(new Uint8Array(hashBytes)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    const resolveImage = async (url: string | null) => {
+      if (!url) return null;
+      const path = url.split('/profile-images/')[1]?.split('?')[0];
+      if (!path || !path.startsWith(userId+'/')) return null;
+      const {data} = await userClient.storage.from('profile-images').createSignedUrl(path,3600);
+      return data?.signedUrl || null;
+    };
+    const [logoUrl,letterheadUrl,signatureUrl,stampUrl] = await Promise.all([resolveImage(profile?.logo_url),resolveImage(documentFormat.papel_timbrado),resolveImage(profile?.signature_image_url),resolveImage(profile?.stamp_image_url)]);
+    let html = generatePrescriptionHTML(prescription,{...profile,logo_url:documentFormat.logo?logoUrl:null,signature_image_url:signatureUrl,stamp_image_url:stampUrl});
+    if (documentFormat.rodape) html = html.replace(/<div class="footer-mini">/g, `<div class="document-footer">Documento estruturado com auxílio de IA; revisado pelo médico responsável.<br>SHA-256: ${escapeDocument(hash)}</div><div class="footer-mini">`);
+    html = formatHtml(html,documentFormat);
 
     // Aqui você integraria com um serviço de geração de PDF
     // Por enquanto, vamos retornar uma mensagem de sucesso
@@ -84,7 +99,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        pdf_url: 'https://example.com/prescription.pdf', // URL temporária
+        documentFormat, letterheadUrl, hash,
         html: html
       }),
       { 
@@ -244,10 +259,11 @@ function groupByReceita(items: any[]): Array<{ tipo: TipoReceita; items: any[] }
   for (const it of items) {
     const t = inferTipoReceita(it);
     if (!map.has(t)) map.set(t, []);
-    map.get(t)!.push(it);
+    const group = map.get(t);
+    if (group) group.push(it);
   }
   const order: TipoReceita[] = ['branca_comum', 'antimicrobiano', 'controle_especial', 'azul_b', 'amarela_a'];
-  return order.filter(t => map.has(t)).map(t => ({ tipo: t, items: map.get(t)! }));
+  return order.filter(t => map.has(t)).map(t => ({ tipo: t, items: map.get(t) || [] }));
 }
 
 function esc(s: any): string {

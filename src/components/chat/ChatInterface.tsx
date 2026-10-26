@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
-import type { ChatMessage as ChatMessageType } from '@/hooks/useDavChat';
+import type { ChatMessage as ChatMessageType } from '@/types/retired-chat';
 
 interface ChatInterfaceProps {
   messages: ChatMessageType[];
