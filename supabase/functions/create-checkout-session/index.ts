@@ -225,6 +225,16 @@ serve(async (req) => {
 
     logStep("Created checkout session", { sessionId: session.id, url: session.url });
 
+    // Vínculo com o parceiro: só quando o cupom foi aplicado e só se a conta ainda não tem vínculo.
+    if (discounts && p) {
+      const { error: parceiroError } = await supabase
+        .from("profiles")
+        .update({ parceiro_slug: p.slug })
+        .eq("id", userId)
+        .is("parceiro_slug", null);
+      if (parceiroError) logStep("Error saving parceiro_slug", { error: parceiroError });
+    }
+
     // Update user's subscription status to pending_checkout
     const now = new Date();
     const { error: subError } = await supabase

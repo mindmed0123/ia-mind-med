@@ -895,7 +895,7 @@ const NovoLaudo = () => {
 
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-4">
-              {modelos.conselho !== 'CRP' && (!laudo || laudo.status !== 'completed') && <ModeloSelector models={modelos.models} value={modelos.selected} onChange={id => {void chooseModelo(id);}} disabled={modelos.locked || modelos.loading || !!modelos.error} error={modelos.error} />}
+              {modelos.conselho !== 'CRP' && (!laudo || laudo.status !== 'completed') && <ModeloSelector models={modelos.models} somenteDocumentacao={modelos.somenteDocumentacao} value={modelos.selected} onChange={id => {void chooseModelo(id);}} disabled={modelos.locked || modelos.loading || !!modelos.error} error={modelos.error} />}
             {/* Specialty Selector */}
               <Card>
                 <CardContent className="pt-4">
@@ -1038,7 +1038,7 @@ const NovoLaudo = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
           {/* ── LEFT SIDEBAR ── */}
           <div className="lg:col-span-3 space-y-4">
-            {modelos.conselho !== 'CRP' && (!laudo || laudo.status !== 'completed') && <ModeloSelector models={modelos.models} value={modelos.selected} onChange={id => {void chooseModelo(id);}} disabled={modelos.locked || modelos.loading || !!modelos.error} error={modelos.error} />}
+            {modelos.conselho !== 'CRP' && (!laudo || laudo.status !== 'completed') && <ModeloSelector models={modelos.models} somenteDocumentacao={modelos.somenteDocumentacao} value={modelos.selected} onChange={id => {void chooseModelo(id);}} disabled={modelos.locked || modelos.loading || !!modelos.error} error={modelos.error} />}
             {/* Specialty Selector */}
             {!laudo?.status || laudo.status !== 'completed' ? (
               <Card className="border-border/60">

@@ -15,6 +15,13 @@
       "when": 1793042103476,
       "tag": "0001_org_report_model_read_and_validation",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795032019607,
+      "tag": "0002_parceiro_somente_documentacao",
+      "breakpoints": true
     }
   ]
 }

@@ -29,3 +29,35 @@ describe('Regras dos modelos médicos',()=>{
     expect((await resolveModelo(client,'user','doc','exame')).id).toBe('exame');
   });
 });
+
+const clienteParceiro = (values: Record<string,any>) => ({from:(table:string)=>{const chain:any={select:()=>chain,eq:()=>chain,order:()=>chain,limit:()=>chain,single:async()=>({data:values[table],error:null}),maybeSingle:async()=>({data:values[table] ?? null,error:null})};return chain;}});
+const contaParceiro = (parceiro_slug: string | null, org: any = {modelo_padrao_id:null,modelo_padrao_travado:false,owner_id:'user'}) => ({profiles:{modelo_padrao_id:null,parceiro_slug},laudos:{sections:{}},organization_members:{organization_id:'org'},organizations:org});
+describe('Restrição de modelo por parceiro',()=>{
+  it('sindmepa que pede padrao explicitamente recebe soap',async()=>{
+    const m = await resolveModelo(clienteParceiro(contaParceiro('sindmepa')),'user','doc','padrao');
+    expect(m.id).toBe('soap'); expect(m.inferencia).toBe(false); expect(m.parceiro_slug).toBe('sindmepa');
+  });
+  it('sindmepa que pede soap recebe soap',async()=>{
+    expect((await resolveModelo(clienteParceiro(contaParceiro('sindmepa')),'user','doc','soap')).id).toBe('soap');
+  });
+  it('sbacv que pede padrao recebe padrao',async()=>{
+    const m = await resolveModelo(clienteParceiro(contaParceiro('sbacv')),'user','doc','padrao');
+    expect(m.id).toBe('padrao'); expect(m.inferencia).toBe(true);
+  });
+  it('conta sem parceiro que pede padrao recebe padrao',async()=>{
+    const m = await resolveModelo(clienteParceiro(contaParceiro(null)),'user','doc','padrao');
+    expect(m.id).toBe('padrao'); expect(m.parceiro_slug).toBeUndefined();
+  });
+  it('organização travada em padrao com usuário sindmepa recebe soap',async()=>{
+    const values = contaParceiro('sindmepa',{modelo_padrao_id:'padrao',modelo_padrao_travado:true,owner_id:'owner'});
+    expect((await resolveModelo(clienteParceiro(values),'user','doc','exame')).id).toBe('soap');
+  });
+  it('personalizado com inferência em conta restrita resolve sem inferência',async()=>{
+    const values = {...contaParceiro('sindmepa'),modelos_laudo_usuario:{id:'meu',nome:'Meu completo',base:'padrao',inferencia:true,secoes:[{chave:'plano',rotulo:'Plano'}]}};
+    const m = await resolveModelo(clienteParceiro(values),'user','doc','meu');
+    expect(m.id).toBe('meu'); expect(m.inferencia).toBe(false);
+  });
+  it('snapshot do laudo registra o parceiro de origem',()=>{
+    expect(modeloSnapshot({...modeloBase('soap'),parceiro_slug:'sindmepa'})).toMatchObject({modelo_id:'soap',inferencia:false,scope_version:'modelos-2026-10',parceiro_slug:'sindmepa'});
+  });
+});

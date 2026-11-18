@@ -1473,6 +1473,7 @@ export type Database = {
           logo_url: string | null
           mm_lp: string | null
           modelo_padrao_id: string | null
+          parceiro_slug: string | null
           perfil_completo_em: string | null
           phone: string | null
           prescription_footer_text: string | null
@@ -1513,6 +1514,7 @@ export type Database = {
           logo_url?: string | null
           mm_lp?: string | null
           modelo_padrao_id?: string | null
+          parceiro_slug?: string | null
           perfil_completo_em?: string | null
           phone?: string | null
           prescription_footer_text?: string | null
@@ -1553,6 +1555,7 @@ export type Database = {
           logo_url?: string | null
           mm_lp?: string | null
           modelo_padrao_id?: string | null
+          parceiro_slug?: string | null
           perfil_completo_em?: string | null
           phone?: string | null
           prescription_footer_text?: string | null
@@ -2178,6 +2181,10 @@ export type Database = {
           source_queue: string
         }
         Returns: number
+      }
+      parceiro_somente_documentacao: {
+        Args: { _user_id: string }
+        Returns: boolean
       }
       patient_list_teleconsulta_messages: {
         Args: { p_id: string; p_token: string }

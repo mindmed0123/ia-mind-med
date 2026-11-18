@@ -237,7 +237,7 @@ Atualize o laudo seguindo as regras. Devolva apenas seções modificadas via too
           ...(currentSections.hipoteses || {}),
           ...(value as any),
         };
-      } else if (!['modelo_id','modelo_nome','inferencia','scope_version','modelo_secoes_def'].includes(key)) {
+      } else if (!['modelo_id','modelo_nome','inferencia','scope_version','modelo_secoes_def','parceiro_slug'].includes(key)) {
         mergedSections[key] = value;
       }
     }

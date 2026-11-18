@@ -61,8 +61,8 @@ export function modeloPrompt(modelo: ModeloLaudo, original: string) {
   if (modelo.inferencia) return original.replace(/red[ _]flags/gi, '').replace(/sinais de alerta/gi, '') + (modelo.id !== 'padrao' ? `\nOrganize também modelo_secoes nas seguintes seções: ${JSON.stringify(modelo.secoes)}.` : '');
   return `Você documenta consultas médicas em PT-BR. Organize exclusivamente a transcrição nas seções: ${JSON.stringify(modelo.secoes)}. Dados do paciente e medicamentos só quando ditados. Não use perfil, histórico externo, diretrizes ou sintomas para inferir conteúdo. Não transforme medicamentos em uso em nova prescrição.\n${REGRA_DOCUMENTAL}`;
 }
-export function modeloSnapshot(modelo: ModeloLaudo) {
-  return { modelo_id: modelo.id, modelo_nome: modelo.nome, inferencia: modelo.inferencia, scope_version: SCOPE_VERSION, modelo_secoes_def: modelo.secoes };
+export function modeloSnapshot(modelo: ModeloLaudo & { parceiro_slug?: string }) {
+  return { modelo_id: modelo.id, modelo_nome: modelo.nome, inferencia: modelo.inferencia, scope_version: SCOPE_VERSION, modelo_secoes_def: modelo.secoes, ...(modelo.parceiro_slug ? { parceiro_slug: modelo.parceiro_slug } : {}) };
 }
 export function normalizeModeloFields(modelo: ModeloLaudo, data: Record<string, any>) {
   return Object.fromEntries(modelo.secoes.map(s => [s.chave, typeof data[s.chave] === 'string' ? data[s.chave] : '']));
