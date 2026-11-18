@@ -54,7 +54,7 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    console.log('Comparing images for patient:', patientName);
+    console.log('Comparing images');
 
     // Format dates
     const date1 = new Date(image1Date).toLocaleDateString('pt-BR');

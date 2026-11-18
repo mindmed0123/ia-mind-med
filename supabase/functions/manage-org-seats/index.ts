@@ -26,14 +26,14 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
     );
     const jwt = authHeader.replace("Bearer ", "");
-    const { data: claims, error: authErr } = await userClient.auth.getClaims(jwt);
-    if (authErr || !claims?.claims?.sub) {
+    const { data: userData, error: authErr } = await userClient.auth.getUser(jwt);
+    if (authErr || !userData?.user?.id) {
       return json({ error: "Unauthorized" }, 401);
     }
-    const callerId = claims.claims.sub as string;
+    const callerId = userData.user.id;
 
     const { organization_id, seats } = await req.json();
-    if (!organization_id || !seats) {
+    if (!organization_id || !Number.isInteger(seats) || seats < 1 || seats > 500) {
       return json({ error: "Dados incompletos" }, 400);
     }
 
@@ -53,6 +53,27 @@ Deno.serve(async (req) => {
       return json({ error: "Forbidden" }, 403);
     }
     const owner_id = org.owner_id;
+
+    // Seats can never go below the number of active members.
+    const { count: activeCount } = await admin
+      .from("organization_members")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organization_id)
+      .eq("is_active", true);
+    if (seats < (activeCount ?? 1)) {
+      return json({ error: "Número de vagas menor que o de membros ativos" }, 400);
+    }
+
+    // Reductions are applied here (server-side); increases only take effect
+    // when Stripe confirms the new quantity through the webhook.
+    const { data: orgSeats } = await admin
+      .from("organizations")
+      .select("seats_paid")
+      .eq("id", organization_id)
+      .maybeSingle();
+    if (orgSeats && seats < orgSeats.seats_paid) {
+      await admin.from("organizations").update({ seats_paid: seats }).eq("id", organization_id);
+    }
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) return json({ error: "Stripe não configurado" }, 500);

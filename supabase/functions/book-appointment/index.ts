@@ -125,18 +125,23 @@ Deno.serve(async (req) => {
     // 4) Find/create patient
     let patientId: string | null = null;
     if (email || phone) {
-      const orFilter = [
-        email ? `email.eq.${email}` : null,
-        phone ? `phone.eq.${phone}` : null,
-      ].filter(Boolean).join(",");
-      const { data: existing } = await supabase
-        .from("patients")
-        .select("id")
-        .eq("organization_id", link.organization_id)
-        .or(orFilter)
-        .limit(1)
-        .maybeSingle();
-      if (existing) patientId = existing.id;
+      // Exact-value lookups only (no filter strings built from user input), and
+      // an existing record is reused only when the name also matches.
+      const normName = (v: string | null | undefined) =>
+        (v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/\s+/g, " ");
+      const candidates: { id: string; name: string | null }[] = [];
+      for (const [column, value] of [["email", email], ["phone", phone]] as const) {
+        if (!value) continue;
+        const { data } = await supabase
+          .from("patients")
+          .select("id, name")
+          .eq("organization_id", link.organization_id)
+          .eq(column, value)
+          .limit(5);
+        if (data) candidates.push(...data);
+      }
+      const match = candidates.find((p) => normName(p.name) === normName(name));
+      if (match) patientId = match.id;
     }
     if (!patientId) {
       const { data: created, error: patErr } = await supabase

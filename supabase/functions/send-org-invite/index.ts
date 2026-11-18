@@ -1,6 +1,7 @@
 // Sends an organization invite email and creates the invite record.
 // Caller must be authenticated as the org owner.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { safeAppOrigin } from "../_shared/allowed-origin.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -98,7 +99,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     // Send email via existing transactional infrastructure
-    const inviteUrl = `${req.headers.get("origin") || "https://acesso.mindmed.online"}/aceitar-convite?token=${token}`;
+    const inviteUrl = `${safeAppOrigin(req)}/aceitar-convite?token=${token}`;
 
     try {
       await admin.functions.invoke("send-transactional-email", {

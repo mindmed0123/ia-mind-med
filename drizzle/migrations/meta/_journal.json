@@ -36,6 +36,41 @@
       "when": 1795032902512,
       "tag": "0004_harden_signup_series_and_specialty_templates",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795034894977,
+      "tag": "0005_harden_billing_email_org_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795034914193,
+      "tag": "0006_fix_member_seat_check_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795035269178,
+      "tag": "0007_owners_can_view_own_org",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795035325124,
+      "tag": "0008_revoke_anon_admin_rpcs",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795035369178,
+      "tag": "0009_fix_admin_audit_feed",
+      "breakpoints": true
     }
   ]
 }

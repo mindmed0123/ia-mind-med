@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { storagePathFromUrl } from "../_shared/storage-url.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,7 +31,12 @@ Deno.serve(async (req) => {
       throw new Error('ID do laudo e URL do PDF são obrigatórios');
     }
 
-    console.log('Importando PDF:', { laudo_id, pdf_url, ocr_enabled });
+    // Only files uploaded by the app for this report may be imported; the
+    // server never fetches arbitrary links supplied in the request.
+    const pdfPath = storagePathFromUrl(pdf_url, supabaseUrl, 'audio-files');
+    if (!pdfPath || !pdfPath.startsWith(`imports/${laudo_id}/`)) {
+      throw new Error('Arquivo inválido para importação');
+    }
 
     // Verificar se o laudo pertence ao usuário
     const { data: laudo, error: laudoError } = await supabase
@@ -42,11 +48,12 @@ Deno.serve(async (req) => {
 
     if (laudoError || !laudo) throw new Error('Laudo não encontrado');
 
-    // Download do PDF
-    const pdfResponse = await fetch(pdf_url);
-    if (!pdfResponse.ok) throw new Error('Falha ao baixar PDF');
-    
-    const pdfBlob = await pdfResponse.blob();
+    // Download do PDF direto do armazenamento do app
+    const { data: pdfBlob, error: downloadError } = await supabase.storage
+      .from('audio-files')
+      .download(pdfPath);
+    if (downloadError || !pdfBlob) throw new Error('Falha ao baixar PDF');
+
     const fileSize = pdfBlob.size;
 
     if (fileSize > 10 * 1024 * 1024) {

@@ -20,7 +20,7 @@ serve(async (req) => {
       );
     }
 
-    const { patientId, patientName } = await req.json();
+    const { patientId, patientName: requestedPatientName } = await req.json();
 
     if (!patientId) {
       return new Response(
@@ -44,7 +44,36 @@ serve(async (req) => {
       );
     }
 
-    console.log('Generating evolution report for patient:', patientId);
+    // The patient must belong to the signed-in doctor (and, for clinic
+    // records, the doctor must still be an active member of that clinic).
+    const { data: ownedPatient } = await supabase
+      .from('patients')
+      .select('id, name, organization_id')
+      .eq('id', patientId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!ownedPatient) {
+      return new Response(
+        JSON.stringify({ error: 'Paciente não encontrado' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (ownedPatient.organization_id) {
+      const { data: membership } = await supabase
+        .from('organization_members')
+        .select('id')
+        .eq('organization_id', ownedPatient.organization_id)
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (!membership) {
+        return new Response(
+          JSON.stringify({ error: 'Paciente não encontrado' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+    const patientName = ownedPatient.name || requestedPatientName;
 
     // Fetch all patient data in parallel
     const [laudosRes, documentsRes, prescriptionsRes] = await Promise.all([
@@ -52,11 +81,13 @@ serve(async (req) => {
         .from('laudos')
         .select('*')
         .eq('patient_id', patientId)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: true }),
       supabase
         .from('patient_documents')
         .select('*')
         .eq('patient_id', patientId)
+        .eq('user_id', user.id)
         .order('uploaded_at', { ascending: true }),
       supabase
         .from('prescriptions')
@@ -181,7 +212,7 @@ Responda em JSON com os campos:
     const aiData = await aiResponse.json();
     const responseContent = aiData.choices?.[0]?.message?.content || '';
 
-    console.log('AI Response for evolution report:', responseContent);
+    console.log('Evolution report AI response received', { chars: responseContent?.length ?? 0 });
 
     // Parse JSON response
     let reportData;

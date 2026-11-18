@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolverParceiro, PLANOS_COM_CUPOM } from "../_shared/parceiros.ts";
+import { safeAppOrigin } from "../_shared/allowed-origin.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -169,7 +170,7 @@ serve(async (req) => {
     }
 
     // Create checkout session with 7-day trial
-    const origin = req.headers.get("origin") || "https://acesso.mindmed.online";
+    const origin = safeAppOrigin(req);
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,

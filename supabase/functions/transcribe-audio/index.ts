@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { storagePathFromUrl } from '../_shared/storage-url.ts';
 import {
   CLINICAL_WHISPER_PROMPT_PT_BR,
   processWhisperSegments,
@@ -188,11 +189,19 @@ serve(async (req) => {
         });
       }
     } else if (audio_url) {
-      const audioResponse = await fetch(audio_url);
-      if (!audioResponse.ok) {
+      // Only links to this project's audio storage are accepted; the file is
+      // read through storage with the caller's permissions, never fetched.
+      const urlPath = storagePathFromUrl(audio_url, supabaseUrl, 'audio-files');
+      if (!urlPath) {
+        throw new Error('Link de áudio inválido');
+      }
+      const { data: originalBlob, error: urlDownloadError } = await supabase
+        .storage
+        .from('audio-files')
+        .download(urlPath);
+      if (urlDownloadError || !originalBlob) {
         throw new Error('Falha ao baixar áudio via URL');
       }
-      const originalBlob = await audioResponse.blob();
 
       let ext = 'webm';
       if (audio_url.match(/\.(mp3)(\?.*)?$/i)) ext = 'mp3';
@@ -206,7 +215,7 @@ serve(async (req) => {
         'webm': 'audio/webm', 'mp3': 'audio/mpeg', 'wav': 'audio/wav',
         'm4a': 'audio/mp4', 'ogg': 'audio/ogg', 'flac': 'audio/flac', 'mp4': 'audio/mp4',
       };
-      const contentType = audioResponse.headers.get('content-type') || '';
+      const contentType = originalBlob.type || '';
       mimeType = contentType && contentType.startsWith('audio/') ? contentType : (mimeMap[ext] || 'audio/webm');
       fileName = `audio.${ext}`;
 

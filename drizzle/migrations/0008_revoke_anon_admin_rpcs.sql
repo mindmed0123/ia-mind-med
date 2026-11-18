@@ -1,0 +1,12 @@
+REVOKE EXECUTE ON FUNCTION public.admin_audit_actions() FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.admin_audit_feed(timestamp with time zone, timestamp with time zone, text, text, integer, integer) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.admin_financial_summary(timestamp with time zone, timestamp with time zone) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.admin_log_action(text, uuid, text, jsonb, text, text) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.admin_revenue_series(timestamp with time zone, timestamp with time zone, text) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.admin_user_360(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_audit_actions() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.admin_audit_feed(timestamp with time zone, timestamp with time zone, text, text, integer, integer) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.admin_financial_summary(timestamp with time zone, timestamp with time zone) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.admin_log_action(text, uuid, text, jsonb, text, text) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.admin_revenue_series(timestamp with time zone, timestamp with time zone, text) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.admin_user_360(uuid) TO authenticated, service_role;

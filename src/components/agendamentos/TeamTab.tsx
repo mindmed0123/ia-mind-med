@@ -179,13 +179,10 @@ export function TeamTab({ organizationId, ownerUserId, currentUserId, members, o
                   toast.success("Médico removido da equipe");
                   // Sync seats with Stripe
                   const newCount = activeMembers.length - 1;
+                  // Seat count is updated server-side together with Stripe.
                   await supabase.functions.invoke("manage-org-seats", {
-                    body: { organization_id: organizationId, owner_id: ownerUserId, seats: newCount },
+                    body: { organization_id: organizationId, owner_id: ownerUserId, seats: Math.max(newCount, 1) },
                   }).catch(() => {});
-                  await supabase
-                    .from("organizations")
-                    .update({ seats_paid: newCount })
-                    .eq("id", organizationId);
                   onMembersChanged();
                 }
                 setRemoveMember(null);

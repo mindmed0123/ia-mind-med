@@ -245,6 +245,35 @@ serve(async (req) => {
     const t1 = now();
     log(cid, 'auth_ok', { uid: user.id.substring(0, 8), ms: t1 - t0 });
 
+    // ===== ENTITLEMENT =====
+    // Generation requires an active or trial plan. Accounts still choosing a
+    // plan get exactly one demonstration report (onboarding).
+    {
+      const { data: sub } = await templatesClient
+        .from('subscriptions')
+        .select('status')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const status = sub?.status as string | undefined;
+      let entitled = status === 'ACTIVE' || status === 'TRIALING';
+      if (!entitled && status === 'PENDING_CHECKOUT') {
+        const { count: completedCount } = await templatesClient
+          .from('laudos')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('status', 'completed');
+        entitled = (completedCount ?? 0) === 0;
+      }
+      if (!entitled) {
+        log(cid, 'not_entitled', { status: status ?? 'none' });
+        return new Response(JSON.stringify({ error: 'Assinatura ativa necessária para gerar documentos.', code: 'SUBSCRIPTION_REQUIRED' }), {
+          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // ===== PARSE BODY =====
     const {
       patient, specialty, chief_complaint, transcript, transcript_text, vitals, meds, allergies,

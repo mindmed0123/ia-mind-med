@@ -2,6 +2,11 @@ import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
+import { bearerToken, isServiceRoleRequest, maskEmail } from '../_shared/request-auth.ts'
+
+// Templates a signed-in doctor may trigger for themselves. The recipient is
+// always the caller's own account e-mail; every other template is server-only.
+const SELF_SERVICE_TEMPLATES = new Set(['welcome', 'first-laudo', 'pdf-exported'])
 
 // Configuration baked in at scaffold time
 const SITE_NAME = "MindMed"
@@ -23,9 +28,9 @@ function generateToken(): string {
     .join('')
 }
 
-// Auth note: this function uses verify_jwt = true in config.toml, so Supabase's
-// gateway validates the caller's JWT (anon or service_role) before the request
-// reaches this code. No in-function auth check is needed.
+// Auth: verify_jwt = true validates the token at the gateway. In addition,
+// only service-role callers may choose recipients and templates freely;
+// signed-in users may only send self-service templates to their own e-mail.
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -98,10 +103,34 @@ Deno.serve(async (req) => {
     )
   }
 
-  // Resolve effective recipient: template-level `to` takes precedence over
-  // the caller-provided recipientEmail. This allows notification templates
-  // to always send to a fixed address (e.g., site owner from env var).
-  const effectiveRecipient = template.to || recipientEmail
+  // Authorize the caller before anything is queued.
+  const isService = isServiceRoleRequest(req)
+  let selfEmail: string | null = null
+  if (!isService) {
+    const token = bearerToken(req)
+    const authClient = createClient(supabaseUrl, supabaseServiceKey, { auth: { persistSession: false } })
+    const { data: userData } = token ? await authClient.auth.getUser(token) : { data: { user: null } }
+    const caller = userData?.user
+    if (!caller?.email) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    if (!SELF_SERVICE_TEMPLATES.has(templateName)) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    selfEmail = caller.email
+    // Per-user idempotency keys cannot collide with other accounts.
+    idempotencyKey = `${caller.id}:${idempotencyKey}`.slice(0, 200)
+  }
+
+  // Resolve effective recipient: template-level `to` takes precedence. For
+  // signed-in (non-service) callers the recipient is always their own e-mail.
+  const effectiveRecipient = template.to || (isService ? recipientEmail : selfEmail)
 
   if (!effectiveRecipient) {
     return new Response(
@@ -128,7 +157,7 @@ Deno.serve(async (req) => {
   if (suppressionError) {
     console.error('Suppression check failed — refusing to send', {
       error: suppressionError,
-      effectiveRecipient,
+      recipient: maskEmail(effectiveRecipient),
     })
     return new Response(
       JSON.stringify({ error: 'Failed to verify suppression status' }),
@@ -148,7 +177,7 @@ Deno.serve(async (req) => {
       status: 'suppressed',
     })
 
-    console.log('Email suppressed', { effectiveRecipient, templateName })
+    console.log('Email suppressed', { recipient: maskEmail(effectiveRecipient), templateName })
     return new Response(
       JSON.stringify({ success: false, reason: 'email_suppressed' }),
       {
@@ -172,7 +201,7 @@ Deno.serve(async (req) => {
   if (tokenLookupError) {
     console.error('Token lookup failed', {
       error: tokenLookupError,
-      email: normalizedEmail,
+      recipient: maskEmail(normalizedEmail),
     })
     await supabase.from('email_send_log').insert({
       message_id: messageId,
@@ -234,7 +263,7 @@ Deno.serve(async (req) => {
     if (reReadError || !storedToken) {
       console.error('Failed to read back unsubscribe token after upsert', {
         error: reReadError,
-        email: normalizedEmail,
+        recipient: maskEmail(normalizedEmail),
       })
       await supabase.from('email_send_log').insert({
         message_id: messageId,
@@ -256,7 +285,7 @@ Deno.serve(async (req) => {
     // Token exists but is already used — email should have been caught by suppression check above.
     // This is a safety fallback; log and skip sending.
     console.warn('Unsubscribe token already used but email not suppressed', {
-      email: normalizedEmail,
+      recipient: maskEmail(normalizedEmail),
     })
     await supabase.from('email_send_log').insert({
       message_id: messageId,
@@ -323,7 +352,7 @@ Deno.serve(async (req) => {
     console.error('Failed to enqueue email', {
       error: enqueueError,
       templateName,
-      effectiveRecipient,
+      recipient: maskEmail(effectiveRecipient),
     })
 
     await supabase.from('email_send_log').insert({
@@ -340,7 +369,7 @@ Deno.serve(async (req) => {
     })
   }
 
-  console.log('Transactional email enqueued', { templateName, effectiveRecipient })
+  console.log('Transactional email enqueued', { templateName, recipient: maskEmail(effectiveRecipient) })
 
   return new Response(
     JSON.stringify({ success: true, queued: true }),
