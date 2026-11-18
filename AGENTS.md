@@ -5,3 +5,4 @@
 - Persist the selected model snapshot and scope version with each generated CRM document and its audit entry.
 - Store document formatting independently from clinical models and apply it to both report and prescription exports.
 - Keep legacy migration history and generated schema types intact when Cloud blocks destructive retirement; report incomplete deletion rather than rewriting history to hide references.- Partner restrictions live in a secret-free shared catalog read by model resolution, UI and SQL; the partner restriction is the final override in model resolution and the partner link on profiles is server-written once.
+- Specialty template AI instructions are server-only: clients get column-limited catalog access and generate-laudo reads instructions with the service role.

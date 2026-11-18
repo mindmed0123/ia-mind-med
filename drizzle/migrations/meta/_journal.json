@@ -29,6 +29,13 @@
       "when": 1795032716993,
       "tag": "0003_fix_admin_list_users_and_fundadores_config",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795032902512,
+      "tag": "0004_harden_signup_series_and_specialty_templates",
+      "breakpoints": true
     }
   ]
 }

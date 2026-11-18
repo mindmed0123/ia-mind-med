@@ -231,6 +231,10 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: authHeader } }
     });
+    // Instruções internas dos modelos por especialidade só são lidas no servidor.
+    const templatesClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+      auth: { persistSession: false },
+    });
 
     const { data: { user }, error: userError } = await supabase.auth.getUser(jwtMatch[1]);
     if (userError || !user) {
@@ -286,14 +290,14 @@ serve(async (req) => {
         .gte('updated_at', new Date(Date.now() - 60000).toISOString()),
       // Template by specialty
       resolvedSpecialty
-        ? supabase
+        ? templatesClient
             .from('specialty_templates')
             .select('system_prompt, sections, specialty, display_name')
             .eq('specialty', resolvedSpecialty)
             .maybeSingle()
         : Promise.resolve({ data: null }),
       // Default template fallback
-      supabase
+      templatesClient
         .from('specialty_templates')
         .select('system_prompt, sections, specialty, display_name')
         .eq('is_default', true)
