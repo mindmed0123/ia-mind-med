@@ -4,4 +4,4 @@
 - Resolve report models server-side from owner-scoped custom models and organization policy; client input cannot override a locked organization.
 - Persist the selected model snapshot and scope version with each generated CRM document and its audit entry.
 - Store document formatting independently from clinical models and apply it to both report and prescription exports.
-- Keep legacy migration history and generated schema types intact when Cloud blocks destructive retirement; report incomplete deletion rather than rewriting history to hide references.
+- Keep legacy migration history and generated schema types intact when Cloud blocks destructive retirement; report incomplete deletion rather than rewriting history to hide references.- Partner restrictions live in a secret-free shared catalog read by model resolution, UI and SQL; the partner restriction is the final override in model resolution and the partner link on profiles is server-written once.
