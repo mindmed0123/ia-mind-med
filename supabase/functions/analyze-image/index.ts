@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getEntitlement } from "../_shared/entitlement.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -50,6 +51,19 @@ serve(async (req) => {
     if (docErr || !doc || doc.user_id !== userId) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Image analysis spends AI credits: requires an active or trial plan.
+    const entitlementClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      { auth: { persistSession: false } }
+    );
+    const entitlement = await getEntitlement(entitlementClient, userId);
+    if (!entitlement.active) {
+      return new Response(JSON.stringify({ error: 'Assinatura ativa necessária para analisar exames.', code: 'SUBSCRIPTION_REQUIRED' }), {
+        status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 

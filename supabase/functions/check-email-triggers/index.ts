@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { isServiceRoleRequest } from '../_shared/request-auth.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,6 +37,14 @@ type TemplateName = typeof TEMPLATES[number]
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
+
+  // Only the scheduled job (service role) may scan profiles and send lifecycle e-mails.
+  if (!isServiceRoleRequest(req)) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), {
+      status: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!

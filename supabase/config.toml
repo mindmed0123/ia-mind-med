@@ -37,6 +37,8 @@ project_id = "zwebwrbbrcmajkuptpwq"
     verify_jwt = true
   [functions.send-transactional-email]
     verify_jwt = true
+  [functions.check-email-triggers]
+    verify_jwt = true
   [functions.send-trial-reminders]
     verify_jwt = true
   [functions.stripe-webhook]

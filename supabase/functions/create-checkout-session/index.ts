@@ -151,12 +151,30 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    // Check if customer already exists
-    const customers = await stripe.customers.list({ email, limit: 1 });
-    let customerId: string;
+    // Reuse only a Stripe customer that provably belongs to this account: the id
+    // stored for this user, or an e-mail match tagged with this user's id. An
+    // untagged e-mail match may belong to someone else (e-mails are unconfirmed).
+    const { data: subCustomer } = await supabase
+      .from("subscriptions")
+      .select("stripe_customer_id")
+      .eq("user_id", userId)
+      .not("stripe_customer_id", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
+    let customerId: string | null = (subCustomer?.stripe_customer_id as string | undefined) ?? null;
+    if (customerId) {
+      const stored = await stripe.customers.retrieve(customerId).catch(() => null);
+      if (!stored || (stored as Stripe.DeletedCustomer).deleted) customerId = null;
+    }
+    if (!customerId) {
+      const customers = await stripe.customers.list({ email, limit: 10 });
+      const owned = customers.data.find((c: Stripe.Customer) => !c.deleted && c.metadata?.user_id === userId);
+      customerId = owned?.id ?? null;
+    }
+
+    if (customerId) {
       logStep("Found existing customer", { customerId });
     } else {
       const customer = await stripe.customers.create({
