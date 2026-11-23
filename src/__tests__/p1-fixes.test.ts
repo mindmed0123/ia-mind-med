@@ -303,8 +303,9 @@ describe("Draft generation recovery", () => {
   });
 
   it("uses shorter polling early and slower polling later", () => {
-    expect(getPollingDelayMs(1)).toBe(1500);
-    expect(getPollingDelayMs(15)).toBe(2500);
+    expect(getPollingDelayMs(1)).toBe(1000);
+    expect(getPollingDelayMs(15)).toBe(1500);
+    expect(getPollingDelayMs(25)).toBe(2500);
   });
 
   it("maps backend generation sub-stages to real UI states", () => {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -31,12 +31,42 @@ export const StepProfile = ({ onNext, onBack }: StepProfileProps) => {
     crm_uf: "",
     specialty: "",
   });
+  // Registro já informado na tela "Antes de começar" — não pedimos de novo.
+  const [registroSalvo, setRegistroSalvo] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+    supabase
+      .from("profiles")
+      .select("full_name, crm, crm_uf, specialty, conselho, registro_numero, registro_uf, especialidade")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!active || !data) return;
+        const metaName = (user.user_metadata as { full_name?: string } | undefined)?.full_name ?? "";
+        setProfile({
+          full_name: data.full_name || metaName,
+          crm: data.crm || "",
+          crm_uf: data.crm_uf || "",
+          specialty: data.specialty || "",
+        });
+        if (data.conselho && data.registro_numero) {
+          const uf = data.registro_uf ? `/${data.registro_uf}` : "";
+          const esp = data.especialidade ? ` · ${data.especialidade}` : "";
+          setRegistroSalvo(`${data.conselho} ${data.registro_numero}${uf}${esp}`);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
 
   const handleSave = async () => {
-    if (!profile.full_name.trim() || !profile.crm.trim()) {
+    if (!profile.full_name.trim() || (!registroSalvo && !profile.crm.trim())) {
       toast({
         title: "Campos obrigatórios",
-        description: "Preencha seu nome completo e CRM",
+        description: registroSalvo ? "Preencha seu nome completo" : "Preencha seu nome completo e CRM",
         variant: "destructive",
       });
       return;
@@ -46,12 +76,16 @@ export const StepProfile = ({ onNext, onBack }: StepProfileProps) => {
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({
-          full_name: profile.full_name.trim(),
-          crm: profile.crm.replace(/\D/g, ""),
-          crm_uf: profile.crm_uf.toUpperCase(),
-          specialty: profile.specialty.trim(),
-        })
+        .update(
+          registroSalvo
+            ? { full_name: profile.full_name.trim() }
+            : {
+                full_name: profile.full_name.trim(),
+                crm: profile.crm.replace(/\D/g, ""),
+                crm_uf: profile.crm_uf.toUpperCase(),
+                specialty: profile.specialty.trim(),
+              },
+        )
         .eq("id", user?.id);
 
       if (error) throw error;
@@ -85,6 +119,14 @@ export const StepProfile = ({ onNext, onBack }: StepProfileProps) => {
             />
           </div>
 
+          {registroSalvo ? (
+            <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Registro: </span>
+              <span className="font-medium">{registroSalvo}</span>
+              <p className="text-xs text-muted-foreground mt-0.5">Você pode alterar depois em Perfil.</p>
+            </div>
+          ) : (
+            <>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="ob_crm">CRM *</Label>
@@ -124,6 +166,9 @@ export const StepProfile = ({ onNext, onBack }: StepProfileProps) => {
               </SelectContent>
             </Select>
           </div>
+
+            </>
+          )}
 
           <div className="flex gap-3">
             <Button variant="outline" onClick={onBack} className="flex-1">
