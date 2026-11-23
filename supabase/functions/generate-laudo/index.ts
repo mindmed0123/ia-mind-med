@@ -199,10 +199,16 @@ const FALLBACK_MODELS: Record<string, string> = {
   long: 'google/gemini-2.5-flash-lite',
 };
 
-const MAX_TOKENS = { fast: 2500, complete: 4000, long: 5000 };
+// Output budget: the full structured laudo (anamnese detalhada, hipóteses,
+// condutas, prescrições, seções do modelo) routinely needs 3–6k tokens. A
+// smaller cap truncates the tool call and the whole generation fails.
+const MAX_TOKENS = { fast: 8000, complete: 10000, long: 12000 };
+// Retry budget used once when the model still stops at the output cap.
+const LENGTH_RETRY_MAX_TOKENS = 16000;
 // Long mode receives a pre-condensed transcript (map-reduce summaries) so we
 // can be more generous on input characters without exploding the context.
-const MAX_INPUT_CHARS = { fast: 3500, complete: 8000, long: 16000 };
+// A 15-minute consultation is ~12k characters; never cut the consultation in half.
+const MAX_INPUT_CHARS = { fast: 20000, complete: 24000, long: 32000 };
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -503,6 +509,39 @@ const systemPrompt = isCRP ? baseSystemPrompt : baseSystemPrompt + anamneseInstr
       throw new Error('Falha na geração do laudo após retry e fallback.');
     }
 
+    // Truncated output (finish_reason=length) leaves the tool call unparsable.
+    // Retry once with a larger output budget before giving up.
+    const parseToolArgs = (d: any) => {
+      const args = d?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+      if (!args) return null;
+      try { return JSON.parse(args); } catch { return null; }
+    };
+    if (llmResult.data?.choices?.[0]?.finish_reason === 'length' && !parseToolArgs(llmResult.data)) {
+      log(cid, 'llm_length_retry', { model: llmResult.modelUsed, max_tokens: LENGTH_RETRY_MAX_TOKENS });
+      try {
+        llmResult = await callLlmWithFallback(
+          lovableKey,
+          {
+            model: modelUsed,
+            fallbackModel,
+            messages: [
+              { role: 'system', content: fullSystemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+            tools: [isCRP ? REGISTRO_TOOL : medicalTool],
+            toolChoice: { type: 'function', function: { name: isCRP ? 'generate_registro' : 'generate_laudo' } },
+            maxTokens: LENGTH_RETRY_MAX_TOKENS,
+            temperature: 0.15,
+            timeoutMs: 90000,
+            retries: 0,
+          },
+          (step, data) => log(cid, step, data),
+        );
+      } catch (e: any) {
+        log(cid, 'llm_length_retry_failed', { status: (e as any)?.status, msg: e?.message });
+      }
+    }
+
     const t5 = now();
     const llmMs = t5 - t4;
     const data = llmResult.data;
@@ -535,7 +574,7 @@ const systemPrompt = isCRP ? baseSystemPrompt : baseSystemPrompt + anamneseInstr
 
     if (!laudoData) {
       const content = choice?.message?.content;
-      if (!content) throw new Error('Resposta vazia da IA.');
+      if (!content) throw new Error(finishReason === 'length' ? 'O laudo ficou longo demais para a IA concluir. Tente novamente.' : 'Resposta vazia da IA.');
       
       let clean = content.replace(/^```(?:json)?\s*/gm, '').replace(/```\s*$/gm, '').trim();
       clean = clean.replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F]/g, '');

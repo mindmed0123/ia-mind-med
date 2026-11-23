@@ -280,6 +280,13 @@ describe("Draft generation recovery", () => {
     ).toBe(true);
   });
 
+  it("never auto-retries a laudo whose generation failed (no loop)", () => {
+    const failed = { status: "error", transcript_status: "completed", transcript: { text: "consulta transcrita" } };
+    expect(isReadyToGenerate(failed)).toBe(false);
+    expect(shouldRetryDraftGeneration(failed, false, 0, 60_000)).toBe(false);
+    expect(shouldRetryDraftGeneration(failed, true, 0, 60_000)).toBe(false);
+  });
+
   it("does not retry too early while waiting for the current attempt", () => {
     expect(
       shouldRetryDraftGeneration(

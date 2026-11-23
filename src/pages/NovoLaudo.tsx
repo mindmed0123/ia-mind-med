@@ -506,7 +506,7 @@ const NovoLaudo = () => {
 
   // Recovery watchdog — only fires when polling isn't active (safety net)
   useEffect(() => {
-    if (!laudoId || ['idle', 'completed'].includes(pipelineStage) || laudo?.status === 'completed') return;
+    if (!laudoId || ['idle', 'completed', 'error'].includes(pipelineStage) || laudo?.status === 'completed' || laudo?.status === 'error') return;
     if (pollingRef.current) return;
 
     const recoveryInterval = window.setInterval(() => {

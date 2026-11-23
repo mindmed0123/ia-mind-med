@@ -27,6 +27,8 @@ export function isReadyToGenerate(snapshot?: LaudoPipelineSnapshot | null) {
     snapshot?.transcript_status === "completed" &&
       snapshot?.status !== "completed" &&
       snapshot?.status !== "generating" &&
+      // A failed generation is only retried by the doctor (button), never in a loop.
+      snapshot?.status !== "error" &&
       transcriptText,
   );
 }
