@@ -9,11 +9,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
-import {
-  CLINICAL_WHISPER_PROMPT_PT_BR,
-  processWhisperSegments,
-  transcriptFromSegments,
-} from "../_shared/clinical-transcription.ts";
+import { transcribeClinicalAudio, TranscriptionError } from "../_shared/gateway-transcribe.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -87,79 +83,24 @@ serve(async (req) => {
       });
     }
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      throw new Error("OpenAI API key não configurada");
-    }
-
     log(cid, "chunk_received", { chunkIndex, size: file.size, startSec });
 
-    const whisperForm = new FormData();
-    whisperForm.append("file", file, `chunk-${chunkIndex}.wav`);
-    whisperForm.append("model", "whisper-1");
-    whisperForm.append("language", "pt");
-    whisperForm.append("response_format", "verbose_json");
-    whisperForm.append("timestamp_granularities[]", "segment");
-    // Deterministic output → same audio always produces same text (critical
-    // for medical record reproducibility). 0 = greedy decoding.
-    whisperForm.append("temperature", "0");
-    // Clinical priming — biases Whisper toward correct medical PT-BR spelling
-    // (medications, anatomy, CIDs, vitals, abbreviations).
-    whisperForm.append("prompt", CLINICAL_WHISPER_PROMPT_PT_BR);
-
-    const ac = new AbortController();
-    const timeoutId = setTimeout(() => ac.abort("timeout"), 90000);
     const t0 = Date.now();
-    let response: Response;
+    let result;
     try {
-      response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
-        body: whisperForm,
-        signal: ac.signal,
-      });
-    } finally {
-      clearTimeout(timeoutId);
-    }
-    const latencyMs = Date.now() - t0;
-
-    if (!response.ok) {
-      const errText = await response.text();
-      log(cid, "whisper_error", { status: response.status, body: errText.slice(0, 200) });
-      let clientStatus = response.status;
-      let message = "Erro na transcrição do chunk";
-      try {
-        const parsed = JSON.parse(errText);
-        if (parsed?.error?.code === "insufficient_quota") {
-          clientStatus = 402;
-          message = "Créditos insuficientes na API de transcrição.";
-        } else if (parsed?.error?.message) {
-          message = parsed.error.message;
-        }
-      } catch (_) { /* ignore */ }
-
-      return new Response(JSON.stringify({ error: message, chunk_index: chunkIndex }), {
-        status: clientStatus,
+      result = await transcribeClinicalAudio(file, startSec);
+    } catch (txError) {
+      if (!(txError instanceof TranscriptionError)) throw txError;
+      log(cid, "transcription_error", { chunkIndex, status: txError.status, code: txError.code });
+      return new Response(JSON.stringify({ error: txError.message, code: txError.code, chunk_index: chunkIndex }), {
+        status: txError.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const latencyMs = Date.now() - t0;
+    const { text, segments } = result;
 
-    const data = await response.json();
-    // Filter Whisper hallucinations + apply clinical text normalization
-    // (acronyms, units, BP format). Build the chunk text from the *cleaned*
-    // segments so the merged transcript is consistent.
-    const segments = processWhisperSegments(data.segments || [], startSec);
-    const text = transcriptFromSegments(
-      segments.map((s) => ({ ...s, start: s.start - startSec, end: s.end - startSec })),
-    );
-    const droppedCount = (data.segments?.length || 0) - segments.length;
-
-    log(cid, "chunk_done", {
-      chunkIndex,
-      latencyMs,
-      segments: segments.length,
-      dropped_hallucinations: droppedCount,
-    });
+    log(cid, "chunk_done", { chunkIndex, latencyMs, chars: text.length });
 
     return new Response(
       JSON.stringify({
@@ -168,7 +109,7 @@ serve(async (req) => {
         start_sec: startSec,
         text,
         segments,
-        duration: data.duration || 0,
+        duration: result.durationSec || 0,
         latency_ms: latencyMs,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },

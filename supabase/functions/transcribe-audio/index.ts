@@ -2,11 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { storagePathFromUrl } from '../_shared/storage-url.ts';
-import {
-  CLINICAL_WHISPER_PROMPT_PT_BR,
-  processWhisperSegments,
-  transcriptFromSegments,
-} from "../_shared/clinical-transcription.ts";
+import { transcribeClinicalAudio, TranscriptionError } from "../_shared/gateway-transcribe.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -137,17 +133,12 @@ serve(async (req) => {
       .eq('id', laudo_id)
       .eq('user_id', user.id);
 
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      throw new Error('OpenAI API key não configurada');
-    }
-
     // Download audio
     let audioBlob: Blob;
     let fileName = 'audio.webm';
     let mimeType = 'audio/webm';
 
-    // Whisper API hard limit per request
+    // Per-request upload limit; larger files go through the chunked pipeline
     const WHISPER_MAX_BYTES = 25 * 1024 * 1024;
 
     if (audio_path) {
@@ -251,84 +242,37 @@ serve(async (req) => {
       throw new Error('Nenhuma fonte de áudio fornecida');
     }
 
-    // Whisper API
-    const formData = new FormData();
-    formData.append('file', audioBlob, fileName);
-    formData.append('model', 'whisper-1');
-    formData.append('language', 'pt');
-    formData.append('response_format', 'verbose_json');
-    formData.append('timestamp_granularities[]', 'segment');
-    // Greedy decoding for clinical reproducibility
-    formData.append('temperature', '0');
-    // Clinical priming for PT-BR medical vocabulary (meds, anatomy, CID-10, vitals)
-    formData.append('prompt', CLINICAL_WHISPER_PROMPT_PT_BR);
-
+    // Lovable AI Gateway transcription (billed to workspace credits)
     const startTime = Date.now();
-
-    const ac = new AbortController();
-    // 5 min — Whisper can take longer for clinically dense audio close to the 25MB limit
-    const timeoutId = setTimeout(() => ac.abort('timeout'), 300000);
-    let transcribeResponse: Response;
+    let transcription;
     try {
-      transcribeResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` },
-        body: formData,
-        signal: ac.signal,
-      });
-    } finally {
-      clearTimeout(timeoutId);
-    }
-
-    const latencyMs = Date.now() - startTime;
-    log(correlationId, 'whisper_response', { status: transcribeResponse.status, latency_ms: latencyMs });
-
-    if (!transcribeResponse.ok) {
-      const errorText = await transcribeResponse.text();
-      log(correlationId, 'whisper_error', { status: transcribeResponse.status });
-      
+      transcription = await transcribeClinicalAudio(new File([audioBlob], fileName, { type: mimeType }));
+    } catch (txError) {
+      const latencyMs = Date.now() - startTime;
+      if (!(txError instanceof TranscriptionError)) throw txError;
+      log(correlationId, 'transcription_error', { status: txError.status, code: txError.code, latency_ms: latencyMs });
       await supabase
         .from('laudos')
         .update({ transcript_status: 'error', audio_processing_status: 'error' })
         .eq('id', laudo_id)
         .eq('user_id', user.id);
-
-      let clientStatus = transcribeResponse.status;
-      let message = 'Erro na transcrição do áudio';
-      try {
-        const parsed = JSON.parse(errorText);
-        const err = parsed?.error;
-        if (err?.code === 'insufficient_quota' || err?.type === 'insufficient_quota') {
-          clientStatus = 402;
-          message = 'Créditos insuficientes na API de transcrição.';
-        } else if (err?.message) {
-          message = err.message;
-        }
-      } catch (_) { /* ignore parse errors */ }
-
-      return new Response(JSON.stringify({ error: message, provider_status: transcribeResponse.status }), {
-        status: clientStatus,
+      return new Response(JSON.stringify({ error: txError.message, code: txError.code }), {
+        status: txError.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const transcriptionData = await transcribeResponse.json();
-    // Apply hallucination filter + clinical normalization. We rebuild the
-    // text from cleaned segments so the saved transcript matches what we
-    // actually consider valid speech.
-    const segments = processWhisperSegments(transcriptionData.segments || [], 0);
-    const transcriptText = transcriptFromSegments(segments) ||
-      (transcriptionData.text || "").trim();
+    const latencyMs = Date.now() - startTime;
+    log(correlationId, 'transcription_response', { latency_ms: latencyMs, duration: transcription.durationSec });
+
+    const segments = transcription.segments;
+    const transcriptText = transcription.text;
 
     if (!transcriptText) {
       throw new Error('Transcrição vazia retornada pela API');
     }
 
-    log(correlationId, 'segments_processed', {
-      raw: transcriptionData.segments?.length || 0,
-      kept: segments.length,
-      dropped: (transcriptionData.segments?.length || 0) - segments.length,
-    });
+    const transcriptionData = { duration: transcription.durationSec, language: transcription.language };
 
     const fullTranscript = {
       text: transcriptText,

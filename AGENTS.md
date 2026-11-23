@@ -9,3 +9,4 @@
 - Billing, admin-mutation, quota-by-id and e-mail-queue DB functions are service_role only; edge functions call them after their own auth check.
 - Edge functions build return/invite URLs only via _shared/allowed-origin and fetch only this project's storage paths via _shared/storage-url, never caller-supplied URLs.
 - Client uploads to the audio-files bucket go under `<auth uid>/...` and PDF exports download before any best-effort archive upload; storage policies key on the first folder.
+- Audio transcription goes through the Lovable AI Gateway via _shared/gateway-transcribe (pinned npm SDK import in Deno); no OpenAI key is used, so costs land on workspace credits.

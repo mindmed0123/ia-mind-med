@@ -771,7 +771,7 @@ const NovoLaudo = () => {
       const status = err?.context?.status || err?.status;
       let description = err?.message || 'Falha ao reenviar transcrição';
       if (status === 429) description = 'Limite de uso atingido. Aguarde alguns minutos.';
-      if (status === 402) description = 'Créditos insuficientes na API de transcrição.';
+      if (status === 402) description = 'A transcrição de áudio está temporariamente indisponível. Use "Escrever Consulta" ou tente mais tarde.';
       setPipelineStage('error');
       setIsSubmitting(false);
       toast({ title: 'Erro', description, variant: 'destructive' });
