@@ -149,9 +149,11 @@ export default function AssinaturaExpirada() {
               </Button>
 
               <p className="text-xs text-center text-muted-foreground">
-                {isPendingCheckout
-                  ? "7 dias grátis após cadastrar o cartão • Nada é cobrado agora"
-                  : "Escolha o plano acima • Cancele quando quiser"}
+                {selectedPlan === 'mindmed_fundador'
+                  ? "Fundador não tem teste grátis: a cobrança anual é feita agora • Garantia de 30 dias com devolução de 100%"
+                  : isPendingCheckout
+                    ? "7 dias grátis após cadastrar o cartão • Nada é cobrado agora"
+                    : "Escolha o plano acima • Cancele quando quiser"}
               </p>
             </div>
 

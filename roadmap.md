@@ -16,5 +16,10 @@
 - [x] Páginas públicas, cadastro no celular, onboarding, rastreamento, planos
 - [x] Erro de transcrição deixava a tela girando para sempre
 - [x] Laudo por texto, vínculo de paciente, PDF, receita, páginas internas (computador e celular)
-- [ ] Testar consulta por áudio de novo: aguardando créditos de API na OpenAI (o Plus do ChatGPT não cobre)
+- [x] Consulta por áudio trocada para a IA do Lovable e testada; chave da OpenAI apagada
 - [x] Apagar conta e dados de teste ao final
+# Compra / Stripe
+- [x] App confirma a assinatura direto no Stripe (volta do pagamento e antes de bloquear)
+- [x] Aviso de pagamento do Stripe apontando para este app; código ajustado à versão atual do Stripe
+- [ ] Confirmar que a chave colada pelo dono é a do destino novo (teste com aviso real)
+- [ ] Teste de compra no celular até a página do Stripe e liberação do acesso
