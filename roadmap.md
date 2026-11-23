@@ -21,5 +21,8 @@
 # Compra / Stripe
 - [x] App confirma a assinatura direto no Stripe (volta do pagamento e antes de bloquear)
 - [x] Aviso de pagamento do Stripe apontando para este app; código ajustado à versão atual do Stripe
-- [ ] Confirmar que a chave colada pelo dono é a do destino novo (teste com aviso real)
-- [ ] Teste de compra no celular até a página do Stripe e liberação do acesso
+- [x] Chave do destino novo confirmada com avisos reais (teste e cancelamento chegaram)
+- [x] Teste de compra no celular até a página do Stripe e liberação do acesso
+- [x] Aviso do plano Fundador corrigido (cobra na hora, sem teste grátis)
+- [ ] Pagamento com cartão real: não feito para não cobrar; testado com assinatura de teste sem cartão
+- [ ] Destino antigo "Lovable mind med" no Stripe aponta para o site: dono deve desativar
