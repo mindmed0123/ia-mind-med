@@ -16,5 +16,5 @@
 - [x] Páginas públicas, cadastro no celular, onboarding, rastreamento, planos
 - [x] Erro de transcrição deixava a tela girando para sempre
 - [x] Laudo por texto, vínculo de paciente, PDF, receita, páginas internas (computador e celular)
-- [ ] Testar consulta por áudio de novo: aguardando o usuário recarregar a OpenAI
-- [ ] Apagar conta e dados de teste ao final
+- [ ] Testar consulta por áudio de novo: aguardando créditos de API na OpenAI (o Plus do ChatGPT não cobre)
+- [x] Apagar conta e dados de teste ao final

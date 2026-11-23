@@ -486,7 +486,7 @@ export default function Receituarios() {
                 </span>
               )}
             </div>
-            <div className="flex w-full sm:w-auto items-center justify-end gap-2">
+            <div className="flex w-full sm:w-auto flex-wrap items-center gap-2 sm:justify-end">
               <FarmacovigilanciaButton />
               {!showForm && subscription?.isPro && (
                 <Button onClick={() => setShowForm(true)}>
