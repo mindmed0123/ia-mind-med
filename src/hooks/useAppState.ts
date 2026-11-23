@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { lastStripeSync, needsStripeSync, rowHasAccess, syncSubscriptionWithStripe } from '@/lib/subscription-sync';
 
 // ──── Types ────
 export type PlanType = 'STARTER' | 'PRO' | 'CLINIC';
@@ -55,16 +56,34 @@ async function fetchSubscription(userId: string): Promise<SubscriptionInfo | nul
   _cache.fetchPromise = (async () => {
     try {
       // Fetch subscription + check if user is an invited doctor (gets PRO via owner's seat)
-      const [subRes, invitedRes] = await Promise.all([
-        supabase
-          .from('subscriptions')
-          .select('status, plan, plan_origem, trial_end, remaining_starter_credits, quota_used, current_period_end, stripe_subscription_id, billing_cycle')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+      const loadRow = () => supabase
+        .from('subscriptions')
+        .select('status, plan, plan_origem, trial_end, remaining_starter_credits, quota_used, current_period_end, stripe_subscription_id, billing_cycle')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      let [subRes, invitedRes] = await Promise.all([
+        loadRow(),
         supabase.rpc('is_invited_doctor', { _user_id: userId }),
       ]);
+
+      // Stripe is the source of truth for paid access: confirm with it when the
+      // stored row would deny access (blocking) or periodically (background).
+      if (invitedRes.data !== true && !subRes.error && needsStripeSync(subRes.data, lastStripeSync(userId))) {
+        if (!rowHasAccess(subRes.data)) {
+          const result = await syncSubscriptionWithStripe(userId);
+          if (result?.synced) subRes = await loadRow();
+        } else {
+          const before = subRes.data?.status;
+          void syncSubscriptionWithStripe(userId).then((result) => {
+            if (result?.synced && result.status !== before) {
+              invalidateAppCache();
+              void fetchSubscription(userId);
+            }
+          });
+        }
+      }
 
       const isInvitedDoctor = invitedRes.data === true;
 

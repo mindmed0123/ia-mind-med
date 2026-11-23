@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { useAppState } from "@/hooks/useAppState";
+import { useAppState, invalidateAppCache } from "@/hooks/useAppState";
+import { syncSubscriptionWithStripe } from "@/lib/subscription-sync";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,7 +37,7 @@ const Dashboard = () => {
   const { needsWelcome, loading: onboardingChecking, completeOnboarding, needsLgpdConsent, lgpdConsentLoading, markLgpdConsentGiven, snoozeOnboarding, laudoCount, refreshLaudoCount } = useOnboarding();
   const { hasAccess: hasAgendaAccess } = useFeatureAccess("appointments");
   const { organization } = useOrganization();
-  const { subscription } = useAppState();
+  const { subscription, refresh: refreshSubscription } = useAppState();
   const { profile: proProfile, loading: proLoading, needsProfile, isCRP, refresh: refreshProProfile } = useProfessionalProfile();
   const [skippedProfile, setSkippedProfile] = useState(false);
   const isPendingCheckout = subscription?.status === "PENDING_CHECKOUT";
@@ -47,20 +48,41 @@ const Dashboard = () => {
     markLgpdConsentGiven();
   }, [markLgpdConsentGiven]);
 
-  // Confirmação de checkout vinda do Stripe (?checkout=success&session_id=...)
+  // Confirmação de checkout vinda do Stripe (?checkout=success&session_id=...).
+  // Confirma direto no Stripe antes de liberar, sem depender só do webhook.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("checkout") === "success") {
-      toast({
-        title: "Teste ativado",
-        description: "Você tem 7 dias de acesso completo. Nada foi cobrado.",
-      });
-      params.delete("checkout");
-      params.delete("session_id");
-      const qs = params.toString();
-      window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""));
-    }
-  }, [toast]);
+    if (params.get("checkout") !== "success" || !user?.id) return;
+    params.delete("checkout");
+    params.delete("session_id");
+    const qs = params.toString();
+    window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""));
+
+    let cancelled = false;
+    (async () => {
+      let result = null;
+      for (let attempt = 0; attempt < 4 && !cancelled; attempt++) {
+        result = await syncSubscriptionWithStripe(user.id);
+        if (result?.status === "TRIALING" || result?.status === "ACTIVE") break;
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+      if (cancelled) return;
+      invalidateAppCache();
+      refreshSubscription();
+      if (result?.status === "TRIALING") {
+        toast({ title: "Teste ativado", description: "Você tem 7 dias de acesso completo. Nada foi cobrado." });
+      } else if (result?.status === "ACTIVE") {
+        toast({ title: "Assinatura ativada", description: "Pagamento confirmado. Seu acesso completo já está liberado." });
+      } else {
+        toast({
+          title: "Confirmando seu pagamento",
+          description: "O Stripe ainda está processando. Seu acesso será liberado em instantes; se não for, fale com o suporte no WhatsApp.",
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   useEffect(() => {
     if (!loading && !user) {

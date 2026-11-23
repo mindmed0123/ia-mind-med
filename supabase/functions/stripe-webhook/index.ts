@@ -2,6 +2,11 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { sendMetaEvent } from "../_shared/meta-capi.ts";
+import {
+  applyStripeSubscription,
+  invoiceSubscriptionId,
+  resolveUserId,
+} from "../_shared/stripe-subscription-sync.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,44 +80,12 @@ serve(async (req) => {
 
         logStep("Subscription created", { userId, subscriptionId: subscription.id, stripeStatus, plan });
 
+        if (userId) {
+          const result = await applyStripeSubscription(supabase, subscription, userId);
+          logStep("Subscription synced", { status: result.status });
+        }
+
         if (userId && stripeStatus === "trialing") {
-          const price = subscription.items?.data?.[0]?.price;
-          const { data, error } = await supabase
-            .from("subscriptions")
-            .update({
-              stripe_customer_id: customerId,
-              stripe_subscription_id: subscription.id,
-              status: "TRIALING",
-              plan: plan === "mindmed_starter" ? "STARTER" : "PRO",
-              billing_cycle: plan === "mindmed_pro_anual" ? "ANNUAL" : "MONTHLY",
-              trial_start: subscription.trial_start
-                ? new Date(subscription.trial_start * 1000).toISOString()
-                : new Date().toISOString(),
-              trial_end: subscription.trial_end
-                ? new Date(subscription.trial_end * 1000).toISOString()
-                : null,
-              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-              payment_provider: "stripe",
-              remaining_starter_credits: plan === "mindmed_starter" ? 10 : null,
-              quota_used: 0,
-              ...(price?.unit_amount ? {
-                amount_cents: price.unit_amount,
-                currency: price.currency,
-                billing_interval: price.recurring?.interval ?? "month",
-              } : {}),
-            })
-            .eq("user_id", userId)
-            .select();
-
-          if (error) {
-            logStep("Error promoting subscription to TRIALING", { error });
-          } else if (!data || data.length === 0) {
-            logStep("ERROR: no subscription row updated for user — paying customer may lack access", { userId, subscriptionId: subscription.id });
-          } else {
-            logStep("Subscription promoted to TRIALING", { rows: data.length });
-          }
-
           // Meta CAPI — início de trial
           try {
             const customer = await stripe.customers.retrieve(customerId);
@@ -149,63 +122,17 @@ serve(async (req) => {
 
         logStep("Checkout completed", { userId, subscriptionId, customerId, plan });
 
-        if (userId) {
-          const now = new Date();
-          let trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-          // Fetch price details from Stripe so MRR is accurate
-          let amount_cents: number | null = null;
-          let currency: string | null = null;
-          let billing_interval: string | null = null;
-          try {
-            if (subscriptionId) {
-              const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
-              if (stripeSub.trial_end) trialEnd = new Date(stripeSub.trial_end * 1000);
-              const price = stripeSub.items?.data?.[0]?.price;
-              if (price?.unit_amount) {
-                amount_cents = price.unit_amount;
-                currency = price.currency;
-                billing_interval = price.recurring?.interval ?? "month";
-              }
-            }
-          } catch (e) {
-            logStep("Failed to load price from Stripe", { error: e instanceof Error ? e.message : String(e) });
-          }
-
-          const { error } = await supabase
-            .from("subscriptions")
-            .upsert({
-              user_id: userId,
-              stripe_customer_id: customerId,
-              stripe_subscription_id: subscriptionId,
-              status: "TRIALING",
-              plan: plan === "mindmed_starter" ? "STARTER" : "PRO",
-              billing_cycle: plan === "mindmed_pro_anual" ? "ANNUAL" : "MONTHLY",
-              trial_start: now.toISOString(),
-              trial_end: trialEnd.toISOString(),
-              current_period_start: now.toISOString(),
-              current_period_end: trialEnd.toISOString(),
-              payment_provider: "stripe",
-              remaining_starter_credits: plan === "mindmed_starter" ? 10 : null,
-              quota_used: 0,
-              ...(amount_cents != null ? { amount_cents, currency, billing_interval } : {}),
-            }, {
-              onConflict: "user_id",
-              ignoreDuplicates: false,
-            });
-
-          if (error) {
-            logStep("Error updating subscription", { error });
-          } else {
-            logStep("Subscription updated to TRIALING");
-          }
+        if (userId && subscriptionId) {
+          const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
+          const result = await applyStripeSubscription(supabase, stripeSub, userId);
+          logStep("Subscription synced after checkout", { status: result.status });
         }
         break;
       }
 
       case "invoice.paid": {
         const invoice = event.data.object as Stripe.Invoice;
-        const subscriptionId = invoice.subscription as string;
+        const subscriptionId = invoiceSubscriptionId(invoice);
 
         logStep("Invoice paid", { subscriptionId });
 
@@ -214,31 +141,16 @@ serve(async (req) => {
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
           const customerId = subscription.customer as string;
 
-          // Find user by stripe_subscription_id or stripe_customer_id
-          const { data: subData } = await supabase
-            .from("subscriptions")
-            .select("user_id")
-            .or(`stripe_subscription_id.eq.${subscriptionId},stripe_customer_id.eq.${customerId}`)
-            .limit(1)
-            .single();
+          const userId = await resolveUserId(supabase, subscription);
+          const subData = userId ? { user_id: userId } : null;
 
           if (subData?.user_id) {
-            const price = subscription.items?.data?.[0]?.price;
-            const updatePayload: Record<string, unknown> = {
-              status: "ACTIVE",
-              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            };
-            if (price?.unit_amount) {
-              updatePayload.amount_cents = price.unit_amount;
-              updatePayload.currency = price.currency;
-              updatePayload.billing_interval = price.recurring?.interval ?? "month";
+            let error: unknown = null;
+            try {
+              await applyStripeSubscription(supabase, subscription, subData.user_id);
+            } catch (e) {
+              error = e;
             }
-            const { error } = await supabase
-              .from("subscriptions")
-              .update(updatePayload)
-              .eq("user_id", subData.user_id);
-
             if (error) {
               logStep("Error updating to ACTIVE", { error });
             } else {
@@ -283,12 +195,12 @@ serve(async (req) => {
                 logStep("Purchase CAPI failed", { error: e instanceof Error ? e.message : String(e) });
               }
 
-              // Send upgrade confirmed email
-              const { data: profile } = await supabase
+              // Send upgrade confirmed email (only for a real charge, not the R$ 0 trial invoice)
+              const { data: profile } = (invoice.amount_paid ?? 0) > 0 ? await supabase
                 .from("profiles")
                 .select("email, full_name")
                 .eq("id", subData.user_id)
-                .maybeSingle();
+                .maybeSingle() : { data: null };
 
               if (profile?.email) {
                 const planItems = subscription.items?.data || [];
@@ -314,21 +226,18 @@ serve(async (req) => {
 
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
-        const subscriptionId = invoice.subscription as string;
+        const subscriptionId = invoiceSubscriptionId(invoice);
         const customerId = invoice.customer as string;
 
         logStep("Invoice payment failed", { subscriptionId, customerId });
 
         if (subscriptionId) {
-          const { error } = await supabase
-            .from("subscriptions")
-            .update({ status: "INACTIVE" })
-            .eq("stripe_subscription_id", subscriptionId);
-
-          if (error) {
-            logStep("Error updating to INACTIVE", { error });
-          } else {
-            logStep("Subscription updated to INACTIVE");
+          // Mirror Stripe's own status (past_due while retries run) instead of guessing.
+          const failedSub = await stripe.subscriptions.retrieve(subscriptionId);
+          const failedUser = await resolveUserId(supabase, failedSub);
+          if (failedUser) {
+            const result = await applyStripeSubscription(supabase, failedSub, failedUser);
+            logStep("Subscription synced after failed payment", { status: result.status });
           }
         }
 
@@ -410,47 +319,12 @@ serve(async (req) => {
 
         logStep("Subscription updated", { subscriptionId, stripeStatus });
 
-        let dbStatus: string;
-        switch (stripeStatus) {
-          case "active":
-            dbStatus = "ACTIVE";
-            break;
-          case "trialing":
-            dbStatus = "TRIALING";
-            break;
-          case "past_due":
-          case "incomplete":
-          case "incomplete_expired":
-          case "unpaid":
-            dbStatus = "INACTIVE";
-            break;
-          case "canceled":
-            dbStatus = "CANCELED";
-            break;
-          default:
-            dbStatus = "INACTIVE";
-        }
-
-        const updPayload: Record<string, unknown> = {
-          status: dbStatus,
-          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-        };
-        const subPrice = subscription.items?.data?.[0]?.price;
-        if (subPrice?.unit_amount) {
-          updPayload.amount_cents = subPrice.unit_amount;
-          updPayload.currency = subPrice.currency;
-          updPayload.billing_interval = subPrice.recurring?.interval ?? "month";
-        }
-        const { error } = await supabase
-          .from("subscriptions")
-          .update(updPayload)
-          .eq("stripe_subscription_id", subscriptionId);
-
-        if (error) {
-          logStep("Error updating subscription status", { error });
+        const updatedUser = await resolveUserId(supabase, subscription);
+        if (updatedUser) {
+          const result = await applyStripeSubscription(supabase, subscription, updatedUser);
+          logStep(`Subscription updated to ${result.status}`);
         } else {
-          logStep(`Subscription updated to ${dbStatus}`);
+          logStep("No user found for updated subscription", { subscriptionId });
         }
 
         // Sync seats_paid from Stripe quantity (if owner changed via Customer Portal)
