@@ -71,6 +71,13 @@
       "when": 1795035369178,
       "tag": "0009_fix_admin_audit_feed",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795473820192,
+      "tag": "0010_allow_audio_error_status",
+      "breakpoints": true
     }
   ]
 }

@@ -234,7 +234,8 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
     setSaving(true);
 
     try {
-      const patientName = patientData?.iniciais || patientData?.name || 'Paciente';
+      // A receita exige o nome completo do paciente; iniciais só como último recurso.
+      const patientName = patientData?.nome_completo || patientData?.name || patientData?.iniciais || 'Paciente';
       
       if (!validatePatientName(patientName) && patientName.length < 2) {
         throw new Error('Nome do paciente inválido');

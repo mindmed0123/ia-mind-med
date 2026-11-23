@@ -30,6 +30,8 @@ interface LaudoEditorProps {
   laudoId: string;
   initialData?: any;
   onStatusChange?: (status: string) => void;
+  /** Aba do editor visível na tela. */
+  isActive?: boolean;
 }
 
 interface LaudoSections {
@@ -49,7 +51,7 @@ interface LaudoSections {
   cid10: string[];
 }
 
-export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEditorProps) => {
+export const LaudoEditor = ({ laudoId, initialData, onStatusChange, isActive = true }: LaudoEditorProps) => {
   const { toast } = useToast();
   const [sections, setSections] = useState<LaudoSections>({
     identificacao: { nome: '', idade: '', sexo: '' },
@@ -128,12 +130,15 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange }: LaudoEdito
   const hasLoadedInitialData = useRef(false);
 
   // Show tutorial on first visit
+  // O editor fica montado mesmo com a aba oculta; o tutorial só abre quando
+  // a aba "Laudo" está visível, para não sobrepor outras janelas.
   useEffect(() => {
+    if (!isActive) return;
     const hasSeenTutorial = localStorage.getItem('editor_tutorial_seen');
     if (!hasSeenTutorial) {
       setShowTutorial(true);
     }
-  }, []);
+  }, [isActive]);
 
   // Load initial data
   useEffect(() => {

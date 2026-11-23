@@ -371,18 +371,20 @@ export default function Receituarios() {
           verifyUrl: `${window.location.origin}/r/${prescriptionId}`,
         });
 
-        // Upload para storage
-        const filePath = `prescriptions/${prescriptionId}/exports/${Date.now()}.pdf`;
-        const signedUrl = await uploadPdfToStorage(pdfBlob, filePath, supabase);
-
-        // Atualizar prescrição com URL do PDF
-        await supabase
-          .from('prescriptions')
-          .update({ pdf_url: signedUrl })
-          .eq('id', prescriptionId);
-
-        // Download automático
+        // Download primeiro: a cópia arquivada não pode impedir o médico de receber o PDF.
         downloadPdf(pdfBlob, fileName);
+
+        // Cópia arquivada na pasta do próprio médico (exigência das regras de acesso do armazenamento).
+        if (user) {
+          try {
+            const filePath = `${user.id}/prescriptions/${prescriptionId}/${Date.now()}.pdf`;
+            const signedUrl = await uploadPdfToStorage(pdfBlob, filePath, supabase);
+            await supabase
+              .from('prescriptions')
+              .update({ pdf_url: signedUrl })
+              .eq('id', prescriptionId);
+          } catch { /* o PDF já foi baixado */ }
+        }
 
         toast({
           title: 'PDF gerado!',
@@ -470,12 +472,12 @@ export default function Receituarios() {
     <div className="min-h-screen bg-gradient-subtle">
       <header className="bg-background/80 backdrop-blur-lg border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
                 <ArrowLeft className="w-5 h-5" />
               </Button>
-              <Activity className="w-6 h-6 text-primary" />
+              <Activity className="hidden sm:block w-6 h-6 text-primary" />
               <span className="text-xl font-bold">Receituários</span>
               {subscription?.isPro && (
                 <span className="bg-gradient-to-r from-primary to-accent text-primary-foreground text-xs px-2 py-1 rounded-full flex items-center gap-1">
@@ -484,7 +486,7 @@ export default function Receituarios() {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full sm:w-auto items-center justify-end gap-2">
               <FarmacovigilanciaButton />
               {!showForm && subscription?.isPro && (
                 <Button onClick={() => setShowForm(true)}>
@@ -754,8 +756,8 @@ export default function Receituarios() {
               prescriptions.map((prescription) => (
                 <Card key={prescription.id}>
                   <CardContent className="pt-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap mb-2">
                           <h3 className="font-semibold text-lg">{prescription.patient_name}</h3>
                           {prescription.status === 'rascunho_ia' && (
@@ -807,7 +809,7 @@ export default function Receituarios() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2 flex-wrap justify-end">
+                      <div className="flex gap-2 flex-wrap sm:justify-end">
                         {prescription.status === 'rascunho_ia' && (
                           <Button
                             variant="default"

@@ -31,7 +31,7 @@ import { FirstLaudoSuccess } from "@/components/onboarding/FirstLaudoSuccess";
 import { useModelosLaudo } from "@/hooks/useModelosLaudo";
 import { ModeloSelector } from "@/components/laudos/ModeloSelector";
 import { getCloudFunctionHeaders } from "@/lib/cloud-function-auth";
-import { getPollingDelayMs, isReadyToGenerate, isTerminalLaudoState, shouldRetryDraftGeneration } from "@/lib/laudo-pipeline";
+import { getPollingDelayMs, isReadyToGenerate, isTerminalLaudoState, resolveTemplateSpecialty, shouldRetryDraftGeneration } from "@/lib/laudo-pipeline";
 
 type PipelineStage = 'idle' | 'uploading' | 'transcribing' | 'preparing' | 'calling_ai' | 'structuring' | 'saving' | 'completed' | 'error';
 
@@ -148,16 +148,16 @@ const NovoLaudo = () => {
     }
   }, [bridgeError]);
 
-  // Load doctor's specialty from profile
+  // Load doctor's specialty from profile. O perfil guarda o nome livre da
+  // especialidade ("Clínica médica"); aqui ele vira a chave de um tipo de
+  // consulta existente, senão o seletor fica vazio.
   useEffect(() => {
-    if (user && !selectedSpecialty) {
-      supabase.from('profiles').select('specialty').eq('id', user.id).single()
-        .then(({ data }) => {
-          if (data?.specialty) setSelectedSpecialty(data.specialty);
-          else setSelectedSpecialty('clinica_geral');
-        });
-    }
-  }, [user]);
+    if (!user || selectedSpecialty || specialtyTemplates.length === 0) return;
+    supabase.from('profiles').select('specialty').eq('id', user.id).single()
+      .then(({ data }) => {
+        setSelectedSpecialty(resolveTemplateSpecialty(data?.specialty, specialtyTemplates));
+      });
+  }, [user, specialtyTemplates]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep refs in sync to avoid stale closures in async callbacks
   const generationRetryCount = useRef(0);
@@ -180,7 +180,7 @@ const NovoLaudo = () => {
   const syncPipelineStageFromLaudo = useCallback((snapshot: any) => {
     if (!snapshot) return;
 
-    if (snapshot.transcript_status === 'error' || snapshot.audio_processing_status === 'error' || snapshot.status === 'error') {
+    if (isTerminalLaudoState(snapshot) && snapshot.status !== 'completed') {
       setPipelineStage('error');
       setIsSubmitting(false);
       return;
@@ -352,7 +352,7 @@ const NovoLaudo = () => {
         })();
       }
       setIsSubmitting(false);
-    } else if (updated.transcript_status === 'error' || updated.audio_processing_status === 'error' || updated.status === 'error') {
+    } else if (isTerminalLaudoState(updated)) {
       stopPolling();
     }
 
@@ -466,7 +466,7 @@ const NovoLaudo = () => {
         if (!pollingRef.current) {
           startPolling(laudoId);
         }
-      } else if (data.status === 'error' || data.transcript_status === 'error') {
+      } else if (isTerminalLaudoState(data) && data.status !== 'completed') {
         stopPolling();
         setPipelineStage('error');
         setIsSubmitting(false);
@@ -671,6 +671,25 @@ const NovoLaudo = () => {
           headers,
         });
         const status = (error as any)?.context?.status;
+        if (error && status !== 413) {
+          // Erro definitivo do servidor (ex.: créditos da transcrição esgotados):
+          // avisa na hora em vez de esperar o tempo-limite do acompanhamento.
+          let message = 'Não foi possível transcrever o áudio. Tente novamente em instantes.';
+          try {
+            const body = await (error as any)?.context?.json?.();
+            if (status === 402) {
+              message = 'A transcrição de áudio está temporariamente indisponível. Use "Escrever Consulta" ou tente mais tarde.';
+            } else if (body?.error) {
+              message = body.error;
+            }
+          } catch { /* mantém a mensagem padrão */ }
+          stopPolling();
+          setPipelineStage('error');
+          setIsSubmitting(false);
+          submitLockRef.current = false;
+          toast({ title: 'Erro na transcrição', description: message, variant: 'destructive' });
+          return;
+        }
         if (error && status === 413 && audioBlob) {
           toast({
             title: 'Áudio grande detectado',
@@ -1125,7 +1144,7 @@ const NovoLaudo = () => {
                 </TabsContent>
                 
                 <TabsContent value="editor" forceMount className="data-[state=inactive]:hidden">
-                  <LaudoEditor laudoId={laudoId} initialData={laudo} onStatusChange={(newStatus) => { setLaudo({ ...laudo, status: newStatus }); }} />
+                  <LaudoEditor laudoId={laudoId} initialData={laudo} isActive={showEditor && !showPatientModal} onStatusChange={(newStatus) => { setLaudo({ ...laudo, status: newStatus }); }} />
                 </TabsContent>
 
                 <TabsContent value="exams" forceMount className="data-[state=inactive]:hidden">

@@ -18,6 +18,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/use-debounce';
 import { sanitizeText, validatePatientName } from '@/lib/validation';
 
+const withoutEmpty = (obj?: object | null): Record<string, unknown> =>
+  Object.fromEntries(
+    Object.entries(obj || {}).filter(([, v]) => v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0)),
+  );
+
 interface ExtractedClinicalData {
   medicacoes?: string[];
   alergias?: string[];
@@ -191,12 +196,14 @@ export const PatientLinkingModal = ({
 
       // Link laudo to patient and update patient_data with name/initials
       const initials = patient.name.split(' ').map(w => w[0]).join('.').toUpperCase();
+      const currentPatientData = await loadCurrentPatientData();
       const { error: linkError } = await supabase
         .from('laudos')
         .update({ 
           patient_id: patient.id,
           patient_data: {
-            ...(extractedData || {}),
+            ...currentPatientData,
+            ...withoutEmpty(extractedData),
             nome_completo: patient.name,
             iniciais: initials,
           } as any,
@@ -204,6 +211,7 @@ export const PatientLinkingModal = ({
         .eq('id', laudoId);
       
       if (linkError) throw linkError;
+      await syncDraftPrescriptionName(patient.name);
 
       toast({
         title: 'Paciente vinculado!',
@@ -216,6 +224,24 @@ export const PatientLinkingModal = ({
     } finally {
       setSaving(false);
     }
+  };
+
+  // Vincular o paciente não pode apagar idade, sexo, sinais vitais etc. já
+  // salvos no laudo: os dados novos são somados aos existentes.
+  const loadCurrentPatientData = async (): Promise<Record<string, any>> => {
+    const { data } = await supabase.from('laudos').select('patient_data').eq('id', laudoId).maybeSingle();
+    const current = (data as any)?.patient_data;
+    return current && typeof current === 'object' ? current : {};
+  };
+
+  // O rascunho de receita criado junto com o laudo nasce sem nome ("N/I");
+  // ao vincular o paciente, o nome passa para esse rascunho.
+  const syncDraftPrescriptionName = async (name: string) => {
+    await supabase
+      .from('prescriptions')
+      .update({ patient_name: name.slice(0, 200) })
+      .eq('laudo_id', laudoId)
+      .eq('status', 'rascunho_ia');
   };
 
   const handleCreateNew = async () => {
@@ -259,12 +285,14 @@ export const PatientLinkingModal = ({
       // Link laudo and update patient_data
       const sanitizedName = sanitizeText(searchName);
       const initials = sanitizedName.split(' ').map((w: string) => w[0]).join('.').toUpperCase();
+      const currentPatientData = await loadCurrentPatientData();
       const { error: linkError } = await supabase
         .from('laudos')
         .update({ 
           patient_id: (newPatient as any).id,
           patient_data: {
-            ...(extractedData || {}),
+            ...currentPatientData,
+            ...withoutEmpty(extractedData),
             nome_completo: sanitizedName,
             iniciais: initials,
           } as any,
@@ -272,6 +300,7 @@ export const PatientLinkingModal = ({
         .eq('id', laudoId);
 
       if (linkError) throw linkError;
+      await syncDraftPrescriptionName(sanitizedName);
 
       toast({
         title: 'Paciente cadastrado!',

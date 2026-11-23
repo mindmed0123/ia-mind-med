@@ -26,7 +26,6 @@ export const SUBSCRIPTION_PLANS = [
     features: [
       'Laudos ilimitados',
       'Receituário automático com IA',
-      'MindChat — copiloto clínico',
       'Relatórios de evolução do paciente',
       'Telemedicina e agenda',
       'Suporte prioritário',

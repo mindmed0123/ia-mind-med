@@ -19,7 +19,6 @@ const PRO_BENEFITS = [
   { icon: FileText, text: "Prescrições automáticas" },
   { icon: Zap, text: "Embasamento teórico completo" },
   { icon: Shield, text: "Assinatura digital e carimbo" },
-  { icon: Sparkles, text: "MindChat — assistente médico IA" },
 ];
 
 export function TrialReminderBanner() {

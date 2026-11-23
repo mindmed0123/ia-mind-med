@@ -36,7 +36,8 @@ export function isTerminalLaudoState(snapshot?: LaudoPipelineSnapshot | null) {
     snapshot?.status === "completed" ||
       snapshot?.status === "error" ||
       snapshot?.transcript_status === "error" ||
-      snapshot?.audio_processing_status === "error",
+      snapshot?.audio_processing_status === "error" ||
+      snapshot?.audio_processing_status === "failed",
   );
 }
 
@@ -61,4 +62,23 @@ export function shouldRetryDraftGeneration(
   }
 
   return now - lastAttemptAt >= GENERATION_RECOVERY_WINDOW_MS;
+}
+const slugEspecialidade = (value: string) =>
+  value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+
+/**
+ * Converte a especialidade do perfil (texto livre) na chave de um tipo de
+ * consulta cadastrado. Sem correspondência, usa Clínica Geral.
+ */
+export function resolveTemplateSpecialty(
+  profileSpecialty: string | null | undefined,
+  templates: { specialty: string; display_name: string }[],
+): string {
+  const fallback = templates.some((t) => t.specialty === "clinica_geral") ? "clinica_geral" : templates[0]?.specialty ?? "clinica_geral";
+  if (!profileSpecialty) return fallback;
+  const alvo = slugEspecialidade(profileSpecialty);
+  const match = templates.find(
+    (t) => t.specialty === profileSpecialty || slugEspecialidade(t.specialty) === alvo || slugEspecialidade(t.display_name) === alvo,
+  );
+  return match?.specialty ?? fallback;
 }

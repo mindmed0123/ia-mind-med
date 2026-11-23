@@ -164,16 +164,16 @@ export default function HistoricoPaciente() {
     <div className="min-h-screen bg-gradient-subtle">
       <header className="bg-background/80 backdrop-blur-lg border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/pacientes')}>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate('/pacientes')}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <div className="flex items-center gap-3 flex-1">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="hidden sm:flex w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
                 <User className="w-5 h-5 text-primary" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold">{patient.name}</h1>
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold truncate">{patient.name}</h1>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   {patient.sex && (
                     <span>{patient.sex === 'M' ? 'Masculino' : patient.sex === 'F' ? 'Feminino' : 'Outro'}</span>
@@ -198,10 +198,12 @@ export default function HistoricoPaciente() {
             {isPro && (
               <Button 
                 variant="outline"
+                className="shrink-0"
+                aria-label="Relatório de Evolução"
                 onClick={() => navigate(`/evolucao/${patient.id}`)}
               >
-                <TrendingUp className="w-4 h-4 mr-2" />
-                Relatório de Evolução
+                <TrendingUp className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Relatório de Evolução</span>
               </Button>
             )}
           </div>
@@ -231,7 +233,7 @@ export default function HistoricoPaciente() {
         </div>
 
         <Tabs defaultValue="perfil" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="flex w-full justify-start overflow-x-auto md:grid md:grid-cols-5 [&>button]:shrink-0">
             <TabsTrigger value="perfil">
               <User className="w-4 h-4 mr-2" />
               Perfil Clínico

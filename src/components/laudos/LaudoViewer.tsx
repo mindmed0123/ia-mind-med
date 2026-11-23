@@ -531,7 +531,7 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
             <Sparkles className="w-3 h-3" /> Gerado por IA
           </Badge>
           <Badge variant="outline" className="gap-1.5 border-green-300 text-green-700 dark:border-green-700 dark:text-green-400">
-            <CheckCircle className="w-3 h-3" /> Completed
+            <CheckCircle className="w-3 h-3" /> Concluído
           </Badge>
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Clock className="w-3 h-3" /> Você economizou ~{timeSaved} min

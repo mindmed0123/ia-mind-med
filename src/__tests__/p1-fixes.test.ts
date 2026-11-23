@@ -357,3 +357,36 @@ describe("PHI/PII Sanitization in Logs", () => {
     expect(uuidRegex.test(uuid)).toBe(true);
   });
 });
+describe("Tipo de consulta a partir do perfil", () => {
+  const templates = [
+    { specialty: "clinica_geral", display_name: "Clínica Geral" },
+    { specialty: "dermatologia", display_name: "Dermatologia" },
+    { specialty: "pediatria", display_name: "Pediatria" },
+  ];
+  it("usa a especialidade do perfil quando existe um tipo de consulta igual", async () => {
+    const { resolveTemplateSpecialty } = await import("@/lib/laudo-pipeline");
+    expect(resolveTemplateSpecialty("Dermatologia", templates)).toBe("dermatologia");
+  });
+  it("cai em Clínica Geral quando a especialidade não tem tipo de consulta", async () => {
+    const { resolveTemplateSpecialty } = await import("@/lib/laudo-pipeline");
+    expect(resolveTemplateSpecialty("Clínica médica", templates)).toBe("clinica_geral");
+  });
+});
+
+describe("Falha de áudio marcada pelo vigia automático", () => {
+  it("encerra o acompanhamento quando o áudio está como 'failed'", async () => {
+    const { isTerminalLaudoState } = await import("@/lib/laudo-pipeline");
+    expect(isTerminalLaudoState({ status: "draft", transcript_status: "processing", audio_processing_status: "failed" })).toBe(true);
+  });
+});
+
+describe("Título do médico no PDF", () => {
+  it("não repete o título quando o nome já começa com Dr", async () => {
+    const { formatDoctorTitle } = await import("@/lib/pdf-generator");
+    expect(formatDoctorTitle("Dr Teste Silva")).toBe("Dr Teste Silva");
+  });
+  it("acrescenta Dr(a). quando o nome não tem título", async () => {
+    const { formatDoctorTitle } = await import("@/lib/pdf-generator");
+    expect(formatDoctorTitle("Ana Souza")).toBe("Dr(a). Ana Souza");
+  });
+});
