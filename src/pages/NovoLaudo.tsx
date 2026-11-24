@@ -6,6 +6,7 @@ import { SmartProgress, type SmartStage } from "@/components/loading/SmartProgre
 import { useEmbeddedBridge } from "@/hooks/useEmbeddedBridge";
 import { PatientDataForm } from "@/components/laudos/PatientDataForm";
 import { LaudoViewer } from "@/components/laudos/LaudoViewer";
+import { MindChatWidget } from "@/components/chat/MindChatWidget";
 import { LaudoEditor } from "@/components/laudos/LaudoEditor";
 import { TextInputMode } from "@/components/laudos/TextInputMode";
 import { PrescriptionTab } from "@/components/laudos/PrescriptionTab";
@@ -1141,6 +1142,7 @@ const NovoLaudo = () => {
                 
                 <TabsContent value="viewer" forceMount className="data-[state=inactive]:hidden">
                   <LaudoViewer laudoId={laudoId} refreshKey={laudoRefreshKey} visibleSections={laudoTemplateSections} laudoData={laudo} />
+                  {laudo?.sections?.conselho !== 'CRP' && <MindChatWidget laudoId={laudoId} />}
                 </TabsContent>
                 
                 <TabsContent value="editor" forceMount className="data-[state=inactive]:hidden">
