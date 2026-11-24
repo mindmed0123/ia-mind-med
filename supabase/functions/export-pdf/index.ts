@@ -1,4 +1,5 @@
 import { normalizeDocumentFormat, formatHtml, escapeDocument } from "../_shared/document-format.ts";
+import { buildLaudoDocument } from "../_shared/laudo-document.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { crypto } from "https://deno.land/std@0.224.0/crypto/mod.ts";
 
@@ -187,8 +188,19 @@ Deno.serve(async (req) => {
       documentFormat, logoUrl, letterheadUrl,
     };
 
+    // Layout novo (vetorial) do laudo; registros de sessão CRP seguem no HTML antigo.
+    let patientName: string | null = null;
+    let patientRecord: { sex?: string | null; birth_date?: string | null; allergies?: unknown } | null = null;
+    if (laudo.patient_id) {
+      const { data: pt } = await supabase.from('patients').select('name, sex, birth_date, allergies').eq('id', laudo.patient_id).maybeSingle();
+      patientName = pt?.name || null;
+      patientRecord = pt || null;
+    }
+    const document = buildLaudoDocument(laudo, { patientName, patientRecord });
+
     const pdfData = {
       html,
+      document,
       pdfMeta,
       fileName: `laudo-${laudo.id}-${Date.now()}.pdf`,
       hash,

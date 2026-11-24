@@ -31,9 +31,9 @@ export function ModeloDocumentEditor({ laudoId, initialData, onStatusChange }: {
     try {
       const {data,error} = await supabase.functions.invoke('export-pdf',{body:{laudo_id:laudoId}});
       if (error) throw error;
-      const {generatePdf} = await import('@/lib/pdf-generator');
+      const {buildLaudoPdf} = await import('@/lib/laudo-pdf');
       const {deliverPdf} = await import('@/lib/pdf-delivery');
-      const blob = await generatePdf({html:data.html,fileName:data.fileName,verifyUrl:`${window.location.origin}/api/verify-pdf/${laudoId}?token=${data.verifyToken}`,pdfMeta:data.pdfMeta});
+      const blob = await buildLaudoPdf(data, laudoId);
       await deliverPdf(blob,data.fileName,{entity:'REPORT',entityId:laudoId,documentLabel:'Laudo'});
     } catch { toast({title:'Não foi possível exportar',variant:'destructive'}); }
   };

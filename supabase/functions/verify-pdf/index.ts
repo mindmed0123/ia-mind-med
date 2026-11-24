@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
     // Buscar informações do médico (sem dados sensíveis)
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, crm, specialty')
+      .select('full_name, crm, crm_uf, specialty')
       .eq('id', laudo.user_id)
       .single();
 
@@ -81,13 +81,26 @@ Deno.serve(async (req) => {
       finalized_at: laudo.finalized_at,
       medico: {
         nome: profile?.full_name || 'Não disponível',
-        crm: profile?.crm || 'Não disponível',
+        crm: profile?.crm ? `${profile.crm}${profile.crm_uf ? '/' + profile.crm_uf : ''}` : 'Não disponível',
         especialidade: profile?.specialty || 'Não disponível'
       },
       emitido_por: 'MindMed - Sistema de Laudos Médicos'
     };
 
     console.log('Verificação concluída:', verification.valid);
+
+    // Página /verificar do app (QR do laudo): só dados do médico e do documento, nada do paciente.
+    if (url.searchParams.get('format') === 'json') {
+      return new Response(JSON.stringify({
+        valid: verification.valid,
+        status: laudo.status,
+        hash_match: hashMatch,
+        numero: String(laudo.id).slice(0, 8).toUpperCase(),
+        created_at: laudo.created_at,
+        finalized_at: laudo.finalized_at,
+        medico: verification.medico,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     // Retornar HTML de verificação amigável
     const html = generateVerificationHtml(verification);
@@ -98,6 +111,11 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Erro na verificação:', error);
+    if (new URL(req.url).searchParams.get('format') === 'json') {
+      return new Response(JSON.stringify({ valid: false, error: error instanceof Error ? error.message : 'Não foi possível verificar' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     
     const errorHtml = `
 <!DOCTYPE html>

@@ -26,6 +26,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const MedicosTrial = lazy(() => import("./pages/MedicosTrial"));
 const AssinaturaExpirada = lazy(() => import("./pages/AssinaturaExpirada"));
 const TrialConvite = lazy(() => import("./pages/TrialConvite"));
+const VerificarLaudo = lazy(() => import("./pages/VerificarLaudo"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const Termos = lazy(() => import("./pages/Termos"));
 const Precos = lazy(() => import("./pages/Precos"));
@@ -86,6 +87,7 @@ const App = () => (
                 <Route path="/precos" element={<Precos />} />
                 <Route path="/termos" element={<Termos />} />
                 <Route path="/privacidade" element={<Privacidade />} />
+                <Route path="/verificar/:id" element={<VerificarLaudo />} />
                 <Route path="/agendar" element={<Agendar />} />
                 <Route path="/aceitar-convite" element={<AceitarConvite />} />
                 <Route path="/sala/:id" element={<SalaPaciente />} />

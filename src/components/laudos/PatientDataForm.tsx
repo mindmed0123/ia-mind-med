@@ -86,20 +86,31 @@ export const PatientDataForm = ({
     alergias: initialData.alergias,
   }) : '';
 
+  // Só salva o que o médico editou: o estado inicial e o que vem do laudo carregado
+  // viram a "base" e não são regravados (antes, abrir um laudo salvo apagava os dados do paciente).
+  const lastEmittedJson = useRef<string | null>(null);
+
   useEffect(() => {
     if (initialData) {
-      setData(prev => ({ ...prev, ...initialData }));
+      setData(prev => {
+        const next = { ...prev, ...initialData };
+        lastEmittedJson.current = JSON.stringify(next);
+        return next;
+      });
     }
   }, [initialDataKey]);
 
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const debouncedData = useDebounce(data, 2000);
-  const lastEmittedJson = useRef('');
 
   useEffect(() => {
     if (autoSave && onDataChange && debouncedData) {
       const json = JSON.stringify(debouncedData);
+      if (lastEmittedJson.current === null) {
+        lastEmittedJson.current = json;
+        return;
+      }
       if (json === lastEmittedJson.current) return;
       const result = patientDataSchema.safeParse(debouncedData);
       if (result.success) {

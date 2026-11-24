@@ -2,12 +2,8 @@ import { normalizeDocumentFormat, type DocumentFormat } from '../../supabase/fun
 import html2pdf from 'html2pdf.js';
 import QRCode from 'qrcode';
 
-/** Evita "Dr(a). Dr. Fulano" quando o médico já cadastrou o título no nome. */
-export function formatDoctorTitle(name: string): string {
-  const clean = (name || '').trim();
-  if (/^(dr|dra|dr\(a\))\.?\s/i.test(clean)) return clean;
-  return `Dr(a). ${clean}`;
-}
+import { formatDoctorTitle } from './doctor-title';
+export { formatDoctorTitle };
 
 // =====================================================
 // MindMed PDF Engine v4 — Fast & Premium

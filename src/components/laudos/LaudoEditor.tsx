@@ -306,18 +306,9 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange, isActive = t
       if (error) throw error;
 
       if (data?.html && data?.verifyToken) {
-        const { generatePdf } = await import('@/lib/pdf-generator');
+        const { buildLaudoPdf } = await import('@/lib/laudo-pdf');
         const { deliverPdf } = await import('@/lib/pdf-delivery');
-        
-        const baseUrl = window.location.origin;
-        const verifyUrl = `${baseUrl}/api/verify-pdf/${laudoId}?token=${data.verifyToken}`;
-        
-        const pdfBlob = await generatePdf({
-          html: data.html,
-          fileName: data.fileName,
-          verifyUrl,
-          pdfMeta: data.pdfMeta,
-        });
+        const pdfBlob = await buildLaudoPdf(data, laudoId);
 
         const { signed } = await deliverPdf(pdfBlob, data.fileName, { entity: 'REPORT', entityId: laudoId, documentLabel: 'Laudo' });
 

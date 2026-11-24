@@ -31,3 +31,8 @@
 - [x] Assinatura com certificado A1 (.pfx) no computador do médico em todo PDF baixado (laudo e receita); validação oficial no validar.iti.gov.br depende de um certificado ICP-Brasil real
 - [x] Registro de cópias, downloads e assinaturas em nome do médico (trilha imutável)
 - [x] Termo de adesão revisado: aceite assinado com nome completo, versão nova, registro com IP; página de Termos atualizada
+# Laudo em PDF novo (nov/2026)
+- [x] Layout novo com marca MindMed, cartão do paciente, sinais vitais, alergias, seções numeradas, assinatura e QR
+- [x] PDF passa a trazer tudo que o laudo tem (antes faltavam exame físico, antecedentes, sinais vitais)
+- [x] QR leva a uma página pública de verificação (antes dava página inexistente)
+- [x] Abrir um laudo salvo não apaga mais os dados do paciente
