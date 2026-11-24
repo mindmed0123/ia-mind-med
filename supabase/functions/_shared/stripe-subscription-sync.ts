@@ -145,7 +145,11 @@ export async function applyStripeSubscription(
   const { error } = await supabase
     .from("subscriptions")
     .upsert(payload, { onConflict: "user_id", ignoreDuplicates: false });
-  if (error) throw new Error(`subscription upsert failed: ${error.message}`);
+  if (error) {
+    // Conta apagada (ex.: contas de teste): nada a sincronizar; não fazer o Stripe reenviar para sempre.
+    if (error.code === "23503") return { status, updated: false, isNewSubscription, skipped: "user_not_found" as const };
+    throw new Error(`subscription upsert failed: ${error.message}`);
+  }
 
   return { status, updated: true, isNewSubscription };
 }
