@@ -18,7 +18,7 @@ const QUICK = [
   { label: 'Resumo para encaminhamento', prompt: 'Escreva um resumo clínico curto para carta de encaminhamento a um especialista.' },
 ];
 
-export function MindChatWidget({ laudoId }: { laudoId: string | null }) {
+export function MindChatWidget({ laudoId, openNonce }: { laudoId: string | null; openNonce?: number }) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
@@ -28,6 +28,7 @@ export function MindChatWidget({ laudoId }: { laudoId: string | null }) {
 
   useEffect(() => { scroll.current?.scrollTo({ top: scroll.current.scrollHeight }); }, [msgs]);
   useEffect(() => { setMsgs([]); }, [laudoId]);
+  useEffect(() => { if (openNonce) setOpen(true); }, [openNonce]);
 
   const send = async (text: string) => {
     const q = text.trim(); if (!q || busy) return;

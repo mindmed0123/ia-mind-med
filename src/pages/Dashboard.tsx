@@ -6,7 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, LogOut, FileAudio, FileText, Settings, Shield, Users, Pill, Bot, History, Calendar, UserPlus, Video } from "lucide-react";
+import { Activity, LogOut, FileAudio, FileText, Settings, Shield, Users, Pill, Bot, History, Calendar, UserPlus, Video, Sparkles } from "lucide-react";
+import { MindChatWidget } from "@/components/chat/MindChatWidget";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useAdmin } from "@/hooks/useAdmin";
 import { AudioUploader } from "@/components/audio/AudioUploader";
@@ -40,6 +41,7 @@ const Dashboard = () => {
   const { subscription, refresh: refreshSubscription } = useAppState();
   const { profile: proProfile, loading: proLoading, needsProfile, isCRP, refresh: refreshProProfile } = useProfessionalProfile();
   const [skippedProfile, setSkippedProfile] = useState(false);
+  const [mindChatNonce, setMindChatNonce] = useState(0);
   const isPendingCheckout = subscription?.status === "PENDING_CHECKOUT";
   const isOrgOwner = !!organization && !!user && organization.owner_id === user.id;
 
@@ -339,6 +341,16 @@ const Dashboard = () => {
                     <Video className="w-5 h-5 mr-2" />
                     Telemedicina
                   </Button>
+                  {!isCRP && (
+                    <Button
+                      onClick={() => setMindChatNonce((n) => n + 1)}
+                      variant="outline"
+                      className="h-auto py-3 col-span-2 border-primary/50 font-semibold"
+                    >
+                      <Sparkles className="w-5 h-5 mr-2" />
+                      Perguntar ao MindChat
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -396,6 +408,8 @@ const Dashboard = () => {
           </a>
         </div>
       </main>
+
+      {!isCRP && <MindChatWidget laudoId={null} openNonce={mindChatNonce} />}
     </div>
   );
 };
