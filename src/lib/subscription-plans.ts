@@ -1,90 +1,75 @@
+// Planos à venda (modelo Free → Pro → Business). Starter e Fundador saíram da
+// venda; quem já assinou continua com o plano dele.
 export const SUBSCRIPTION_PLANS = [
   {
-    id: 'mindmed_starter',
-    label: 'Starter',
-    price: 'R$ 149/mês',
-    priceValue: 149,
-    badge: null as string | null,
-    recommended: false,
-    description: 'Para quem faz até 30 consultas por mês',
-    features: [
-      'Até 30 laudos por mês',
-      'Transcrição de consulta por áudio',
-      'Laudo estruturado com CID-10',
-      'Exportação em PDF assinado',
-      'Suporte por WhatsApp',
-    ],
-  },
-  {
     id: 'mindmed_pro',
-    label: 'Pro',
+    label: 'Pro Mensal',
     price: 'R$ 299/mês',
     priceValue: 299,
-    badge: 'Mais popular' as string | null,
+    badge: null as string | null,
     recommended: false,
-    description: 'Para quem atende todos os dias',
+    description: 'Tudo ilimitado, cobrança mensal',
+    nota: undefined as string | undefined,
     features: [
-      'Laudos ilimitados',
-      'Receituário automático com IA',
-      'Relatórios de evolução do paciente',
-      'Telemedicina e agenda',
-      'Suporte prioritário',
+      'Consultas documentadas ilimitadas',
+      'MindChat ilimitado',
+      'Receituário, evolução do paciente e telemedicina',
+      'Cancele quando quiser, pelo próprio painel',
     ],
   },
   {
     id: 'mindmed_pro_anual',
-    label: 'Pro anual',
-    price: 'R$ 2.990/ano',
-    priceValue: 2990,
-    badge: '2 meses grátis' as string | null,
-    recommended: false,
-    description: 'Todo o plano Pro, com 2 meses grátis',
+    label: 'Pro Anual',
+    price: 'R$ 2.388/ano',
+    priceValue: 2388,
+    badge: 'Economize R$ 1.200' as string | null,
+    recommended: true,
+    description: 'Equivale a R$ 199/mês',
+    nota: 'Equivale a R$ 199/mês · economia de R$ 1.200 no ano' as string | undefined,
     features: [
-      'Tudo do plano Pro',
-      'Equivalente a R$ 249/mês',
-      '2 meses grátis no ano',
+      'Tudo do Pro Mensal',
+      'Equivale a R$ 199/mês',
+      'Economia de R$ 1.200 no ano',
       'Preço travado por 12 meses',
     ],
   },
-  {
-    id: 'mindmed_fundador',
-    label: 'Fundador',
-    price: 'R$ 1.990/ano',
-    priceValue: 1990,
-    badge: '100 vagas' as string | null,
-    recommended: true,
-    description: 'Oferta de fundador — preço travado enquanto a assinatura durar',
-    nota: 'Preço travado enquanto a assinatura durar · Kit CFM incluído',
-    features: [
-      'Tudo do plano Pro',
-      'Preço travado enquanto a assinatura durar',
-      'Kit CFM incluído',
-      'Cobrança imediata, com garantia de 30 dias',
-    ],
-  },
 ] as const;
+
+export const FREE_PLAN = {
+  id: 'mindmed_free',
+  label: 'Free',
+  price: 'R$ 0',
+  laudosPorMes: 5,
+  chatPorMes: 10,
+} as const;
+
+export const BUSINESS_WHATSAPP_URL = 'https://wa.me/5511958890212';
 
 export type SubscriptionPlanId = (typeof SUBSCRIPTION_PLANS)[number]['id'];
 
 export const VALID_SUBSCRIPTION_PLAN_IDS: readonly string[] = SUBSCRIPTION_PLANS.map((plan) => plan.id);
 
-export const STARTER_PLAN = SUBSCRIPTION_PLANS[0];
-export const PRO_PLAN = SUBSCRIPTION_PLANS[1];
-export const PRO_ANNUAL_PLAN = SUBSCRIPTION_PLANS[2];
-export const FUNDADOR_PLAN = SUBSCRIPTION_PLANS[3];
+export const PRO_PLAN = SUBSCRIPTION_PLANS[0];
+export const PRO_ANNUAL_PLAN = SUBSCRIPTION_PLANS[1];
 
 export const GUARANTEE_TEXT =
   'Garantia de 30 dias. Se você não estiver satisfeito depois da primeira cobrança, devolvemos 100% do valor.';
 
+/** Converte o `?plan=` vindo do site (pro_mensal / pro_anual) no plano do checkout. */
+export function planFromSiteParam(param?: string | null): SubscriptionPlanId | null {
+  if (param === 'pro_mensal') return 'mindmed_pro';
+  if (param === 'pro_anual') return 'mindmed_pro_anual';
+  return null;
+}
+
 export function getSubscriptionPlanId(
-  plan?: string,
+  _plan?: string,
   billingCycle?: string,
   planOrigem?: string
 ): SubscriptionPlanId {
   if (planOrigem && VALID_SUBSCRIPTION_PLAN_IDS.includes(planOrigem)) {
     return planOrigem as SubscriptionPlanId;
   }
-  if (plan === 'STARTER') return 'mindmed_starter';
-  if (plan === 'PRO' && billingCycle === 'ANNUAL') return 'mindmed_pro_anual';
-  return 'mindmed_pro';
+  if (billingCycle === 'ANNUAL') return 'mindmed_pro_anual';
+  return 'mindmed_pro_anual';
 }

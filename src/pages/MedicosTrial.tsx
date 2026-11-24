@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getAttribution } from '@/lib/attribution';
 import { trackViewContent, trackCompleteRegistration } from '@/lib/metaPixel';
 import { validatePhone } from '@/lib/validation';
+import { planFromSiteParam } from '@/lib/subscription-plans';
 import {
   Brain,
   Shield,
@@ -52,6 +53,14 @@ export default function MedicosTrial() {
   });
 
   const canceled = searchParams.get('checkout') === 'canceled';
+  // Plano escolhido no site (first-touch): free, pro_mensal ou pro_anual.
+  const [planParam] = useState<string | null>(() => {
+    const fromUrl = searchParams.get('plan');
+    try {
+      if (fromUrl) sessionStorage.setItem('mm_plan', fromUrl.slice(0, 20));
+      return fromUrl || sessionStorage.getItem('mm_plan');
+    } catch { return fromUrl; }
+  });
 
   useEffect(() => {
     trackViewContent('trial_medicos');
@@ -89,6 +98,7 @@ export default function MedicosTrial() {
           data: {
             full_name: formData.name,
             ...getAttribution(),
+            ...(planParam ? { plan_inicial: planParam } : {}),
           },
         },
       });
@@ -118,6 +128,16 @@ export default function MedicosTrial() {
 
       if (profileError) {
         console.error('Erro ao salvar WhatsApp no perfil:', profileError);
+      }
+
+      const checkoutPlan = planFromSiteParam(planParam);
+      if (checkoutPlan) {
+        try {
+          const { data: ck } = await supabase.functions.invoke('create-checkout-session', {
+            body: { name: formData.name, whatsapp: formData.whatsapp, plan: checkoutPlan, attribution: getAttribution() },
+          });
+          if (ck?.url) { window.location.href = ck.url; return; }
+        } catch { /* segue para o painel no Free */ }
       }
 
       navigate('/dashboard', { replace: true });
@@ -153,7 +173,7 @@ export default function MedicosTrial() {
             Crie sua conta gratuita
           </h1>
           <p className="text-muted-foreground text-lg">
-            Leva menos de um minuto. Você escolhe o plano depois de testar.
+            Leva menos de um minuto e não pede cartão.
           </p>
         </div>
 
@@ -195,10 +215,10 @@ export default function MedicosTrial() {
                   <span className="font-semibold text-foreground">Garantia total</span>
                 </div>
                 <ul className="space-y-2 text-muted-foreground">
-                  <li>• 7 dias de teste com acesso completo</li>
-                  <li>• Nada é cobrado hoje</li>
-                  <li>• Cancele em dois cliques, dentro da plataforma</li>
-                  <li>• Garantia de 30 dias após a primeira cobrança</li>
+                  <li>• Plano Free sem cartão: 5 consultas e 10 mensagens do MindChat por mês</li>
+                  <li>• Nada é cobrado para começar</li>
+                  <li>• No Pro, cancele em dois cliques, dentro da plataforma</li>
+                  <li>• Garantia de 30 dias após a primeira cobrança do Pro</li>
                   <li>• Suporte prioritário via WhatsApp</li>
                 </ul>
               </CardContent>

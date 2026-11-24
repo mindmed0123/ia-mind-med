@@ -69,9 +69,10 @@ export const useQuota = () => {
 
       if (!result.allowed) {
         if (result.reason === 'quota_exceeded') {
+          window.location.assign('/medicos/assinatura-expirada?motivo=limite');
           toast({
             title: 'Limite atingido',
-            description: 'Você atingiu o limite de 10 consultas do plano Starter. Faça upgrade para o plano Pro (ilimitado)!',
+            description: 'Você usou as 5 consultas do plano Free deste mês. Assine o Pro para continuar sem limites.',
             variant: 'destructive'
           });
         } else {

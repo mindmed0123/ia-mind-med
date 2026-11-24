@@ -8,12 +8,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAttribution } from '@/lib/attribution';
 import { trackViewContent, trackInitiateCheckout } from '@/lib/metaPixel';
-import { SUBSCRIPTION_PLANS, GUARANTEE_TEXT } from '@/lib/subscription-plans';
+import { SUBSCRIPTION_PLANS, GUARANTEE_TEXT, BUSINESS_WHATSAPP_URL } from '@/lib/subscription-plans';
 import { useVagasFundador } from '@/hooks/useVagasFundador';
 import { Activity, Check, ShieldCheck, ArrowRight } from 'lucide-react';
 
-const PLAN_ORDER = ['mindmed_fundador', 'mindmed_pro_anual', 'mindmed_pro', 'mindmed_starter'];
-const PLAN_ORDER_PARCEIRO = ['mindmed_pro_anual', 'mindmed_pro', 'mindmed_starter'];
+const PLAN_ORDER = ['mindmed_pro_anual', 'mindmed_pro'];
+const PLAN_ORDER_PARCEIRO = PLAN_ORDER;
 const PLANOS_COM_DESCONTO: string[] = ['mindmed_pro', 'mindmed_pro_anual'];
 
 export default function Precos() {
@@ -44,12 +44,13 @@ export default function Precos() {
   const ordem = parceiro ? PLAN_ORDER_PARCEIRO : PLAN_ORDER;
 
   const planosVisiveis = [...SUBSCRIPTION_PLANS]
-    .filter((p) => p.id !== 'mindmed_fundador' || fundadorDisponivel)
     .sort((a, b) => ordem.indexOf(a.id) - ordem.indexOf(b.id));
 
-  const planoPadrao = fundadorDisponivel ? 'mindmed_fundador' : 'mindmed_pro_anual';
+  const planoPadrao = 'mindmed_pro_anual';
 
   const precoComDesconto = (plan: (typeof SUBSCRIPTION_PLANS)[number]) => {
+    // O valor do desconto de parceiro nunca é exibido; o cupom entra só no checkout.
+    if (true as boolean) return null;
     if (!parceiro || !PLANOS_COM_DESCONTO.includes(plan.id)) return null;
     const valor = plan.priceValue * (1 - parceiro.percentual / 100);
     const fmt = valor.toLocaleString('pt-BR', { minimumFractionDigits: valor % 1 ? 2 : 0, maximumFractionDigits: 2 });
@@ -70,7 +71,7 @@ export default function Precos() {
     trackInitiateCheckout(planId);
 
     if (!user) {
-      navigate(`/medicos/teste-gratis?plan=${planId}`);
+      navigate(`/cadastro?plan=${planId}`);
       return;
     }
 
@@ -153,9 +154,6 @@ export default function Precos() {
                     <p className="text-3xl font-bold mt-2">{plan.price}</p>
                   )}
                   <CardDescription>{plan.description}</CardDescription>
-                  {plan.id === 'mindmed_fundador' && (
-                    <p className="text-xs text-primary mt-1">Restam {vagasRestantes} de 100 vagas</p>
-                  )}
                 </CardHeader>
                 <CardContent className="flex flex-col flex-1 justify-between gap-6">
                   <ul className="space-y-2">
@@ -188,6 +186,16 @@ export default function Precos() {
               </Card>
             );
           })}
+        </div>
+
+        <div className="mt-8 max-w-2xl mx-auto rounded-lg border bg-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <p className="font-semibold text-foreground">Business</p>
+            <p className="text-sm text-muted-foreground">Para clínicas e equipes. Proposta sob medida.</p>
+          </div>
+          <Button variant="outline" asChild>
+            <a href={BUSINESS_WHATSAPP_URL} target="_blank" rel="noopener noreferrer">Falar no WhatsApp</a>
+          </Button>
         </div>
 
         <div className="mt-10 max-w-2xl mx-auto rounded-lg border bg-card p-5 flex items-start gap-3">

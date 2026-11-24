@@ -221,12 +221,15 @@ export function useAppState() {
     });
   }, [user]);
 
-  const isAllowed = subscription?.isActive ?? false;
+  // Plano Free: toda conta logada entra; os limites são conferidos no servidor.
+  const isAllowed = !!subscription;
+  const isFree = !!subscription && !subscription.isActive;
 
   return {
     subscription,
     loading: loading || authLoading,
     isAllowed,
+    isFree,
     refresh,
   };
 }

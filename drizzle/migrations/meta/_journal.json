@@ -92,6 +92,13 @@
       "when": 1795479930537,
       "tag": "0012_document_activity_and_terms_acceptance",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795541522587,
+      "tag": "0013_plano_free_limites",
+      "breakpoints": true
     }
   ]
 }

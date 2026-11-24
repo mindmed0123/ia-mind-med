@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Lock, Crown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { PRO_ANNUAL_PLAN, PRO_PLAN, STARTER_PLAN } from '@/lib/subscription-plans';
+import { PRO_ANNUAL_PLAN, PRO_PLAN, FREE_PLAN } from '@/lib/subscription-plans';
 
 interface ProFeatureGateProps {
   children: ReactNode;
@@ -70,7 +70,7 @@ export function ProFeatureGate({
           </div>
           
           <p className="text-xs text-muted-foreground mt-4">
-            Planos: {STARTER_PLAN.label} {STARTER_PLAN.price} • {PRO_PLAN.label} {PRO_PLAN.price} • {PRO_ANNUAL_PLAN.label} {PRO_ANNUAL_PLAN.price}
+            Planos: {FREE_PLAN.label} {FREE_PLAN.price} • {PRO_PLAN.label} {PRO_PLAN.price} • {PRO_ANNUAL_PLAN.label} {PRO_ANNUAL_PLAN.price}
           </p>
         </div>
       </CardContent>

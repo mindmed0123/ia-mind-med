@@ -2,7 +2,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+
+function RedirectCadastro() {
+  const { search } = useLocation();
+  return <Navigate to={`/cadastro${search}`} replace />;
+}
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DocumentGuards } from "@/components/signature/DocumentGuards";
 import { SubscriptionGuard } from "@/components/guards/SubscriptionGuard";
@@ -80,7 +85,8 @@ const App = () => (
               <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<Auth />} />
-                <Route path="/medicos/teste-gratis" element={<MedicosTrial />} />
+                <Route path="/cadastro" element={<MedicosTrial />} />
+                <Route path="/medicos/teste-gratis" element={<RedirectCadastro />} />
                 <Route path="/medicos/assinatura-expirada" element={<AssinaturaExpirada />} />
                 <Route path="/convite/trial-vip-2024" element={<TrialConvite />} />
                 <Route path="/unsubscribe" element={<Unsubscribe />} />

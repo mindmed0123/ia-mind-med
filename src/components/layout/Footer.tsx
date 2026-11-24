@@ -25,7 +25,7 @@ const Footer = () => {
             <h4 className="font-semibold mb-4">Produto</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link to="/medicos/teste-gratis" className="hover:text-primary transition-colors">
+                <Link to="/cadastro" className="hover:text-primary transition-colors">
                   Teste grátis de 7 dias
                 </Link>
               </li>

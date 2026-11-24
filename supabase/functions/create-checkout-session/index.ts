@@ -3,6 +3,7 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolverParceiro, PLANOS_COM_CUPOM } from "../_shared/parceiros.ts";
 import { safeAppOrigin } from "../_shared/allowed-origin.ts";
+import { PRO_ANNUAL_PRICE_ID } from "../_shared/stripe-subscription-sync.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,11 +11,10 @@ const corsHeaders = {
 };
 
 // MindMed price IDs (via secrets — nunca hardcoded)
+// Só Pro Mensal e Pro Anual estão à venda; Starter e Fundador saíram da venda.
 const PRICES: Record<string, string | undefined> = {
-  mindmed_starter:   Deno.env.get("STRIPE_PRICE_STARTER_MONTHLY"),
   mindmed_pro:       Deno.env.get("STRIPE_PRICE_PRO_MONTHLY"),
-  mindmed_pro_anual: Deno.env.get("STRIPE_PRICE_PRO_ANNUAL"),
-  mindmed_fundador:  Deno.env.get("STRIPE_PRICE_FUNDADOR"),
+  mindmed_pro_anual: PRO_ANNUAL_PRICE_ID,
 };
 
 const PLAN_TO_DB: Record<string, string> = {
@@ -110,42 +110,22 @@ serve(async (req) => {
       );
     }
 
-    // Fundador: corte automático quando as vagas acabam
-    if (plan === "mindmed_fundador") {
-      const { data: subAtual } = await supabase
-        .from("subscriptions")
-        .select("plan_origem")
-        .eq("user_id", userId)
-        .maybeSingle();
+    // Free → Pro: sem período de teste; a garantia de 30 dias cobre o risco.
+    const trialDays: number | undefined = undefined;
 
-      const jaEraFundador = subAtual?.plan_origem === "mindmed_fundador";
-
-      if (!jaEraFundador) {
-        const { data: vagas } = await supabase.rpc("fundador_vagas");
-        const totais = Number((vagas as any)?.totais ?? 100);
-        const ocupadas = Number((vagas as any)?.ocupadas ?? 0);
-        if (totais - ocupadas <= 0) {
-          return new Response(
-            JSON.stringify({ error: `As ${totais} vagas de fundador foram preenchidas.` }),
-            { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
+    // Atribuição first-touch salva no perfil completa o que o navegador não trouxe.
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("utm_source, utm_medium, utm_campaign, utm_content, utm_term, gclid, fbclid, fbc, fbp, mm_lp, landing_page, plan_inicial")
+      .eq("id", userId)
+      .maybeSingle();
+    if (prof) {
+      for (const k of ["utm_source","utm_medium","utm_campaign","utm_content","utm_term","gclid","fbclid","fbc","fbp","mm_lp"] as const) {
+        const v = (prof as Record<string, unknown>)[k];
+        if (!attr[k] && typeof v === "string" && v) attr[k] = v.slice(0, 200);
       }
-    }
-
-    // Fundador nunca tem trial: a garantia de 30 dias cobre o risco.
-    // Nos demais planos, só concede trial para quem nunca teve um.
-    let trialDays: number | undefined = undefined;
-
-    if (plan !== "mindmed_fundador") {
-      const { data: subAtual } = await supabase
-        .from("subscriptions")
-        .select("trial_start")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      const jaTeveTrial = !!subAtual?.trial_start;
-      if (!jaTeveTrial) trialDays = 7;
+      if (!attr.landing_path && typeof prof.landing_page === "string" && prof.landing_page) attr.landing_path = prof.landing_page.slice(0, 200);
+      if (typeof prof.plan_inicial === "string" && prof.plan_inicial) attr.plan_inicial = prof.plan_inicial.slice(0, 20);
     }
     logStep("Trial policy", { plan, trialDays: trialDays ?? 0 });
 
@@ -239,7 +219,7 @@ serve(async (req) => {
 
 
       success_url: `${origin}/dashboard?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/medicos/teste-gratis?checkout=canceled`,
+      cancel_url: `${origin}/precos?checkout=canceled`,
     });
 
     logStep("Created checkout session", { sessionId: session.id, url: session.url });

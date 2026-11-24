@@ -134,7 +134,7 @@ export function MindChatWidget({ laudoId, openNonce }: { laudoId: string | null;
           ? <Button type="button" size="icon" variant="outline" onClick={() => abort.current?.abort()} aria-label="Parar"><Square className="h-4 w-4" /></Button>
           : <Button type="submit" size="icon" disabled={!input.trim()} aria-label="Enviar"><Send className="h-4 w-4" /></Button>}
       </form>
-      <p className="px-3 pb-2 text-center text-[10px] text-muted-foreground">Apoio à decisão. A avaliação do médico prevalece.</p>
+      <p className="px-3 pb-2 text-center text-[10px] text-muted-foreground">Referência clínica. A avaliação do médico prevalece.</p>
     </div>
   );
 }

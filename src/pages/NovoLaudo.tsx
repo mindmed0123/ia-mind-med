@@ -558,7 +558,16 @@ const NovoLaudo = () => {
         .select()
         .single();
 
-      if (createError) throw createError;
+      if (createError) {
+        if (String(createError.message || '').includes('FREE_LIMIT_LAUDOS')) {
+          setIsSubmitting(false);
+          submitLockRef.current = false;
+          setPipelineStage('idle');
+          navigate('/medicos/assinatura-expirada?motivo=limite');
+          return;
+        }
+        throw createError;
+      }
 
       setLaudoId(newLaudo.id);
       setTranscript(text);
@@ -633,7 +642,16 @@ const NovoLaudo = () => {
         .select()
         .single();
 
-      if (createError) throw createError;
+      if (createError) {
+        if (String(createError.message || '').includes('FREE_LIMIT_LAUDOS')) {
+          setIsSubmitting(false);
+          submitLockRef.current = false;
+          setPipelineStage('idle');
+          navigate('/medicos/assinatura-expirada?motivo=limite');
+          return;
+        }
+        throw createError;
+      }
 
       setLaudoId(newLaudo.id);
       setPipelineStage('transcribing');

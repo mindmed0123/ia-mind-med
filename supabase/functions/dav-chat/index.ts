@@ -3,7 +3,6 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://esm.sh/zod@3.23.8';
-import { getEntitlement } from '../_shared/entitlement.ts';
 import { searchPubMed, type PubMedArticle } from '../_shared/pubmed.ts';
 
 const json = (body: unknown, status = 200) =>
@@ -28,7 +27,7 @@ Estilo:
 - Depois, no máximo 3 a 5 tópicos curtos. Sem floreio.
 - Use a ferramenta search_pubmed quando a pergunta envolver conduta, tratamento, eficácia, diretriz ou acurácia de exame.
 - Textos para o paciente: linguagem simples, acolhedora, sem jargão, sem CID.
-- Termine respostas clínicas com a linha: "_Apoio à decisão — a avaliação clínica do médico prevalece._"`;
+- Termine respostas clínicas com a linha: "_Referência clínica — a avaliação do médico prevalece._"`;
 
 const TOOL = {
   type: 'function',
@@ -95,8 +94,12 @@ Deno.serve(async (req) => {
   } catch { return json({ error: 'invalid_json' }, 400); }
 
   const service = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
-  const ent = await getEntitlement(service, userId);
-  if (!ent.active) return json({ error: 'Assinatura ativa necessária para usar o MindChat.', code: 'SUBSCRIPTION_REQUIRED' }, 402);
+  // Plano Free: 10 mensagens por mês, contadas no servidor; planos pagos são ilimitados.
+  const { data: quota, error: quotaErr } = await service.rpc('consume_free_chat', { p_user_id: userId });
+  if (quotaErr) return json({ error: 'Não foi possível verificar seu plano.' }, 500);
+  if (!(quota as { allowed?: boolean })?.allowed) {
+    return json({ error: 'Você usou as 10 mensagens do MindChat do plano Free neste mês. Assine o Pro para continuar sem limites.', code: 'FREE_LIMIT_CHAT' }, 402);
+  }
 
   let laudo: Record<string, unknown> | null = null;
   if (body.laudoId) {

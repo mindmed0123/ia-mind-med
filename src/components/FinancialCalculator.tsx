@@ -1,4 +1,3 @@
-import { STARTER_PLAN } from "@/lib/subscription-plans";
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -204,9 +203,9 @@ const FinancialCalculator = () => {
               <div className="mt-6 p-4 bg-secondary/10 rounded-lg text-center">
                 <p className="text-sm text-muted-foreground">
                   A MindMed custa{" "}
-                  <strong className="text-foreground">a partir de {STARTER_PLAN.price}</strong>. O retorno é imediato — ROI de{" "}
+                  <strong className="text-foreground">a partir de R$ 199/mês no Pro Anual</strong>. O retorno é imediato — ROI de{" "}
                   <strong className="text-success">
-                    {((result.monthlyRevenue / STARTER_PLAN.priceValue - 1) * 100).toFixed(0)}%
+                    {((result.monthlyRevenue / 199 - 1) * 100).toFixed(0)}%
                   </strong>
                   .
                 </p>

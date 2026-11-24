@@ -13,19 +13,23 @@ const PLAN_TO_DB: Record<string, "STARTER" | "PRO"> = {
   mindmed_fundador: "PRO",
 };
 
+/** Pro Anual R$ 2.388/ano (preço atual). Ids de preço não são segredo. */
+export const PRO_ANNUAL_PRICE_ID = "price_1UfNYrRpmClnFRZoT84xms08";
+
 export function knownPriceIds(): Set<string> {
   return new Set(
-    [
+    [PRO_ANNUAL_PRICE_ID, ...[
       "STRIPE_PRICE_STARTER_MONTHLY",
       "STRIPE_PRICE_PRO_MONTHLY",
       "STRIPE_PRICE_PRO_ANNUAL",
       "STRIPE_PRICE_FUNDADOR",
-    ].map((k) => Deno.env.get(k)).filter((v): v is string => !!v),
+    ].map((k) => Deno.env.get(k)).filter((v): v is string => !!v)],
   );
 }
 
 function planFromPrice(priceId: string | undefined): string | null {
   if (!priceId) return null;
+  if (priceId === PRO_ANNUAL_PRICE_ID) return "mindmed_pro_anual";
   const map: Record<string, string> = {
     STRIPE_PRICE_STARTER_MONTHLY: "mindmed_starter",
     STRIPE_PRICE_PRO_MONTHLY: "mindmed_pro",

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppState } from '@/hooks/useAppState';
-import { getSubscriptionPlanId, SUBSCRIPTION_PLANS, type SubscriptionPlanId } from '@/lib/subscription-plans';
+import { getSubscriptionPlanId, SUBSCRIPTION_PLANS, FREE_PLAN, BUSINESS_WHATSAPP_URL, GUARANTEE_TEXT, type SubscriptionPlanId } from '@/lib/subscription-plans';
+import { getAttribution } from '@/lib/attribution';
 import { Brain, AlertTriangle, CreditCard, MessageCircle, LogOut, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function AssinaturaExpirada() {
@@ -17,6 +18,8 @@ export default function AssinaturaExpirada() {
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanId>(() =>
     getSubscriptionPlanId(subscription?.plan, subscription?.billingCycle, subscription?.planOrigem)
   );
+  const [searchParams] = useSearchParams();
+  const atLimit = searchParams.get('motivo') === 'limite';
   const isPendingCheckout = subscription?.status === 'PENDING_CHECKOUT';
 
   useEffect(() => {
@@ -50,6 +53,7 @@ export default function AssinaturaExpirada() {
           name: profile?.full_name || '',
           whatsapp: profile?.whatsapp || '',
           plan: selectedPlan,
+          attribution: getAttribution(),
         },
       });
 
@@ -93,20 +97,20 @@ export default function AssinaturaExpirada() {
               )}
             </div>
             <CardTitle className="text-2xl text-foreground">
-              {isPendingCheckout ? "Falta só o pagamento" : "Seu período de teste terminou"}
+              {atLimit ? "Você usou o plano Free deste mês" : "Assine o MindMed Pro"}
             </CardTitle>
             <CardDescription className="text-base mt-2">
-              {isPendingCheckout
-                ? "Sua conta já está criada. Para liberar os 7 dias de teste, é só concluir o cadastro do cartão. Nada é cobrado agora."
-                : "Seu período de teste gratuito terminou ou sua assinatura não está ativa no momento."}
+              {atLimit
+                ? `O Free inclui ${FREE_PLAN.laudosPorMes} consultas documentadas e ${FREE_PLAN.chatPorMes} mensagens do MindChat por mês. Seus documentos continuam todos disponíveis.`
+                : "Consultas e MindChat ilimitados, com receituário, evolução do paciente e telemedicina."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="bg-muted/50 rounded-lg p-4 text-center">
               <p className="text-muted-foreground">
-                {isPendingCheckout
-                  ? "Escolha o plano e conclua o cadastro do cartão para iniciar seu teste."
-                  : "Para continuar usando a IA que gera laudos, CID e receituário automaticamente, reative sua assinatura."}
+                {atLimit
+                  ? "Assine o Pro para continuar agora, ou espere o limite do Free renovar no início do próximo mês."
+                  : "Você pode continuar no Free (5 consultas e 10 mensagens por mês) ou liberar tudo com o Pro."}
               </p>
             </div>
 
@@ -142,18 +146,14 @@ export default function AssinaturaExpirada() {
                 ) : (
                   <span className="flex items-center gap-2">
                     <CreditCard className="w-5 h-5" />
-                    {isPendingCheckout ? "Concluir cadastro do cartão" : "Reativar minha assinatura"}
+                    Assinar o Pro
                     <ArrowRight className="w-5 h-5" />
                   </span>
                 )}
               </Button>
 
               <p className="text-xs text-center text-muted-foreground">
-                {selectedPlan === 'mindmed_fundador'
-                  ? "Fundador não tem teste grátis: a cobrança anual é feita agora • Garantia de 30 dias com devolução de 100%"
-                  : isPendingCheckout
-                    ? "7 dias grátis após cadastrar o cartão • Nada é cobrado agora"
-                    : "Escolha o plano acima • Cancele quando quiser"}
+                {GUARANTEE_TEXT} Cancele quando quiser, pelo próprio painel.
               </p>
             </div>
 
@@ -166,6 +166,13 @@ export default function AssinaturaExpirada() {
               >
                 <MessageCircle className="w-4 h-4" />
                 <span>Precisa de ajuda? Fale conosco</span>
+              </a>
+
+              <Button variant="outline" onClick={() => navigate('/dashboard')} className="w-full">
+                Continuar no plano Free
+              </Button>
+              <a href={BUSINESS_WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="block text-center text-sm text-muted-foreground hover:underline">
+                Clínica ou equipe? Conheça o Business
               </a>
 
               <Button
@@ -181,7 +188,7 @@ export default function AssinaturaExpirada() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-4">
-          Se você acredita que isso é um erro, entre em contato com nosso suporte.
+          Dúvidas? Fale com o suporte pelo WhatsApp.
         </p>
       </div>
     </div>

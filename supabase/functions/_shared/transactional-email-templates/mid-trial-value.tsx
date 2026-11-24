@@ -39,7 +39,7 @@ const Email = (props: Props) => {
             <Section style={s.ctaSection}>
               <Button style={s.ctaButton} href={`${APP_URL}/dashboard`}>Abrir a plataforma</Button>
             </Section>
-            <Text style={s.text}>Sobre o terceiro item: em 27 de agosto de 2026 entrou em vigor a Resolução CFM nº 2.454/2026, que passou a exigir que o uso de inteligência artificial seja registrado no prontuário e que exista rastreabilidade de como foi usado. A MindMed já fazia isso antes da norma existir — se você usa, está coberto.</Text>
+            <Text style={s.text}>Sobre o terceiro item: em 26 de agosto de 2026 entrou em vigor a Resolução CFM nº 2.454/2026, que passou a exigir que o uso de inteligência artificial seja registrado no prontuário e que exista rastreabilidade de como foi usado. A MindMed já fazia isso antes da norma existir — se você usa, está coberto.</Text>
             {typeof days === 'number' && <Text style={s.text}>Faltam {days} dias de teste.</Text>}
             <Text style={s.text}>Se tiver dúvida, responda este e-mail.</Text>
             <Text style={s.signature}>Pedro Suassuna<br/>MindMed</Text>

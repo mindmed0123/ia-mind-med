@@ -1470,6 +1470,7 @@ export type Database = {
           especialidade: string | null
           especialidade_outra: string | null
           fbc: string | null
+          fbclid: string | null
           fbp: string | null
           full_name: string | null
           gclid: string | null
@@ -1485,6 +1486,7 @@ export type Database = {
           parceiro_slug: string | null
           perfil_completo_em: string | null
           phone: string | null
+          plan_inicial: string | null
           prescription_footer_text: string | null
           registro_numero: string | null
           registro_uf: string | null
@@ -1511,6 +1513,7 @@ export type Database = {
           especialidade?: string | null
           especialidade_outra?: string | null
           fbc?: string | null
+          fbclid?: string | null
           fbp?: string | null
           full_name?: string | null
           gclid?: string | null
@@ -1526,6 +1529,7 @@ export type Database = {
           parceiro_slug?: string | null
           perfil_completo_em?: string | null
           phone?: string | null
+          plan_inicial?: string | null
           prescription_footer_text?: string | null
           registro_numero?: string | null
           registro_uf?: string | null
@@ -1552,6 +1556,7 @@ export type Database = {
           especialidade?: string | null
           especialidade_outra?: string | null
           fbc?: string | null
+          fbclid?: string | null
           fbp?: string | null
           full_name?: string | null
           gclid?: string | null
@@ -1567,6 +1572,7 @@ export type Database = {
           parceiro_slug?: string | null
           perfil_completo_em?: string | null
           phone?: string | null
+          plan_inicial?: string | null
           prescription_footer_text?: string | null
           registro_numero?: string | null
           registro_uf?: string | null
@@ -1982,6 +1988,30 @@ export type Database = {
           },
         ]
       }
+      usage_counters: {
+        Row: {
+          chat: number
+          laudos: number
+          month: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chat?: number
+          laudos?: number
+          month: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chat?: number
+          laudos?: number
+          month?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -2115,6 +2145,7 @@ export type Database = {
       check_and_consume_quota:
         | { Args: never; Returns: Json }
         | { Args: { p_user_id: string }; Returns: Json }
+      consume_free_chat: { Args: { p_user_id: string }; Returns: Json }
       count_active_org_members: { Args: { _org_id: string }; Returns: number }
       delete_email: {
         Args: { message_id: number; queue_name: string }
@@ -2126,6 +2157,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      free_usage: { Args: never; Returns: Json }
       fundador_vagas: { Args: never; Returns: Json }
       get_agenda_metrics: {
         Args: {
@@ -2186,6 +2218,7 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
+      is_paid_user: { Args: { p_user_id: string }; Returns: boolean }
       log_audit_action: {
         Args: {
           p_action: string

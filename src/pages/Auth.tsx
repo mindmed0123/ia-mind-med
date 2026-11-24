@@ -137,7 +137,7 @@ const Auth = () => {
             <div className="mt-6 pt-4 border-t text-center">
               <p className="text-sm text-muted-foreground">
                 Ainda não tem conta?{" "}
-                <Link to="/medicos/teste-gratis" className="text-primary font-medium hover:underline">
+                <Link to="/cadastro" className="text-primary font-medium hover:underline">
                   Comece seu teste de 7 dias
                 </Link>
               </p>

@@ -619,7 +619,7 @@ export default function Perfil() {
               ) : (
                 <div className="text-center space-y-3">
                   <p className="text-sm text-muted-foreground">Nenhuma assinatura ativa</p>
-                  <Button onClick={() => navigate('/medicos/teste-gratis')}>
+                  <Button onClick={() => navigate('/cadastro')}>
                     Assinar Agora
                   </Button>
                 </div>

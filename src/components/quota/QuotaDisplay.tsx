@@ -49,7 +49,7 @@ export const QuotaDisplay = () => {
             <p className="text-sm text-muted-foreground">
               Você não possui um plano ativo
             </p>
-            <Button onClick={() => handleCheckout('mindmed_starter')} disabled={actionLoading}>
+            <Button onClick={() => handleCheckout('mindmed_pro_anual')} disabled={actionLoading}>
               {actionLoading ? 'Processando...' : 'Assinar Agora'}
             </Button>
           </div>
