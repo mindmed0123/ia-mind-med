@@ -10,7 +10,7 @@ type Resultado = {
   numero?: string;
   created_at?: string;
   finalized_at?: string | null;
-  medico?: { nome: string; crm: string; especialidade: string };
+  medico?: { nome: string; crm: string; especialidade: string; conselho?: string };
   error?: string;
 };
 
@@ -38,6 +38,7 @@ const VerificarLaudo = () => {
   }, [id, token]);
 
   const pendente = res && !res.valid && res.hash_match && res.status !== "completed";
+  const psi = res?.medico?.conselho === "CRP";
 
   return (
     <main className="min-h-screen bg-muted/40 flex items-center justify-center px-4 py-10">
@@ -59,18 +60,18 @@ const VerificarLaudo = () => {
               <>
                 <div className="flex flex-col items-center text-center gap-2 mb-6">
                   <CheckCircle2 className="w-12 h-12 text-primary" />
-                  <h1 className="text-xl font-bold text-foreground">Laudo autêntico</h1>
+                  <h1 className="text-xl font-bold text-foreground">{psi ? "Documento autêntico" : "Laudo autêntico"}</h1>
                   <p className="text-sm text-muted-foreground">
                     Este documento foi emitido pelo MindMed e não foi substituído por outra versão.
                   </p>
                 </div>
                 <dl className="divide-y divide-border rounded-xl border border-border text-sm">
                   {[
-                    ["Médico(a)", res.medico?.nome],
-                    ["CRM", res.medico?.crm],
+                    [psi ? "Psicólogo(a)" : "Médico(a)", res.medico?.nome],
+                    [psi ? "CRP" : "CRM", res.medico?.crm],
                     ["Especialidade", res.medico?.especialidade],
                     ["Documento nº", res.numero],
-                    ["Data da consulta", dataBR(res.created_at)],
+                    [psi ? "Data da sessão" : "Data da consulta", dataBR(res.created_at)],
                     ["Concluído em", dataBR(res.finalized_at)],
                   ].map(([k, v]) => (
                     <div key={k} className="flex justify-between gap-4 px-4 py-2.5">

@@ -1,128 +1,14 @@
 /**
- * MindMed — Laudo em PDF (layout vetorial).
+ * MindMed — Laudo e registro de sessão em PDF (layout vetorial).
  * Texto nítido e selecionável, quebra de página limpa, marca MindMed
  * e área de assinatura + QR de verificação. A assinatura A1 é aplicada
  * depois, em pdf-delivery, sobre este arquivo.
  */
-import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
-import mindmedMark from '@/assets/mindmed-logo-mark.png';
-import { normalizeDocumentFormat, type DocumentFormat } from '../../supabase/functions/_shared/document-format';
 import type { LaudoBlock, LaudoDocument } from '../../supabase/functions/_shared/laudo-document';
 import type { PdfMeta } from '@/lib/pdf-generator';
-import { formatDoctorTitle } from '@/lib/doctor-title';
+import { C, PAGE_W, createPdfKit, professionalName, registroLabel, type RGB } from '@/lib/pdf-kit';
 
-type RGB = [number, number, number];
-const C = {
-  ink: [15, 23, 42] as RGB,
-  body: [51, 65, 85] as RGB,
-  muted: [100, 116, 139] as RGB,
-  subtle: [148, 163, 184] as RGB,
-  line: [226, 232, 240] as RGB,
-  navy: [11, 42, 91] as RGB,
-  blue: [15, 69, 179] as RGB,
-  cyan: [0, 190, 240] as RGB,
-  cyanDark: [3, 132, 199] as RGB,
-  tint: [244, 247, 253] as RGB,
-  blueTint: [231, 239, 253] as RGB,
-  cyanTint: [230, 248, 254] as RGB,
-  white: [255, 255, 255] as RGB,
-  warnBg: [255, 247, 230] as RGB,
-  warn: [217, 119, 6] as RGB,
-  warnText: [146, 64, 14] as RGB,
-  redBg: [254, 242, 242] as RGB,
-  red: [185, 28, 28] as RGB,
-};
-
-const PAGE_W = 210;
-const PAGE_H = 297;
-const PT = 0.3528; // mm por ponto
-
-// ── Fontes ───────────────────────────────────────────────
-const FONT_FILES: Record<string, string> = {
-  Inter: 'Inter-Regular.ttf',
-  InterSemi: 'Inter-SemiBold.ttf',
-  InterBold: 'Inter-Bold.ttf',
-  Merri: 'Merriweather-Regular.ttf',
-  MerriBold: 'Merriweather-Bold.ttf',
-};
-const fontCache = new Map<string, Promise<string | null>>();
-
-function toBase64(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  let bin = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(bin);
-}
-
-function loadFont(name: string): Promise<string | null> {
-  if (!fontCache.has(name)) {
-    fontCache.set(
-      name,
-      fetch(`/fonts/pdf/${FONT_FILES[name]}`)
-        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('font'))))
-        .then(toBase64)
-        .catch(() => {
-          fontCache.delete(name);
-          return null;
-        }),
-    );
-  }
-  return fontCache.get(name)!;
-}
-
-type Role = 'body' | 'semi' | 'bold' | 'display';
-type FontSpec = Record<Role, [string, string]>;
-
-async function setupFonts(doc: jsPDF, fonte: DocumentFormat['fonte']): Promise<FontSpec> {
-  if (fonte === 'Arial') return { body: ['helvetica', 'normal'], semi: ['helvetica', 'bold'], bold: ['helvetica', 'bold'], display: ['helvetica', 'bold'] };
-  if (fonte === 'Times New Roman') return { body: ['times', 'normal'], semi: ['times', 'bold'], bold: ['times', 'bold'], display: ['times', 'bold'] };
-  const wanted = fonte === 'Merriweather' ? ['Merri', 'InterSemi', 'InterBold', 'MerriBold'] : ['Inter', 'InterSemi', 'InterBold', 'MerriBold'];
-  const data = await Promise.all(wanted.map(loadFont));
-  if (data.some((d) => !d)) return { body: ['helvetica', 'normal'], semi: ['helvetica', 'bold'], bold: ['helvetica', 'bold'], display: ['helvetica', 'bold'] };
-  wanted.forEach((name, i) => {
-    doc.addFileToVFS(FONT_FILES[name], data[i]!);
-    doc.addFont(FONT_FILES[name], name, 'normal');
-  });
-  return { body: [wanted[0], 'normal'], semi: [wanted[1], 'normal'], bold: [wanted[2], 'normal'], display: [wanted[3], 'normal'] };
-}
-
-// ── Imagens ──────────────────────────────────────────────
-async function urlToDataUrl(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    return await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
-}
-
-async function imageToPng(url: string): Promise<{ data: string; ratio: number } | null> {
-  try {
-    const image = new Image();
-    image.crossOrigin = 'anonymous';
-    image.src = url;
-    await image.decode();
-    const canvas = document.createElement('canvas');
-    canvas.width = image.naturalWidth;
-    canvas.height = image.naturalHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    ctx.drawImage(image, 0, 0);
-    return { data: canvas.toDataURL('image/png'), ratio: image.naturalWidth / Math.max(1, image.naturalHeight) };
-  } catch {
-    return null;
-  }
-}
-
-// ── Renderização ─────────────────────────────────────────
 export interface RenderLaudoOptions {
   document: LaudoDocument;
   meta?: PdfMeta | null;
@@ -130,121 +16,21 @@ export interface RenderLaudoOptions {
 }
 
 export async function renderLaudoPdf({ document: d, meta, verifyUrl }: RenderLaudoOptions): Promise<Blob> {
-  const format = normalizeDocumentFormat(meta?.documentFormat);
-  const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
-  const F = await setupFonts(doc, format.fonte);
-
-  const [markData, clinicLogo, letterhead, qrData] = await Promise.all([
-    urlToDataUrl(mindmedMark),
-    format.logo && meta?.logoUrl ? imageToPng(meta.logoUrl) : Promise.resolve(null),
-    meta?.letterheadUrl ? imageToPng(meta.letterheadUrl) : Promise.resolve(null),
+  const psi = d.conselho === 'CRP';
+  const metaDoc: PdfMeta | null | undefined = psi && meta ? { ...meta, conselho: 'CRP' } : meta;
+  const [k, qrData] = await Promise.all([
+    createPdfKit(metaDoc),
     verifyUrl
       ? QRCode.toDataURL(verifyUrl, { margin: 0, width: 360, errorCorrectionLevel: 'M', color: { dark: '#0B2A5B', light: '#FFFFFF' } }).catch(() => null)
       : Promise.resolve(null),
   ]);
-
-  const M = format.margem_lateral;
-  const W = PAGE_W - 2 * M;
-  const TOP = format.cabecalho ? Math.max(format.margem_superior, 32) : format.margem_superior;
-  const BOTTOM = PAGE_H - (format.rodape ? Math.max(format.margem_inferior, 20) : Math.max(format.margem_inferior, 12));
-  const BODY = Math.max(8, Math.min(12, format.corpo * 0.92));
-
-  const font = (role: Role, size: number, color: RGB = C.body) => {
-    doc.setFont(F[role][0], F[role][1]);
-    doc.setFontSize(size);
-    doc.setTextColor(...color);
-  };
-  const lh = (size: number, factor = 1.5) => size * PT * factor;
-  const asc = (size: number) => size * PT * 0.78;
-  const split = (text: string, width: number): string[] => doc.splitTextToSize(text, width) as string[];
-  const upper = (t: string) => t.toLocaleUpperCase('pt-BR');
-  const fill = (c: RGB) => doc.setFillColor(...c);
-  const stroke = (c: RGB, w = 0.3) => {
-    doc.setDrawColor(...c);
-    doc.setLineWidth(w);
-  };
-  /** Reduz o corpo da fonte até o texto caber na largura. */
-  const fit = (text: string, role: Role, start: number, min: number, maxW: number) => {
-    let size = start;
-    font(role, size);
-    while (size > min && doc.getTextWidth(text) > maxW) {
-      size -= 0.25;
-      doc.setFontSize(size);
-    }
-    return size;
-  };
-
-  const gradientBar = (y: number, h: number) => {
-    const steps = 48;
-    const segW = PAGE_W / steps;
-    for (let i = 0; i < steps; i++) {
-      const t = i / (steps - 1);
-      fill([0, 1, 2].map((k) => Math.round(C.blue[k] + (C.cyan[k] - C.blue[k]) * t)) as RGB);
-      doc.rect(i * segW, y, segW + 0.3, h, 'F');
-    }
-  };
-
-  const drawLetterhead = () => {
-    if (!letterhead) return;
-    const anyDoc = doc as unknown as { GState: new (o: { opacity: number }) => unknown; setGState: (g: unknown) => void };
-    doc.saveGraphicsState();
-    anyDoc.setGState(new anyDoc.GState({ opacity: 0.12 }));
-    doc.addImage(letterhead.data, 'PNG', 0, 0, PAGE_W, PAGE_H);
-    doc.restoreGraphicsState();
-  };
-
-  const drawHeader = () => {
-    if (!format.cabecalho) return;
-    gradientBar(0, 1.6);
-    const y0 = 8;
-    let textX = M;
-    if (clinicLogo) {
-      const h = 11;
-      const w = Math.min(28, h * clinicLogo.ratio);
-      doc.addImage(clinicLogo.data, 'PNG', M, y0, w, h);
-      textX = M + w + 3.5;
-    } else if (format.logo && markData) {
-      doc.addImage(markData, 'PNG', M, y0, 11, 11);
-      textX = M + 14;
-    }
-    const brand = meta?.clinicName?.trim() || 'MindMed';
-    const maxBrandW = PAGE_W / 2 - textX;
-    fit(brand, 'display', 14, 9, maxBrandW);
-    doc.setTextColor(...C.navy);
-    doc.text(brand, textX, y0 + 5.6);
-    font('body', 6.6, C.muted);
-    doc.text(meta?.clinicName ? 'Documentação clínica com MindMed' : 'Documentação clínica inteligente', textX, y0 + 9.6);
-
-    const rx = PAGE_W - M;
-    const docName = formatDoctorTitle(meta?.doctorName || 'Médico responsável');
-    fit(docName, 'bold', 10, 7.5, PAGE_W / 2 - M - 4);
-    doc.setTextColor(...C.ink);
-    doc.text(docName, rx, y0 + 3.6, { align: 'right' });
-    if (meta?.doctorCrm) {
-      font('semi', 7.6, C.blue);
-      doc.text(`CRM ${meta.doctorCrm}${meta.doctorCrmUf ? '/' + meta.doctorCrmUf : ''}`, rx, y0 + 7.6, { align: 'right' });
-    }
-    const extra = [meta?.doctorSpecialty, meta?.doctorPhone].filter(Boolean).join('  ·  ');
-    if (extra) {
-      font('body', 6.8, C.muted);
-      doc.text(extra, rx, y0 + 11.2, { align: 'right' });
-    }
-    if (meta?.doctorAddress) {
-      font('body', 6.2, C.subtle);
-      doc.text(split(meta.doctorAddress, PAGE_W / 2 - M)[0], rx, y0 + 14.6, { align: 'right' });
-    }
-    const ly = 25.5;
-    stroke(C.line, 0.25);
-    doc.line(M, ly, PAGE_W - M, ly);
-    stroke(C.blue, 0.7);
-    doc.line(M, ly, M + 22, ly);
-  };
+  const { doc, M, W, TOP, BOTTOM, BODY, font, lh, asc, split, upper, fill, stroke, fit, ellipsis, eyebrow } = k;
 
   let y = TOP;
   const newPage = () => {
     doc.addPage();
-    drawLetterhead();
-    drawHeader();
+    k.drawLetterhead();
+    k.drawHeader();
     y = TOP;
   };
   const ensure = (h: number) => {
@@ -253,7 +39,7 @@ export async function renderLaudoPdf({ document: d, meta, verifyUrl }: RenderLau
   const room = () => BOTTOM - y;
 
   /** Parágrafo com quebra automática e de página; aceita linhas com marcador. */
-  const paragraph = (text: string, opts: { x?: number; width?: number; size?: number; role?: Role; color?: RGB; factor?: number } = {}) => {
+  const paragraph = (text: string, opts: { x?: number; width?: number; size?: number; role?: 'body' | 'semi'; color?: RGB; factor?: number } = {}) => {
     const x = opts.x ?? M;
     const width = opts.width ?? W;
     const size = opts.size ?? BODY;
@@ -276,7 +62,7 @@ export async function renderLaudoPdf({ document: d, meta, verifyUrl }: RenderLau
         }
         if (bullet && i === 0) {
           fill(C.cyanDark);
-          doc.circle(x + 1.2, y + asc(size) - size * PT * 0.3, 0.55, 'F');
+          doc.circle(x + 1.2, y + asc(size) - size * 0.3528 * 0.3, 0.55, 'F');
         }
         doc.text(line, x + indent, y + asc(size));
         y += step;
@@ -284,33 +70,30 @@ export async function renderLaudoPdf({ document: d, meta, verifyUrl }: RenderLau
     }
   };
 
-  const eyebrow = (text: string, x: number, yy: number, color: RGB, size = 6.4) => {
-    font('semi', size, color);
-    doc.text(upper(text), x, yy, { charSpace: 0.35 });
-  };
-
   let sectionNo = 0;
-  const sectionTitle = (title: string, minFollow = 9) => {
+  const sectionTitle = (title: string, minFollow = 9, numeral?: string) => {
     if (y > TOP + 1) y += sectionNo === 0 ? 1 : 4;
     ensure(13 + minFollow);
     sectionNo += 1;
-    const num = String(sectionNo).padStart(2, '0');
+    const num = numeral || String(sectionNo).padStart(2, '0');
     fill(C.blueTint);
     doc.roundedRect(M, y, 7.5, 7.5, 1.8, 1.8, 'F');
-    font('bold', 7.8, C.blue);
+    fit(num, 'bold', 7.8, 6, 6.5);
+    doc.setTextColor(...C.blue);
     doc.text(num, M + 3.75, y + 5.15, { align: 'center' });
-    font('display', 12, C.navy);
-    doc.text(title, M + 11, y + 5.5);
+    fit(title, 'display', 12, 9.5, W - 11);
+    doc.setTextColor(...C.navy);
+    doc.text(ellipsis(title, W - 11), M + 11, y + 5.5);
     stroke(C.line, 0.25);
     doc.line(M + 11, y + 9.6, PAGE_W - M, y + 9.6);
     y += 13;
   };
 
   // ── Página 1 ──
-  drawLetterhead();
-  drawHeader();
+  k.drawLetterhead();
+  k.drawHeader();
 
-  // Cartão do paciente
+  // Cartão da pessoa atendida
   {
     const cardH = 27;
     const x = M;
@@ -325,16 +108,9 @@ export async function renderLaudoPdf({ document: d, meta, verifyUrl }: RenderLau
     const rightColX = PAGE_W - M - 50;
     eyebrow(d.titulo, leftX, y + 7, C.cyanDark, 6.8);
     const nameW = rightColX - leftX - 6;
-    let nameSize = fit(d.paciente.nome, 'display', 17, 11, nameW);
-    let name = d.paciente.nome;
-    if (doc.getTextWidth(name) > nameW) {
-      while (name.length > 4 && doc.getTextWidth(name + '…') > nameW) name = name.slice(0, -1);
-      name += '…';
-      nameSize = 11;
-    }
+    fit(d.paciente.nome, 'display', 17, 11, nameW);
     doc.setTextColor(...C.navy);
-    doc.text(name, leftX, y + 15.2);
-    void nameSize;
+    doc.text(ellipsis(d.paciente.nome, nameW), leftX, y + 15.2);
     const sub = [d.paciente.idade, d.paciente.sexo].filter(Boolean).join('   ·   ');
     if (sub) {
       font('body', 8.6, C.body);
@@ -342,7 +118,7 @@ export async function renderLaudoPdf({ document: d, meta, verifyUrl }: RenderLau
     }
     stroke(C.line, 0.3);
     doc.line(rightColX - 2, y + 6, rightColX - 2, y + cardH - 6);
-    eyebrow('Data da consulta', rightColX + 3, y + 7.6, C.muted, 5.8);
+    eyebrow(d.rotuloData || 'Data da consulta', rightColX + 3, y + 7.6, C.muted, 5.8);
     font('semi', 9.5, C.ink);
     doc.text(d.dataConsulta || '—', rightColX + 3, y + 12.2);
     eyebrow('Documento nº', rightColX + 3, y + 17.4, C.muted, 5.8);
@@ -430,8 +206,9 @@ export async function renderLaudoPdf({ document: d, meta, verifyUrl }: RenderLau
     }
 
     if (b.kind === 'text') {
-      sectionTitle(b.title, lh(BODY) * 2 + 1);
-      paragraph(b.text, { x: M + 11, width: W - 11, size: b.small ? BODY * 0.9 : BODY, color: b.small ? C.muted : C.body });
+      sectionTitle(b.title, lh(BODY) * 2 + 1, b.numeral);
+      const quiet = b.small || b.empty;
+      paragraph(b.text, { x: M + 11, width: W - 11, size: quiet ? BODY * 0.9 : BODY, color: quiet ? C.muted : C.body });
       return;
     }
 
@@ -565,22 +342,26 @@ export async function renderLaudoPdf({ document: d, meta, verifyUrl }: RenderLau
     }
 
     if (b.kind === 'callout') {
-      const warn = b.tone === 'warning';
+      const tone = b.tone === 'warning'
+        ? { bar: C.warn, bg: C.warnBg, label: C.warnText, text: C.warnText, role: 'body' as const, eyebrow: b.title }
+        : b.tone === 'note'
+          ? { bar: C.subtle, bg: C.tint, label: C.muted, text: C.body, role: 'body' as const, eyebrow: b.title }
+          : { bar: C.cyan, bg: C.cyanTint, label: C.cyanDark, text: C.ink, role: 'semi' as const, eyebrow: `Próximo passo · ${b.title}` };
       const x = M;
       const w = W;
-      const size = BODY;
-      font(warn ? 'body' : 'semi', size);
+      const size = b.tone === 'note' ? BODY * 0.9 : BODY;
+      font(tone.role, size);
       const lines = split(b.text, w - 16);
       const h = 5.2 + 3.2 + lines.length * lh(size, 1.45) + 2.4;
       ensure(h + 4);
       y += 3;
-      fill(warn ? C.warn : C.cyan);
+      fill(tone.bar);
       doc.roundedRect(x, y, w, h, 2.5, 2.5, 'F');
-      fill(warn ? C.warnBg : C.cyanTint);
+      fill(tone.bg);
       doc.roundedRect(x + 1.6, y, w - 1.6, h, 2.5, 2.5, 'F');
       doc.rect(x + 1.6, y, 3, h, 'F');
-      eyebrow(warn ? b.title : `Próximo passo · ${b.title}`, x + 8, y + 5.4, warn ? C.warnText : C.cyanDark, 6.4);
-      font(warn ? 'body' : 'semi', size, warn ? C.warnText : C.ink);
+      eyebrow(tone.eyebrow, x + 8, y + 5.4, tone.label, 6.4);
+      font(tone.role, size, tone.text);
       lines.forEach((l, i) => doc.text(l, x + 8, y + 8.4 + asc(size) + i * lh(size, 1.45)));
       y += h + 2;
     }
@@ -599,18 +380,17 @@ export async function renderLaudoPdf({ document: d, meta, verifyUrl }: RenderLau
     doc.text(`Emitido em ${meta?.dateFormatted || d.dataConsulta}${meta?.timeFormatted ? ' às ' + meta.timeFormatted : ''}`, M, top + 3);
     stroke(C.ink, 0.3);
     doc.line(M, top + 15, M + sigW, top + 15);
-    const docName = formatDoctorTitle(meta?.doctorName || 'Médico responsável');
-    fit(docName, 'bold', 10, 7.5, sigW);
+    const name = professionalName(metaDoc);
+    fit(name, 'bold', 10, 7.5, sigW);
     doc.setTextColor(...C.ink);
-    doc.text(docName, M, top + 20);
-    const crm = meta?.doctorCrm ? `CRM ${meta.doctorCrm}${meta.doctorCrmUf ? '/' + meta.doctorCrmUf : ''}` : '';
-    const line2 = [crm, meta?.doctorSpecialty].filter(Boolean).join('  ·  ');
+    doc.text(name, M, top + 20);
+    const line2 = [registroLabel(metaDoc), meta?.doctorSpecialty].filter(Boolean).join('  ·  ');
     if (line2) {
       font('semi', 7.8, C.blue);
       doc.text(split(line2, sigW)[0], M, top + 24.2);
     }
     font('body', 6.8, C.muted);
-    doc.text('Médico(a) responsável', M, top + 28);
+    doc.text(psi ? 'Psicólogo(a) responsável' : 'Médico(a) responsável', M, top + 28);
 
     if (qrData) {
       const cw = 74;
@@ -626,45 +406,24 @@ export async function renderLaudoPdf({ document: d, meta, verifyUrl }: RenderLau
       font('semi', 8.4, C.ink);
       doc.text(split('Documento autêntico?', cw - 34), tx, top + 11.2);
       font('body', 6.8, C.body);
-      split('Aponte a câmera do celular para o código e confira os dados do médico e do laudo.', cw - 34).slice(0, 3).forEach((l, i) => doc.text(l, tx, top + 15.2 + i * 3));
+      const hint = psi
+        ? 'Aponte a câmera do celular para o código e confira os dados do profissional e do documento.'
+        : 'Aponte a câmera do celular para o código e confira os dados do médico e do laudo.';
+      split(hint, cw - 34).slice(0, 3).forEach((l, i) => doc.text(l, tx, top + 15.2 + i * 3));
       font('bold', 7.4, C.navy);
       doc.text(`Nº ${d.numero}`, tx, top + 26.4);
     }
     y = top + blockH;
   }
 
-  // ── Rodapé (precisa do total de páginas) ──
-  const total = doc.getNumberOfPages();
-  for (let i = 1; i <= total; i++) {
-    doc.setPage(i);
-    if (!format.rodape) continue;
-    const fy = PAGE_H - 16;
-    stroke(C.line, 0.25);
-    doc.line(M, fy, PAGE_W - M, fy);
-    let tx = M;
-    if (markData) {
-      doc.addImage(markData, 'PNG', M, fy + 2.6, 5.4, 5.4);
-      tx = M + 7.2;
-    }
-    font('bold', 7, C.navy);
-    doc.text('MindMed', tx, fy + 5);
-    font('body', 5.8, C.muted);
-    split(d.disclaimer, PAGE_W - 2 * M - 62).slice(0, 2).forEach((l, li) => doc.text(l, tx, fy + 7.9 + li * 2.5));
-    font('semi', 7.2, C.ink);
-    doc.text(`Página ${i} de ${total}`, PAGE_W - M, fy + 5, { align: 'right' });
-    if (meta?.hash) {
-      font('body', 5.4, C.subtle);
-      doc.text(`Laudo ${d.numero}  ·  SHA-256 ${meta.hash.slice(0, 16)}…`, PAGE_W - M, fy + 8.2, { align: 'right' });
-    }
-    gradientBar(PAGE_H - 1.1, 1.1);
-  }
+  k.drawFooters({ disclaimer: d.disclaimer, idLine: `${psi ? 'Registro' : 'Laudo'} ${d.numero}` });
 
   doc.setProperties({
     title: `${d.titulo} — ${d.paciente.nome}`,
-    subject: 'Laudo médico',
+    subject: psi ? 'Registro de sessão' : 'Laudo médico',
     author: meta?.doctorName || 'MindMed',
     creator: 'MindMed',
-    keywords: `MindMed, laudo, ${d.numero}`,
+    keywords: `MindMed, ${psi ? 'registro de sessão' : 'laudo'}, ${d.numero}`,
   });
   doc.setLanguage('pt-BR');
   return doc.output('blob');
@@ -675,10 +434,9 @@ export function laudoVerifyUrl(laudoId: string, token: string): string {
   return `${window.location.origin}/verificar/${laudoId}?t=${encodeURIComponent(token)}`;
 }
 
-// deno-lint-ignore no-explicit-any
 type ExportData = { html?: string; document?: LaudoDocument | null; pdfMeta?: PdfMeta; fileName: string; verifyToken?: string };
 
-/** Gera o PDF a partir da resposta da função export-pdf (layout novo; CRP segue no antigo). */
+/** Gera o PDF a partir da resposta da função export-pdf (laudo e registro de sessão no layout novo). */
 export async function buildLaudoPdf(data: ExportData, laudoId: string): Promise<Blob> {
   const verifyUrl = data.verifyToken ? laudoVerifyUrl(laudoId, data.verifyToken) : null;
   if (data.document) return renderLaudoPdf({ document: data.document, meta: data.pdfMeta, verifyUrl });

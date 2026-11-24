@@ -18,4 +18,4 @@
 - Copies, downloads, prints, signatures and saves are logged via the log_document_activity RPC into immutable audit_logs, with content SHA-256 and request IP.
 - Terms acceptance goes through the accept_terms RPC; bumping TERMO_VERSAO in src/lib/termo-adesao forces every user to re-sign.
 - The medication catalog is cross-checked against ANVISA open data; only entries with an active registration stay ativo, and CID only ranks results, never filters them.
-- Medical report PDFs are drawn as vector pages by src/lib/laudo-pdf from the structured document export-pdf builds with _shared/laudo-document (shared so server and tests use the same mapping); CRP session records keep the legacy HTML path.
+- Clinical PDFs (medical report, CRP session record, prescription) are drawn as vector pages on src/lib/pdf-kit from structured documents built in _shared/laudo-document and _shared/receita-document (shared so server and tests use the same mapping); the HTML path is only a fallback.

@@ -174,11 +174,13 @@ Deno.serve(async (req) => {
     }
     html = formatHtml(html, documentFormat);
 
+    const isPsi = profile?.conselho === 'CRP' || (laudo.sections as any)?.conselho === 'CRP';
     const pdfMeta = {
-      doctorName: profile?.full_name || 'Médico Responsável',
-      doctorCrm: profile?.crm || '',
-      doctorCrmUf: profile?.crm_uf || '',
-      doctorSpecialty: profile?.specialty || '',
+      doctorName: profile?.full_name || (isPsi ? 'Psicólogo(a) responsável' : 'Médico Responsável'),
+      conselho: isPsi ? 'CRP' : 'CRM',
+      doctorCrm: (isPsi ? profile?.registro_numero || profile?.crm : profile?.crm || profile?.registro_numero) || '',
+      doctorCrmUf: (isPsi ? profile?.registro_uf || profile?.crm_uf : profile?.crm_uf || profile?.registro_uf) || '',
+      doctorSpecialty: (isPsi ? profile?.especialidade || profile?.specialty : profile?.specialty || profile?.especialidade) || '',
       clinicName: profile?.clinic_name || '',
       doctorPhone: profile?.phone || '',
       doctorAddress: profile?.address || '',
@@ -188,7 +190,7 @@ Deno.serve(async (req) => {
       documentFormat, logoUrl, letterheadUrl,
     };
 
-    // Layout novo (vetorial) do laudo; registros de sessão CRP seguem no HTML antigo.
+    // Layout novo (vetorial) do laudo e do registro de sessão (CRP); o HTML fica como reserva.
     let patientName: string | null = null;
     let patientRecord: { sex?: string | null; birth_date?: string | null; allergies?: unknown } | null = null;
     if (laudo.patient_id) {

@@ -35,8 +35,20 @@ describe('laudo em PDF', () => {
     expect(buildLaudoDocument(base)!.sinaisVitais.map((v) => v.label)).toEqual(['Pressão arterial', 'Freq. cardíaca', 'IMC']);
   });
 
-  it('mantém o registro de sessão (CRP) no formato próprio', () => {
-    expect(buildLaudoDocument({ ...base, sections: { conselho: 'CRP' } })).toBeNull();
+  it('monta o registro de sessão (CRP) com os cinco componentes e sem dados médicos', () => {
+    const doc = buildLaudoDocument({
+      ...base,
+      sections: { conselho: 'CRP', registro_sessao: { identificacao: 'Adulta, 34 anos.', evolucao: 'Relata melhora do sono.' } },
+    })!;
+    expect(doc.conselho).toBe('CRP');
+    expect(doc.titulo).toBe('Registro de sessão');
+    expect(doc.sinaisVitais).toEqual([]);
+    expect(doc.alergias).toEqual([]);
+    expect(doc.blocks.some((b) => b.kind === 'hypotheses' || b.kind === 'steps' || b.kind === 'checklist')).toBe(false);
+    const numerais = doc.blocks.flatMap((b) => (b.kind === 'text' && b.numeral ? [b.numeral] : []));
+    expect(numerais).toEqual(['I', 'II', 'III', 'IV', 'V']);
+    const ii = doc.blocks.find((b) => b.kind === 'text' && b.numeral === 'II');
+    expect(ii && ii.kind === 'text' && ii.empty).toBe(true);
   });
 });
 

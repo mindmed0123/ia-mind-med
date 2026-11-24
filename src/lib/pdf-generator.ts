@@ -35,6 +35,8 @@ export interface PdfMeta {
   documentFormat?: DocumentFormat;
   logoUrl?: string | null;
   letterheadUrl?: string | null;
+  /** 'CRP' muda o rótulo do registro e tira o "Dr(a)." nos PDFs vetoriais. */
+  conselho?: string | null;
 }
 
 interface PdfOptions {

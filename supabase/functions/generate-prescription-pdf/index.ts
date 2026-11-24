@@ -1,4 +1,5 @@
 import { normalizeDocumentFormat, formatHtml, escapeDocument } from "../_shared/document-format.ts";
+import { buildReceitaDocument } from "../_shared/receita-document.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
@@ -90,9 +91,26 @@ serve(async (req) => {
     if (documentFormat.rodape) html = html.replace(/<div class="footer-mini">/g, `<div class="document-footer">Documento estruturado com auxílio de IA; revisado pelo médico responsável.<br>SHA-256: ${escapeDocument(hash)}</div><div class="footer-mini">`);
     html = formatHtml(html,documentFormat);
 
-    // Aqui você integraria com um serviço de geração de PDF
-    // Por enquanto, vamos retornar uma mensagem de sucesso
-    // Em produção, use um serviço como Puppeteer, PDFKit ou similar
+    // Layout novo (vetorial): o app desenha a receita a partir desta estrutura; o HTML fica como reserva.
+    const items = Array.isArray(prescription.items) ? prescription.items : [];
+    const document = buildReceitaDocument(prescription, groupByReceita(items), { rodapeMedico: profile?.prescription_footer_text });
+    const now = new Date();
+    const pdfMeta = {
+      doctorName: profile?.full_name || 'Médico responsável',
+      conselho: 'CRM',
+      doctorCrm: profile?.crm || profile?.registro_numero || '',
+      doctorCrmUf: profile?.crm_uf || profile?.registro_uf || '',
+      doctorSpecialty: profile?.specialty || profile?.especialidade || '',
+      clinicName: profile?.clinic_name || '',
+      doctorPhone: profile?.phone || '',
+      doctorAddress: profile?.address || '',
+      hash,
+      dateFormatted: now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: 'long', year: 'numeric' }),
+      timeFormatted: now.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }),
+      documentFormat,
+      logoUrl: documentFormat.logo ? logoUrl : null,
+      letterheadUrl,
+    };
 
     console.log('PDF gerado para receituário:', prescription_id);
 
@@ -100,7 +118,8 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         documentFormat, letterheadUrl, hash,
-        html: html
+        html: html,
+        document, pdfMeta, signatureUrl, stampUrl,
       }),
       { 
         status: 200,

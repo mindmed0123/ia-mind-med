@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
     // Buscar informações do médico (sem dados sensíveis)
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, crm, crm_uf, specialty')
+      .select('full_name, crm, crm_uf, specialty, conselho, registro_numero, registro_uf, especialidade')
       .eq('id', laudo.user_id)
       .single();
 
@@ -79,11 +79,17 @@ Deno.serve(async (req) => {
       hash_match: hashMatch,
       created_at: laudo.created_at,
       finalized_at: laudo.finalized_at,
-      medico: {
-        nome: profile?.full_name || 'Não disponível',
-        crm: profile?.crm ? `${profile.crm}${profile.crm_uf ? '/' + profile.crm_uf : ''}` : 'Não disponível',
-        especialidade: profile?.specialty || 'Não disponível'
-      },
+      medico: (() => {
+        const psi = profile?.conselho === 'CRP';
+        const num = (psi ? profile?.registro_numero || profile?.crm : profile?.crm || profile?.registro_numero) || '';
+        const uf = (psi ? profile?.registro_uf || profile?.crm_uf : profile?.crm_uf || profile?.registro_uf) || '';
+        return {
+          nome: profile?.full_name || 'Não disponível',
+          conselho: psi ? 'CRP' : 'CRM',
+          crm: num ? (psi ? `${num}${uf && !num.includes('/') ? ' · ' + uf : ''}` : `${num}${uf ? '/' + uf : ''}`) : 'Não disponível',
+          especialidade: (psi ? profile?.especialidade || profile?.specialty : profile?.specialty || profile?.especialidade) || 'Não disponível',
+        };
+      })(),
       emitido_por: 'MindMed - Sistema de Laudos Médicos'
     };
 

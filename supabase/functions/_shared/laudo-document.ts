@@ -5,7 +5,7 @@
 
 export type LaudoBlock =
   | { kind: 'fields'; title: string; items: { label: string; text: string }[] }
-  | { kind: 'text'; title: string; text: string; small?: boolean }
+  | { kind: 'text'; title: string; text: string; small?: boolean; numeral?: string; empty?: boolean }
   | {
       kind: 'hypotheses';
       title: string;
@@ -15,12 +15,16 @@ export type LaudoBlock =
     }
   | { kind: 'checklist'; title: string; items: string[] }
   | { kind: 'steps'; title: string; items: string[] }
-  | { kind: 'callout'; tone: 'info' | 'warning'; title: string; text: string };
+  | { kind: 'callout'; tone: 'info' | 'warning' | 'note'; title: string; text: string };
 
 export interface LaudoDocument {
   titulo: string;
   numero: string;
   dataConsulta: string;
+  /** Rótulo da data no cartão do paciente (padrão: "Data da consulta"). */
+  rotuloData?: string;
+  /** 'CRP' = registro de sessão de psicologia. */
+  conselho?: 'CRM' | 'CRP';
   paciente: { nome: string; idade?: string; sexo?: string };
   alergias: string[];
   sinaisVitais: { label: string; value: string }[];
@@ -30,6 +34,22 @@ export interface LaudoDocument {
 
 export const DISCLAIMER_LAUDO =
   'Documento estruturado com auxílio de inteligência artificial e revisado pelo médico responsável. Não substitui o julgamento clínico.';
+
+/** Rodapé do registro de sessão (psicologia). */
+export const SIGILO_SESSAO =
+  'Documento sigiloso, protegido pelo Código de Ética Profissional do Psicólogo. Estrutura conforme a Resolução CFP nº 001/2009.';
+
+export const AUTORIA_SESSAO =
+  'Registro elaborado com apoio de sistema de inteligência artificial para transcrição e estruturação do conteúdo da sessão. As interpretações, conclusões e a condução técnica são de autoria exclusiva da profissional signatária, que revisou integralmente o conteúdo antes da assinatura.';
+
+/** Cinco componentes do Art. 2º da Resolução CFP nº 001/2009, na ordem do documento. */
+export const COMPONENTES_SESSAO: { numeral: string; chave: string; titulo: string }[] = [
+  { numeral: 'I', chave: 'identificacao', titulo: 'Identificação da pessoa atendida' },
+  { numeral: 'II', chave: 'avaliacao_demanda', titulo: 'Avaliação da demanda e definição dos objetivos do trabalho' },
+  { numeral: 'III', chave: 'evolucao', titulo: 'Registro da evolução do trabalho' },
+  { numeral: 'IV', chave: 'encaminhamento_encerramento', titulo: 'Registro de encaminhamento ou encerramento' },
+  { numeral: 'V', chave: 'instrumentos', titulo: 'Documentos de instrumentos de avaliação' },
+];
 
 const EMPTY = /^(n[ãa]o informad[oa]|n\/i|n\/a|nenhum[a]?|-|—|null|undefined|ver laudo completo em anexo)\.?$/i;
 
@@ -147,10 +167,6 @@ function formatDate(iso: unknown): string {
 // deno-lint-ignore no-explicit-any
 type AnyLaudo = Record<string, any>;
 
-/**
- * Monta o laudo para o PDF. Devolve null para registros de sessão (CRP),
- * que continuam no formato próprio.
- */
 export function ageFromBirthDate(birth: unknown, today = new Date()): string {
   const b = birth ? new Date(String(birth)) : null;
   if (!b || Number.isNaN(b.getTime())) return '';
@@ -160,12 +176,52 @@ export function ageFromBirthDate(birth: unknown, today = new Date()): string {
   return age >= 0 && age < 130 ? `${age} anos` : '';
 }
 
-export function buildLaudoDocument(
-  laudo: AnyLaudo,
-  opts: { patientName?: string | null; patientRecord?: { sex?: string | null; birth_date?: string | null; allergies?: unknown } | null } = {},
-): LaudoDocument | null {
+type BuildOpts = { patientName?: string | null; patientRecord?: { sex?: string | null; birth_date?: string | null; allergies?: unknown } | null };
+
+/**
+ * Registro de sessão (CRP) para o PDF: só os cinco componentes já salvos,
+ * sem hipóteses, CID, sinais vitais ou conduta.
+ */
+export function buildSessaoDocument(laudo: AnyLaudo, opts: BuildOpts = {}): LaudoDocument {
   const s: AnyLaudo = laudo.sections || {};
-  if (s.conselho === 'CRP') return null;
+  const rs: AnyLaudo = s.registro_sessao || laudo.summary?.registro_sessao || {};
+  const p: AnyLaudo = laudo.patient_data || {};
+  const rec = opts.patientRecord || {};
+  const sexoRaw = pick(p.sexo, rec.sex);
+
+  const blocks: LaudoBlock[] = COMPONENTES_SESSAO.map((c) => {
+    const text = cleanText(rs[c.chave]);
+    return { kind: 'text', title: c.titulo, numeral: c.numeral, text: text || 'Sem conteúdo registrado nesta sessão.', empty: !text };
+  });
+  // Registros antigos sem os componentes separados: mostra o texto salvo inteiro.
+  const legado = cleanText(laudo.report_markdown);
+  if (blocks.every((b) => b.kind === 'text' && b.empty) && legado) {
+    blocks.splice(0, blocks.length, { kind: 'text', title: 'Registro da sessão', text: legado });
+  }
+  blocks.push({ kind: 'callout', tone: 'note', title: 'Autoria e revisão', text: cleanText(laudo.legal_disclaimer) || AUTORIA_SESSAO });
+
+  return {
+    titulo: 'Registro de sessão',
+    numero: String(laudo.id || '').slice(0, 8).toUpperCase(),
+    dataConsulta: formatDate(laudo.created_at),
+    rotuloData: 'Data da sessão',
+    conselho: 'CRP',
+    paciente: {
+      nome: pick(opts.patientName, p.nome_completo, p.nome, p.iniciais) || 'Pessoa atendida',
+      idade: formatIdade(p.idade) || ageFromBirthDate(rec.birth_date) || undefined,
+      sexo: (SEXO[sexoRaw] || sexoRaw) || undefined,
+    },
+    alergias: [],
+    sinaisVitais: [],
+    blocks,
+    disclaimer: SIGILO_SESSAO,
+  };
+}
+
+/** Monta o documento do PDF: laudo médico ou, para CRP, registro de sessão. */
+export function buildLaudoDocument(laudo: AnyLaudo, opts: BuildOpts = {}): LaudoDocument | null {
+  const s: AnyLaudo = laudo.sections || {};
+  if (s.conselho === 'CRP') return buildSessaoDocument(laudo, opts);
   const sum: AnyLaudo = laudo.summary?.anamnese || {};
   const p: AnyLaudo = laudo.patient_data || {};
   const ctx: AnyLaudo = laudo.clinical_context || {};
@@ -267,5 +323,6 @@ export function buildLaudoDocument(
     sinaisVitais,
     blocks,
     disclaimer: DISCLAIMER_LAUDO,
+    conselho: 'CRM',
   };
 }

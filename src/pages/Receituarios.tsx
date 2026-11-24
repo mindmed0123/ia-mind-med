@@ -365,20 +365,13 @@ export default function Receituarios() {
 
       if (error) throw error;
 
-      if (data?.html) {
-        // Importar dinamicamente as funções de PDF
-        const { generatePdf, uploadPdfToStorage } = await import('@/lib/pdf-generator');
+      if (data?.document || data?.html) {
+        const { uploadPdfToStorage } = await import('@/lib/pdf-generator');
+        const { buildReceitaPdf } = await import('@/lib/receita-pdf');
         const { deliverPdf } = await import('@/lib/pdf-delivery');
-        
+
         const fileName = `receituario-${prescriptionId}-${Date.now()}.pdf`;
-        
-        // Gerar PDF no cliente
-        const pdfBlob = await generatePdf({
-          html: data.html,
-          documentFormat: data.documentFormat, letterheadUrl: data.letterheadUrl,
-          fileName,
-          verifyUrl: `${window.location.origin}/r/${prescriptionId}`,
-        });
+        const pdfBlob = await buildReceitaPdf(data, fileName, prescriptionId);
 
         // Assina com o certificado do médico, baixa e registra. A cópia arquivada vem depois.
         const { blob: finalBlob, signed } = await deliverPdf(pdfBlob, fileName, {
@@ -427,16 +420,11 @@ export default function Receituarios() {
         body: { prescription_id: prescriptionId }
       });
       if (error) throw error;
-      if (!data?.html) throw new Error('Falha ao gerar o receituário');
+      if (!data?.document && !data?.html) throw new Error('Falha ao gerar o receituário');
 
-      const { generatePdf } = await import('@/lib/pdf-generator');
+      const { buildReceitaPdf } = await import('@/lib/receita-pdf');
       const fileName = `receituario-${prescriptionId}-${Date.now()}.pdf`;
-      const pdfBlob = await generatePdf({
-        html: data.html,
-        documentFormat: data.documentFormat, letterheadUrl: data.letterheadUrl,
-        fileName,
-        verifyUrl: `${window.location.origin}/r/${prescriptionId}`,
-      });
+      const pdfBlob = await buildReceitaPdf(data, fileName, prescriptionId);
 
       // Impressão também sai assinada e registrada.
       const { deliverPdf } = await import('@/lib/pdf-delivery');
