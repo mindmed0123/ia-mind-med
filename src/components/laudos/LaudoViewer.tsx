@@ -455,9 +455,10 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({ title: "Copiado!", description: "Texto copiado para a área de transferência" });
+  const copyToClipboard = async (text: string, label = 'Laudo') => {
+    const { copyWithRecord } = await import('@/lib/activity-log');
+    await copyWithRecord(text, { entity: 'REPORT', entityId: laudoId, label });
+    toast({ title: "Copiado!", description: "Cópia registrada em seu nome. O conteúdo fica sob sua responsabilidade profissional." });
   };
 
   const handleDownloadPdf = async () => {
@@ -466,12 +467,13 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
       const { data, error } = await supabase.functions.invoke('export-pdf', { body: { laudo_id: laudoId } });
       if (error) throw error;
       if (data?.html && data?.verifyToken) {
-        const { generatePdf, downloadPdf } = await import('@/lib/pdf-generator');
+        const { generatePdf } = await import('@/lib/pdf-generator');
+        const { deliverPdf } = await import('@/lib/pdf-delivery');
         const baseUrl = window.location.origin;
         const verifyUrl = `${baseUrl}/api/verify-pdf/${laudoId}?token=${data.verifyToken}`;
         const pdfBlob = await generatePdf({ html: data.html, fileName: data.fileName, verifyUrl, pdfMeta: data.pdfMeta });
-        downloadPdf(pdfBlob, data.fileName);
-        toast({ title: "PDF gerado!", description: "O documento foi gerado e baixado com sucesso." });
+        const { signed } = await deliverPdf(pdfBlob, data.fileName, { entity: 'REPORT', entityId: laudoId, documentLabel: 'Laudo' });
+        toast({ title: "PDF gerado!", description: signed ? "Laudo baixado e assinado com seu certificado digital." : "O documento foi gerado e baixado." });
         supabase.functions.invoke('send-transactional-email', {
           body: {
             templateName: 'pdf-exported',
@@ -522,7 +524,7 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
   };
 
   return (
-    <div className="space-y-5 max-w-4xl mx-auto">
+    <div className="space-y-5 max-w-4xl mx-auto" data-audit-entity="REPORT" data-audit-id={laudoId}>
       {laudo.sections?.inferencia === true && <div role="alert" className="border-l-4 border-primary bg-primary/5 p-4 text-sm text-foreground">{AVISO_INFERENCIA}</div>}
       {/* ── Status Bar ── */}
       <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-primary/5 via-primary/10 to-accent/5 border border-primary/15 px-5 py-3">
@@ -964,7 +966,7 @@ export const LaudoViewer = ({ laudoId, refreshKey, visibleSections, laudoData }:
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">Resumo para o Paciente</CardTitle>
-                <Button variant="outline" size="sm" onClick={() => copyToClipboard(laudo.patient_markdown || '')} className="h-8 text-xs gap-1.5">
+                <Button variant="outline" size="sm" onClick={() => copyToClipboard(laudo.patient_markdown || '', 'Versão do paciente')} className="h-8 text-xs gap-1.5">
                   <Copy className="w-3.5 h-3.5" /> Copiar
                 </Button>
               </div>

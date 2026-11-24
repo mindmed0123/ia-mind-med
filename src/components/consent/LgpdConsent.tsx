@@ -1,18 +1,19 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Shield, FileText, Database, Lock } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { FileSignature, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { sha256Hex } from "@/lib/activity-log";
+import {
+  TERMO_ITENS, TERMO_SECOES, TERMO_VERSAO, nomeCompletoValido, termoTextoCanonico,
+} from "@/lib/termo-adesao";
 
 interface LgpdConsentProps {
   userId: string;
@@ -20,309 +21,101 @@ interface LgpdConsentProps {
   forceOpen?: boolean;
 }
 
-export const LgpdConsent = ({ userId, onConsentGiven, forceOpen }: LgpdConsentProps) => {
+/** Termo de adesão: o médico marca cada item e assina digitando o nome completo. */
+export const LgpdConsent = ({ userId, onConsentGiven }: LgpdConsentProps) => {
   const { toast } = useToast();
-  const [open, setOpen] = useState(forceOpen ?? false);
-  const [consents, setConsents] = useState({
-    dataProcessing: false,
-    pdfExport: false,
-    dataRetention: false,
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [nome, setNome] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!forceOpen) {
-      checkConsentStatus();
-    }
-  }, [userId, forceOpen]);
-
-  const checkConsentStatus = async () => {
-    try {
-      // Check consent from server-side (primary source of truth)
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('lgpd_consent_given')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('Erro ao verificar consentimento:', error);
-        setOpen(true);
-        return;
-      }
-
-      // If server-side consent exists, don't show dialog
-      if (profile?.lgpd_consent_given) {
-        return;
-      }
-
-      // Check localStorage for migration
-      const hasConsented = localStorage.getItem(`lgpd_consent_${userId}`);
-      if (hasConsented) {
-        try {
-          const consentData = JSON.parse(hasConsented);
-          if (consentData.dataProcessing || consentData.accepted) {
-            // Migrate localStorage consent to server
-            await migrateConsent();
-            return;
-          }
-        } catch (e) {
-          console.error('Erro ao migrar consentimento:', e);
-        }
-      }
-
-      // Show consent dialog if no consent found
-      setOpen(true);
-    } catch (error) {
-      console.error('Erro ao verificar consentimento:', error);
-      setOpen(true);
-    }
-  };
-
-  const migrateConsent = async () => {
-    try {
-      await supabase
-        .from('profiles')
-        .update({
-          lgpd_consent_given: true,
-          lgpd_consent_date: new Date().toISOString(),
-          lgpd_consent_version: '1.0'
-        })
-        .eq('id', userId);
-    } catch (error) {
-      console.error('Erro ao migrar consentimento:', error);
-    }
-  };
+  const allChecked = useMemo(() => TERMO_ITENS.every((i) => checked[i.id]), [checked]);
+  const nomeOk = nomeCompletoValido(nome);
 
   const handleSubmit = async () => {
-    if (!consents.dataProcessing || !consents.pdfExport || !consents.dataRetention) {
-      toast({
-        title: "Consentimento necessário",
-        description: "Por favor, aceite todos os termos para continuar usando o sistema.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
+    if (!allChecked || !nomeOk) return;
+    setSubmitting(true);
     try {
-      const consentData = {
-        ...consents,
-        date: new Date().toISOString(),
-        version: '1.0'
-      };
-
-      // Store consent server-side (primary source of truth)
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          lgpd_consent_given: true,
-          lgpd_consent_date: new Date().toISOString(),
-          lgpd_consent_version: '1.0',
-          lgpd_consent_ip: null // Client can't reliably get IP
-        })
-        .eq('id', userId);
-
-      if (updateError) {
-        console.error('Erro ao salvar consentimento:', updateError);
-        toast({
-          title: "Erro",
-          description: "Não foi possível registrar seu consentimento. Tente novamente.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Also save to localStorage for UX (quick checks)
-      localStorage.setItem(`lgpd_consent_${userId}`, JSON.stringify(consentData));
-
-      // Note: Skipping audit log as it may fail due to entity validation
-      // Consent is already stored in profiles table which is the source of truth
-      
-      toast({
-        title: "Consentimento registrado",
-        description: "Seus dados serão tratados de acordo com a LGPD.",
+      const textHash = await sha256Hex(termoTextoCanonico());
+      const { error } = await supabase.rpc("accept_terms", {
+        p_version: TERMO_VERSAO,
+        p_text_sha256: textHash,
+        p_full_name: nome.trim(),
+        p_items: TERMO_ITENS.map((i) => i.id) as never,
       });
-
-      setOpen(false);
+      if (error) throw error;
+      localStorage.setItem(`lgpd_consent_${userId}`, JSON.stringify({ version: TERMO_VERSAO, date: new Date().toISOString() }));
+      toast({ title: "Termo assinado", description: "Seu aceite foi registrado com data, hora e assinatura." });
       onConsentGiven?.();
-    } catch (error: any) {
-      console.error('Erro ao salvar consentimento:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível registrar o consentimento.",
-        variant: "destructive"
-      });
+    } catch {
+      toast({ title: "Não foi possível registrar", description: "Confira sua conexão e tente de novo.", variant: "destructive" });
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
   };
 
-  const allConsentsGiven = consents.dataProcessing && consents.pdfExport && consents.dataRetention;
-
   return (
-    <Dialog open={open} onOpenChange={forceOpen ? undefined : setOpen}>
-      <DialogContent className="max-w-2xl max-h-[90vh]" hideCloseButton={forceOpen}>
+    <Dialog open onOpenChange={() => undefined}>
+      <DialogContent className="max-w-2xl max-h-[92vh] flex flex-col gap-4 p-4 sm:p-6" hideCloseButton>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <Shield className="w-6 h-6 text-primary" />
-            Consentimento de Tratamento de Dados (LGPD)
+          <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+            <FileSignature className="w-6 h-6 text-primary shrink-0" />
+            Termo de adesão e responsabilidade profissional
           </DialogTitle>
           <DialogDescription>
-            Para utilizar o MindMed, precisamos do seu consentimento para processar seus dados médicos
+            Leia, marque cada item e assine com seu nome completo para usar o MindMed. Versão {TERMO_VERSAO.split("-").reverse().join("/")}.
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[50vh] pr-4">
-          <div className="space-y-6">
-            {/* Processamento de Dados */}
-            <div className="space-y-3">
-              <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                <Database className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <h3 className="font-semibold text-blue-900 dark:text-blue-100">
-                    Processamento de Dados Médicos
-                  </h3>
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    Coletamos e processamos:
-                  </p>
-                  <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1 ml-4 list-disc">
-                    <li>Dados de identificação do paciente (iniciais, idade, sexo)</li>
-                    <li>Informações clínicas (queixa, histórico, exame físico)</li>
-                    <li>Hipóteses diagnósticas e condutas médicas</li>
-                    <li>Áudios de consultas e transcrições</li>
-                  </ul>
-                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-                    <strong>Finalidade:</strong> Geração automatizada de laudos médicos via IA
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="dataProcessing"
-                  checked={consents.dataProcessing}
-                  onCheckedChange={(checked) =>
-                    setConsents({ ...consents, dataProcessing: checked as boolean })
-                  }
-                />
-                <label
-                  htmlFor="dataProcessing"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Autorizo o processamento dos meus dados médicos conforme descrito
-                </label>
-              </div>
-            </div>
-
-            {/* Exportação e Compartilhamento */}
-            <div className="space-y-3">
-              <div className="flex items-start gap-3 p-4 bg-purple-50 dark:bg-purple-950 rounded-lg">
-                <FileText className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <h3 className="font-semibold text-purple-900 dark:text-purple-100">
-                    Exportação e Verificação de Laudos
-                  </h3>
-                  <p className="text-sm text-purple-800 dark:text-purple-200">
-                    Ao exportar laudos em PDF:
-                  </p>
-                  <ul className="text-sm text-purple-700 dark:text-purple-300 space-y-1 ml-4 list-disc">
-                    <li>Geramos hash criptográfico (SHA-256) para verificação de autenticidade</li>
-                    <li>Criamos QR Code público para validação do documento</li>
-                    <li>Mantemos metadados (hash, data emissão) por 90 dias</li>
-                    <li>Dados do médico (nome, CRM) são incluídos no documento</li>
-                  </ul>
-                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
-                    <strong>Nota:</strong> A verificação pública exibe apenas hash, data e identificação do médico
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="pdfExport"
-                  checked={consents.pdfExport}
-                  onCheckedChange={(checked) =>
-                    setConsents({ ...consents, pdfExport: checked as boolean })
-                  }
-                />
-                <label
-                  htmlFor="pdfExport"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Autorizo a exportação de laudos e verificação pública conforme descrito
-                </label>
-              </div>
-            </div>
-
-            {/* Retenção de Dados */}
-            <div className="space-y-3">
-              <div className="flex items-start gap-3 p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                <Lock className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <h3 className="font-semibold text-green-900 dark:text-green-100">
-                    Armazenamento e Retenção
-                  </h3>
-                  <p className="text-sm text-green-800 dark:text-green-200">
-                    Seus dados são protegidos:
-                  </p>
-                  <ul className="text-sm text-green-700 dark:text-green-300 space-y-1 ml-4 list-disc">
-                    <li>Armazenamento em servidores seguros com criptografia</li>
-                    <li>Retenção padrão: 365 dias (configurável)</li>
-                    <li>Backup automático com redundância geográfica</li>
-                    <li>Acesso restrito apenas ao médico titular</li>
-                    <li>Possibilidade de anonimização ou exclusão a qualquer momento</li>
-                  </ul>
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                    <strong>Seus direitos:</strong> Acesso, retificação, exclusão, portabilidade e revogação do consentimento
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="dataRetention"
-                  checked={consents.dataRetention}
-                  onCheckedChange={(checked) =>
-                    setConsents({ ...consents, dataRetention: checked as boolean })
-                  }
-                />
-                <label
-                  htmlFor="dataRetention"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Autorizo o armazenamento dos meus dados conforme política de retenção
-                </label>
-              </div>
-            </div>
-
-            {/* Informações Adicionais */}
-            <div className="text-xs text-muted-foreground space-y-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-              <p>
-                <strong>Base Legal:</strong> Lei Geral de Proteção de Dados (LGPD) - Lei nº 13.709/2018
-              </p>
-              <p>
-                <strong>Encarregado de Dados:</strong> contato@mindmed.com.br
-              </p>
-              <p>
-                <strong>Revogação:</strong> Você pode revogar este consentimento a qualquer momento através das configurações da conta ou entrando em contato conosco.
-              </p>
-            </div>
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-5">
+          <div className="space-y-4 rounded-lg border border-border bg-muted/30 p-4 text-sm">
+            {TERMO_SECOES.map((s) => (
+              <section key={s.titulo} className="space-y-1.5">
+                <h3 className="font-semibold text-foreground">{s.titulo}</h3>
+                {s.texto.map((t, i) => (
+                  <p key={i} className="text-muted-foreground leading-relaxed">{t}</p>
+                ))}
+              </section>
+            ))}
+            <p className="text-xs text-muted-foreground">
+              Texto completo: <Link to="/termos" target="_blank" className="text-primary underline">Termos de Uso</Link> e{" "}
+              <Link to="/privacidade" target="_blank" className="text-primary underline">Política de Privacidade</Link>.
+              Encarregado de dados: contato@mindmed.com.br
+            </p>
           </div>
-        </ScrollArea>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
-          {!forceOpen && (
-            <Button
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={isSubmitting}
-            >
-              Cancelar
-            </Button>
-          )}
-          <Button
-            onClick={handleSubmit}
-            disabled={!allConsentsGiven || isSubmitting}
-          >
-            {isSubmitting ? "Registrando..." : "Aceito os Termos"}
+          <div className="space-y-3">
+            {TERMO_ITENS.map((item) => (
+              <label key={item.id} className="flex items-start gap-3 rounded-md p-2 hover:bg-muted/40 cursor-pointer">
+                <Checkbox
+                  checked={!!checked[item.id]}
+                  onCheckedChange={(v) => setChecked((c) => ({ ...c, [item.id]: v === true }))}
+                  className="mt-0.5"
+                  aria-label={item.texto}
+                />
+                <span className="text-sm leading-snug">{item.texto}</span>
+              </label>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="assinatura-nome">Assinatura: digite seu nome completo</Label>
+            <Input
+              id="assinatura-nome"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              placeholder="Nome e sobrenome"
+              autoComplete="name"
+            />
+            <p className="text-xs text-muted-foreground">
+              Ao assinar, registramos data, hora, endereço de internet e a impressão digital deste texto.
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button onClick={handleSubmit} disabled={!allChecked || !nomeOk || submitting} className="w-full sm:w-auto">
+            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {submitting ? "Registrando..." : "Assinar e continuar"}
           </Button>
         </DialogFooter>
       </DialogContent>

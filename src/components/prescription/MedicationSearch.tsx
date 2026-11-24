@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Search, CheckCircle2, Pill } from 'lucide-react';
+import { Loader2, Search, CheckCircle2, Pill, ShieldCheck, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatAnvisaRegistro } from '@/lib/medication-fill';
 
 export interface MedicationResult {
   id: string;
@@ -25,6 +26,9 @@ export interface MedicationResult {
   is_parceiro: boolean;
   parceiro_nome: string | null;
   recomendado_cid?: boolean | null;
+  anvisa_situacao?: string | null;
+  anvisa_titular?: string | null;
+  anvisa_verificado_em?: string | null;
 }
 
 interface MedicationSearchProps {
@@ -53,6 +57,7 @@ export function MedicationSearch({
 }: MedicationSearchProps) {
   const [results, setResults] = useState<MedicationResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const debounceRef = useRef<number | null>(null);
@@ -73,6 +78,7 @@ export function MedicationSearch({
         setResults([]);
       } finally {
         setLoading(false);
+        setSearched(true);
       }
     },
     [cid]
@@ -82,12 +88,16 @@ export function MedicationSearch({
   useEffect(() => {
     if (!open) return;
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    // Ao abrir sem texto, a lista aparece na hora; enquanto digita, espera uma pausa.
+    const delay = searched ? 250 : 0;
+    if (!searched) setLoading(true);
     debounceRef.current = window.setTimeout(() => {
       runSearch(value.trim());
-    }, 300);
+    }, delay);
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, open, runSearch]);
 
   // Close on click outside
@@ -132,27 +142,51 @@ export function MedicationSearch({
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
+          onClick={() => setOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="pl-9"
+          className="pl-9 pr-9"
           autoComplete="off"
+          role="combobox"
+          aria-expanded={open}
+          aria-label="Medicamento"
         />
-        {loading && (
+        {loading ? (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+        ) : (
+          <button
+            type="button"
+            aria-label="Ver lista de medicamentos"
+            onClick={() => setOpen((o) => !o)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+          >
+            <ChevronDown className={cn('w-4 h-4 transition-transform', open && 'rotate-180')} />
+          </button>
         )}
       </div>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg max-h-80 overflow-auto">
-          {results.length === 0 && !loading && (
+        <div role="listbox" className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg max-h-96 overflow-auto">
+          <div className="sticky top-0 z-10 flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-muted-foreground bg-muted/80 backdrop-blur border-b border-border/60">
+            <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+            {value.trim() ? 'Resultados do catálogo' : 'Catálogo de medicamentos'} · conferido com o registro da ANVISA
+          </div>
+          {results.length === 0 && (loading || !searched) && (
+            <div className="p-3 text-sm text-muted-foreground flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> Carregando a lista de medicamentos…
+            </div>
+          )}
+          {results.length === 0 && !loading && searched && (
             <div className="p-3 text-sm text-muted-foreground">
-              Nenhum medicamento encontrado — você pode digitar manualmente.
+              Nenhum medicamento do catálogo com esse nome. Você pode digitar o nome manualmente.
             </div>
           )}
           {results.map((med, idx) => (
             <button
               key={med.id}
               type="button"
+              role="option"
+              aria-selected={idx === highlight}
               onMouseEnter={() => setHighlight(idx)}
               onClick={() => handleSelect(med)}
               className={cn(
@@ -171,9 +205,11 @@ export function MedicationSearch({
                       {med.concentracao ? ` · ${med.concentracao}` : ''}
                       {med.laboratorio ? ` · ${med.laboratorio}` : ''}
                     </div>
-                    {med.classe_terapeutica && (
+                    {(med.classe_terapeutica || med.registro_anvisa) && (
                       <div className="text-[11px] text-muted-foreground/80 truncate">
                         {med.classe_terapeutica}
+                        {med.classe_terapeutica && med.registro_anvisa ? ' · ' : ''}
+                        {med.registro_anvisa ? `Reg. ANVISA ${formatAnvisaRegistro(med.registro_anvisa)}` : ''}
                       </div>
                     )}
                   </div>

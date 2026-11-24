@@ -306,7 +306,8 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange, isActive = t
       if (error) throw error;
 
       if (data?.html && data?.verifyToken) {
-        const { generatePdf, downloadPdf } = await import('@/lib/pdf-generator');
+        const { generatePdf } = await import('@/lib/pdf-generator');
+        const { deliverPdf } = await import('@/lib/pdf-delivery');
         
         const baseUrl = window.location.origin;
         const verifyUrl = `${baseUrl}/api/verify-pdf/${laudoId}?token=${data.verifyToken}`;
@@ -318,11 +319,11 @@ export const LaudoEditor = ({ laudoId, initialData, onStatusChange, isActive = t
           pdfMeta: data.pdfMeta,
         });
 
-        downloadPdf(pdfBlob, data.fileName);
+        const { signed } = await deliverPdf(pdfBlob, data.fileName, { entity: 'REPORT', entityId: laudoId, documentLabel: 'Laudo' });
 
         toast({
           title: "PDF gerado!",
-          description: "O documento foi gerado e está pronto para uso.",
+          description: signed ? "Laudo baixado e assinado com seu certificado digital." : "O documento foi gerado e está pronto para uso.",
         });
 
         // Send PDF exported email (fire-and-forget)

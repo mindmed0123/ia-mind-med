@@ -20,6 +20,8 @@ import {
   checkRateLimit
 } from '@/lib/validation';
 import { MedicationSearch, type MedicationResult } from '@/components/prescription/MedicationSearch';
+import { DoseOptions } from '@/components/prescription/DoseOptions';
+import { fillFromCatalog } from '@/lib/medication-fill';
 import {
   inferTipoReceita,
   groupByReceita,
@@ -42,6 +44,10 @@ interface PrescriptionItem {
   tarja?: string | null;
   tipo_receita?: string | null;
   origem?: 'mencionada' | 'sugerida_ia' | string | null;
+  principio_ativo?: string | null;
+  registro_anvisa?: string | null;
+  /** Só na tela: doses do catálogo para escolher com um toque. */
+  doseOptions?: string[];
 }
 
 interface Prescription {
@@ -161,19 +167,21 @@ export default function Receituarios() {
   const handleItemChange = (index: number, field: keyof PrescriptionItem, value: string) => {
     const newItems = [...items];
     (newItems[index] as any)[field] = value;
+    if (field === 'medicamento') {
+      newItems[index].doseOptions = undefined;
+      newItems[index].registro_anvisa = null;
+    }
     setItems(newItems);
   };
 
   const handleMedicationSelect = (index: number, med: MedicationResult) => {
     const newItems = [...items];
+    const filled = fillFromCatalog(med);
     newItems[index] = {
       ...newItems[index],
-      medicamento: med.nome_comercial,
-      dosagem: med.concentracao || newItems[index].dosagem,
-      posologia: med.posologia_referencia || newItems[index].posologia,
-      parceiro: med.parceiro_nome,
-      tarja: med.tarja,
-      tipo_receita: med.tipo_receita,
+      ...filled,
+      dosagem: filled.dosagem,
+      posologia: filled.posologia || newItems[index].posologia,
     };
     setItems(newItems);
   };
@@ -359,7 +367,8 @@ export default function Receituarios() {
 
       if (data?.html) {
         // Importar dinamicamente as funções de PDF
-        const { generatePdf, downloadPdf, uploadPdfToStorage } = await import('@/lib/pdf-generator');
+        const { generatePdf, uploadPdfToStorage } = await import('@/lib/pdf-generator');
+        const { deliverPdf } = await import('@/lib/pdf-delivery');
         
         const fileName = `receituario-${prescriptionId}-${Date.now()}.pdf`;
         
@@ -371,14 +380,16 @@ export default function Receituarios() {
           verifyUrl: `${window.location.origin}/r/${prescriptionId}`,
         });
 
-        // Download primeiro: a cópia arquivada não pode impedir o médico de receber o PDF.
-        downloadPdf(pdfBlob, fileName);
+        // Assina com o certificado do médico, baixa e registra. A cópia arquivada vem depois.
+        const { blob: finalBlob, signed } = await deliverPdf(pdfBlob, fileName, {
+          entity: 'PRESCRIPTION', entityId: prescriptionId, documentLabel: 'Receituário',
+        });
 
         // Cópia arquivada na pasta do próprio médico (exigência das regras de acesso do armazenamento).
         if (user) {
           try {
             const filePath = `${user.id}/prescriptions/${prescriptionId}/${Date.now()}.pdf`;
-            const signedUrl = await uploadPdfToStorage(pdfBlob, filePath, supabase);
+            const signedUrl = await uploadPdfToStorage(finalBlob, filePath, supabase);
             await supabase
               .from('prescriptions')
               .update({ pdf_url: signedUrl })
@@ -388,7 +399,7 @@ export default function Receituarios() {
 
         toast({
           title: 'PDF gerado!',
-          description: 'O receituário foi gerado e baixado com sucesso.',
+          description: signed ? 'Receituário baixado e assinado com seu certificado digital.' : 'O receituário foi gerado e baixado com sucesso.',
         });
       }
     } catch (error: any) {
@@ -427,7 +438,12 @@ export default function Receituarios() {
         verifyUrl: `${window.location.origin}/r/${prescriptionId}`,
       });
 
-      const blobUrl = URL.createObjectURL(pdfBlob);
+      // Impressão também sai assinada e registrada.
+      const { deliverPdf } = await import('@/lib/pdf-delivery');
+      const { blob: printBlob } = await deliverPdf(pdfBlob, fileName, {
+        entity: 'PRESCRIPTION', entityId: prescriptionId, documentLabel: 'Receituário', download: false, action: 'PRINT',
+      });
+      const blobUrl = URL.createObjectURL(printBlob);
       const printWindow = window.open(blobUrl, '_blank');
       if (!printWindow) {
         toast({
@@ -436,7 +452,7 @@ export default function Receituarios() {
           variant: 'destructive',
         });
         const { downloadPdf } = await import('@/lib/pdf-generator');
-        downloadPdf(pdfBlob, fileName);
+        downloadPdf(printBlob, fileName);
       } else {
         // Aguardar carregamento e disparar diálogo de impressão
         printWindow.addEventListener('load', () => {
@@ -638,7 +654,12 @@ export default function Receituarios() {
                           <Input
                             value={item.dosagem}
                             onChange={(e) => handleItemChange(index, 'dosagem', e.target.value)}
-                            placeholder="Ex: 500mg"
+                            placeholder={item.doseOptions && item.doseOptions.length > 1 ? 'Escolha a dose abaixo' : 'Ex: 500mg'}
+                          />
+                          <DoseOptions
+                            options={item.doseOptions}
+                            value={item.dosagem}
+                            onPick={(d) => handleItemChange(index, 'dosagem', d)}
                           />
                         </div>
                       </div>

@@ -78,6 +78,20 @@
       "when": 1795473820192,
       "tag": "0010_allow_audio_error_status",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795479781621,
+      "tag": "0011_medications_anvisa_validation",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795479930537,
+      "tag": "0012_document_activity_and_terms_acceptance",
+      "breakpoints": true
     }
   ]
 }

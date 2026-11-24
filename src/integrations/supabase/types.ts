@@ -876,6 +876,9 @@ export type Database = {
       }
       medications: {
         Row: {
+          anvisa_situacao: string | null
+          anvisa_titular: string | null
+          anvisa_verificado_em: string | null
           apresentacao: string | null
           ativo: boolean
           cid10_relacionados: string[] | null
@@ -903,6 +906,9 @@ export type Database = {
           via_administracao: string | null
         }
         Insert: {
+          anvisa_situacao?: string | null
+          anvisa_titular?: string | null
+          anvisa_verificado_em?: string | null
           apresentacao?: string | null
           ativo?: boolean
           cid10_relacionados?: string[] | null
@@ -930,6 +936,9 @@ export type Database = {
           via_administracao?: string | null
         }
         Update: {
+          anvisa_situacao?: string | null
+          anvisa_titular?: string | null
+          anvisa_verificado_em?: string | null
           apresentacao?: string | null
           ativo?: boolean
           cid10_relacionados?: string[] | null
@@ -2000,6 +2009,15 @@ export type Database = {
     }
     Functions: {
       accept_organization_invite: { Args: { _token: string }; Returns: Json }
+      accept_terms: {
+        Args: {
+          p_full_name: string
+          p_items: Json
+          p_text_sha256: string
+          p_version: string
+        }
+        Returns: Json
+      }
       admin_audit_actions: {
         Args: never
         Returns: {
@@ -2177,6 +2195,16 @@ export type Database = {
         }
         Returns: string
       }
+      log_document_activity: {
+        Args: {
+          p_action: string
+          p_content_hash?: string
+          p_details?: Json
+          p_entity: string
+          p_entity_id?: string
+        }
+        Returns: string
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -2217,9 +2245,14 @@ export type Database = {
         Args: { p_consent_at?: string; p_consent_ip?: string; p_id: string }
         Returns: boolean
       }
+      request_client_ip: { Args: never; Returns: string }
+      request_user_agent: { Args: never; Returns: string }
       search_medications: {
         Args: { cid?: string; q?: string }
         Returns: {
+          anvisa_situacao: string
+          anvisa_titular: string
+          anvisa_verificado_em: string
           apresentacao: string
           cid10_relacionados: string[]
           classe_terapeutica: string

@@ -12,6 +12,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeText, validatePatientName, validateMedicationName, validateDosage } from '@/lib/validation';
 import { MedicationSearch, type MedicationResult } from '@/components/prescription/MedicationSearch';
+import { DoseOptions } from '@/components/prescription/DoseOptions';
+import { fillFromCatalog } from '@/lib/medication-fill';
 import { FarmacovigilanciaButton } from '@/components/farmacovigilancia/FarmacovigilanciaButton';
 import {
   inferTipoReceita,
@@ -40,6 +42,9 @@ interface PrescriptionItem {
   sugestao_parceiro?: string | null;
   nao_catalogado?: boolean;
   confirmado_fora_catalogo?: boolean;
+  registro_anvisa?: string | null;
+  /** Só na tela: doses do catálogo para escolher com um toque. */
+  doseOptions?: string[];
 }
 
 interface PrescriptionTabProps {
@@ -189,17 +194,22 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
       newItems[index].nao_catalogado = false;
       newItems[index].confirmado_fora_catalogo = false;
       newItems[index].sugestao_parceiro = null;
+      newItems[index].doseOptions = undefined;
+      newItems[index].registro_anvisa = null;
     }
     setItems(newItems);
   };
 
   const handleMedicationSelect = (index: number, med: MedicationResult) => {
     const newItems = [...items];
+    const filled = fillFromCatalog(med);
     newItems[index] = {
       ...newItems[index],
-      medicamento: med.nome_comercial,
-      dosagem: med.concentracao || newItems[index].dosagem,
-      posologia: med.posologia_referencia || newItems[index].posologia,
+      medicamento: filled.medicamento,
+      dosagem: filled.dosagem,
+      posologia: filled.posologia || newItems[index].posologia,
+      registro_anvisa: filled.registro_anvisa,
+      doseOptions: filled.doseOptions,
       parceiro: med.parceiro_nome,
       parceiro_nome: med.parceiro_nome,
       tarja: med.tarja,
@@ -458,7 +468,12 @@ export function PrescriptionTab({ laudoData, patientData }: PrescriptionTabProps
                     <Input
                       value={item.dosagem}
                       onChange={(e) => handleItemChange(index, 'dosagem', e.target.value)}
-                      placeholder="Ex: 500mg"
+                      placeholder={item.doseOptions && item.doseOptions.length > 1 ? 'Escolha a dose abaixo' : 'Ex: 500mg'}
+                    />
+                    <DoseOptions
+                      options={item.doseOptions}
+                      value={item.dosagem}
+                      onPick={(d) => handleItemChange(index, 'dosagem', d)}
                     />
                   </div>
                 </div>

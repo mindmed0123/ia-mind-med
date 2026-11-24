@@ -290,9 +290,10 @@ export function ImageComparison({
                     <Button 
                       size="sm" 
                       variant="outline"
-                      onClick={() => {
-                        navigator.clipboard.writeText(comparisonResult);
-                        toast.success('Copiado!');
+                      onClick={async () => {
+                        const { copyWithRecord } = await import('@/lib/activity-log');
+                        await copyWithRecord(comparisonResult, { entity: 'PATIENT', entityId: patientId, label: 'Comparação de imagens' });
+                        toast.success('Copiado! Cópia registrada em seu nome.');
                       }}
                     >
                       Copiar

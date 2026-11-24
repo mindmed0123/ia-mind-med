@@ -13,3 +13,8 @@
 - Paid access mirrors Stripe through _shared/stripe-subscription-sync, used by both stripe-webhook and sync-subscription; the app calls sync-subscription after checkout and before denying access, so access never depends on webhook delivery alone.
 - AI-spending edge functions check plan entitlement server-side via _shared/entitlement (UI plan checks are UX only); scheduled jobs call service-role-only functions with the vault service key.
 - Checkout reuses a Stripe customer only when it is stored for the user or tagged with metadata.user_id; never an untagged e-mail match.
+- Every clinical PDF download/print goes through src/lib/pdf-delivery (A1 signing, download, audit); never call downloadPdf directly from screens.
+- A1 certificate signing runs only in the browser (node-forge + pdf-lib); the .pfx may be kept in IndexedDB, the password and decrypted key never leave memory or reach the server.
+- Copies, downloads, prints, signatures and saves are logged via the log_document_activity RPC into immutable audit_logs, with content SHA-256 and request IP.
+- Terms acceptance goes through the accept_terms RPC; bumping TERMO_VERSAO in src/lib/termo-adesao forces every user to re-sign.
+- The medication catalog is cross-checked against ANVISA open data; only entries with an active registration stay ativo, and CID only ranks results, never filters them.

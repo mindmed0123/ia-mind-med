@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { CertificateSettingsCard } from '@/components/signature/CertificateSettingsCard';
 import { useSubscription } from '@/hooks/useSubscription';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -534,6 +535,8 @@ export default function Perfil() {
               </div>
             </CardContent>
           </Card>
+
+          {user && <CertificateSettingsCard userId={user.id} />}
 
           {/* Rodapé de Receituário */}
           <Card>

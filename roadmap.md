@@ -26,3 +26,8 @@
 - [x] Aviso do plano Fundador corrigido (cobra na hora, sem teste grátis)
 - [ ] Pagamento com cartão real: não feito para não cobrar; testado com assinatura de teste sem cartão
 - [ ] Destino antigo "Lovable mind med" no Stripe aponta para o site: dono deve desativar
+# Receituário, assinatura e responsabilidade (nov/2026)
+- [x] Lista de remédios aparece ao clicar (CID vira prioridade, não filtro); dados conferidos com a base oficial da ANVISA; seleção preenche tudo e continua editável
+- [x] Assinatura com certificado A1 (.pfx) no computador do médico em todo PDF baixado (laudo e receita); validação oficial no validar.iti.gov.br depende de um certificado ICP-Brasil real
+- [x] Registro de cópias, downloads e assinaturas em nome do médico (trilha imutável)
+- [x] Termo de adesão revisado: aceite assinado com nome completo, versão nova, registro com IP; página de Termos atualizada

@@ -1,3 +1,4 @@
+import { TERMO_VERSAO } from "@/lib/termo-adesao";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,7 +57,7 @@ export const useOnboarding = () => {
         // 1. Check LGPD consent
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
-          .select("lgpd_consent_given, full_name, crm")
+          .select("lgpd_consent_given, lgpd_consent_version, full_name, crm")
           .eq("id", user.id)
           .single();
 
@@ -69,7 +70,8 @@ export const useOnboarding = () => {
           return;
         }
 
-        if (!profile?.lgpd_consent_given) {
+        // Termo novo = todos assinam de novo uma vez.
+        if (!profile?.lgpd_consent_given || profile?.lgpd_consent_version !== TERMO_VERSAO) {
           setNeedsLgpdConsent(true);
           setLgpdConsentLoading(false);
           setLoading(false);
