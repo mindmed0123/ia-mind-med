@@ -13,8 +13,8 @@ const PLAN_TO_DB: Record<string, "STARTER" | "PRO"> = {
   mindmed_fundador: "PRO",
 };
 
-/** Pro Anual R$ 2.388/ano (preço atual). Ids de preço não são segredo. */
-export const PRO_ANNUAL_PRICE_ID = "price_1UfNYrRpmClnFRZoT84xms08";
+/** Pro Anual R$ 2.990/ano. Ids de preço não são segredo. */
+export const PRO_ANNUAL_PRICE_ID = "price_1U5VOMRpmClnFRZovLak46QE";
 
 export function knownPriceIds(): Set<string> {
   return new Set(

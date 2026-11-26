@@ -749,6 +749,7 @@ export type Database = {
           hypotheses: Json | null
           id: string
           import_source: string | null
+          is_demo: boolean
           last_update_type: string | null
           legal_disclaimer: string | null
           patient_data: Json | null
@@ -792,6 +793,7 @@ export type Database = {
           hypotheses?: Json | null
           id?: string
           import_source?: string | null
+          is_demo?: boolean
           last_update_type?: string | null
           legal_disclaimer?: string | null
           patient_data?: Json | null
@@ -835,6 +837,7 @@ export type Database = {
           hypotheses?: Json | null
           id?: string
           import_source?: string | null
+          is_demo?: boolean
           last_update_type?: string | null
           legal_disclaimer?: string | null
           patient_data?: Json | null
@@ -2153,6 +2156,10 @@ export type Database = {
         | { Args: { p_user_id: string }; Returns: Json }
       consume_free_chat: { Args: { p_user_id: string }; Returns: Json }
       count_active_org_members: { Args: { _org_id: string }; Returns: number }
+      criar_laudo_demonstracao: {
+        Args: { p_transcript: string }
+        Returns: string
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean

@@ -48,17 +48,10 @@ export const StepGuidedLaudo = ({
     trackEvent("demo_laudo_started", { usedExample: isExample });
 
     try {
-      const { data: laudo, error: createError } = await supabase
-        .from("laudos")
-        .insert({
-          user_id: user!.id,
-          title: `Laudo de demonstração - ${new Date().toLocaleDateString("pt-BR")}`,
-          status: "draft",
-          generation_mode: "text",
-          transcript: { text: text.trim() },
-        })
-        .select()
-        .single();
+      const { data: demoId, error: createError } = await supabase.rpc("criar_laudo_demonstracao", {
+        p_transcript: text.trim(),
+      });
+      const laudo = { id: demoId as string };
 
       if (createError) throw createError;
 
