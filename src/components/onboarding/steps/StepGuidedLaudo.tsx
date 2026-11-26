@@ -48,10 +48,10 @@ export const StepGuidedLaudo = ({
     trackEvent("demo_laudo_started", { usedExample: isExample });
 
     try {
-      const { data: demoId, error: createError } = await supabase.rpc("criar_laudo_demonstracao", {
-        p_transcript: text.trim(),
+      const { data: demo, error: createError } = await supabase.functions.invoke("criar-laudo-demo", {
+        body: { transcript: text.trim() },
       });
-      const laudo = { id: demoId as string };
+      const laudo = { id: (demo as { id: string } | null)?.id as string };
 
       if (createError) throw createError;
 
