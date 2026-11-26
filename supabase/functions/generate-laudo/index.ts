@@ -1,3 +1,4 @@
+import { FRANQUIA_GRATUITA } from '../_shared/franquia.ts';
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -252,31 +253,30 @@ serve(async (req) => {
     log(cid, 'auth_ok', { uid: user.id.substring(0, 8), ms: t1 - t0 });
 
     // ===== ENTITLEMENT =====
-    // Generation requires an active or trial plan. Accounts still choosing a
-    // plan get exactly one demonstration report (onboarding).
+    // Paid/legacy-trial accounts: unlimited. Others: FRANQUIA_GRATUITA reports per
+    // account, counted once by the DB when a report completes. Re-running a report
+    // that already consumed its slot is always allowed.
     {
-      const { data: sub } = await templatesClient
-        .from('subscriptions')
-        .select('status')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      const status = sub?.status as string | undefined;
-      let entitled = status === 'ACTIVE' || status === 'TRIALING';
-      if (!entitled && status === 'PENDING_CHECKOUT') {
-        const { count: completedCount } = await templatesClient
-          .from('laudos')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('status', 'completed');
-        entitled = (completedCount ?? 0) === 0;
-      }
-      if (!entitled) {
-        log(cid, 'not_entitled', { status: status ?? 'none' });
-        return new Response(JSON.stringify({ error: 'Assinatura ativa necessária para gerar documentos.', code: 'SUBSCRIPTION_REQUIRED' }), {
-          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      const { data: paid } = await templatesClient.rpc('is_paid_user', { p_user_id: user.id });
+      if (!paid) {
+        const { data: prof } = await templatesClient
+          .from('profiles').select('consultas_gratuitas_usadas').eq('id', user.id).maybeSingle();
+        const usadas = (prof as any)?.consultas_gratuitas_usadas ?? 0;
+        let jaConsumido = false;
+        try {
+          const peek = await req.clone().json();
+          if (peek?.laudo_id) {
+            const { data: l } = await templatesClient
+              .from('laudos').select('franquia_consumida, user_id').eq('id', peek.laudo_id).maybeSingle();
+            jaConsumido = !!(l && (l as any).user_id === user.id && (l as any).franquia_consumida);
+          }
+        } catch { /* body parsed below */ }
+        if (!jaConsumido && usadas >= FRANQUIA_GRATUITA) {
+          log(cid, 'franquia_esgotada', { usadas });
+          return new Response(JSON.stringify({ error: `Suas ${FRANQUIA_GRATUITA} consultas gratuitas foram utilizadas. Escolha um plano para continuar.`, code: 'FRANQUIA_ESGOTADA' }), {
+            status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
       }
     }
 

@@ -14,6 +14,7 @@ import { AudioUploader } from "@/components/audio/AudioUploader";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
 import { LgpdConsent } from "@/components/consent/LgpdConsent";
 import { QuotaDisplay } from "@/components/quota/QuotaDisplay";
+import { FranquiaStatus } from "@/components/quota/FranquiaStatus";
 import { ProductivityMetrics } from "@/components/dashboard/ProductivityMetrics";
 import { LaudoHistory } from "@/components/dashboard/LaudoHistory";
 import { UpgradeBanner } from "@/components/upgrade/UpgradeBanner";
@@ -292,6 +293,7 @@ const Dashboard = () => {
         <div className="grid lg:grid-cols-3 gap-6 mb-8">
           <div className="lg:col-span-1">
             <QuotaDisplay />
+            <FranquiaStatus />
           </div>
           <div className="lg:col-span-2">
             <Card className="shadow-soft h-full">

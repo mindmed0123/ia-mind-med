@@ -36,3 +36,6 @@
 - [x] PDF passa a trazer tudo que o laudo tem (antes faltavam exame físico, antecedentes, sinais vitais)
 - [x] QR leva a uma página pública de verificação (antes dava página inexistente)
 - [x] Abrir um laudo salvo não apaga mais os dados do paciente
+# Roadmap
+- [x] Fase 1: franquia de 5 consultas no total (servidor + 3 ajustes de tela)
+- [ ] Pro Anual R$ 2.990 — aguardando fase que permita mexer no Stripe

@@ -31,6 +31,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { FirstLaudoSuccess } from "@/components/onboarding/FirstLaudoSuccess";
 import { useModelosLaudo } from "@/hooks/useModelosLaudo";
 import { ModeloSelector } from "@/components/laudos/ModeloSelector";
+import { fetchFranquia } from "@/components/quota/FranquiaStatus";
+import { ToastAction } from "@/components/ui/toast";
 import { getCloudFunctionHeaders } from "@/lib/cloud-function-auth";
 import { getPollingDelayMs, isReadyToGenerate, isTerminalLaudoState, resolveTemplateSpecialty, shouldRetryDraftGeneration } from "@/lib/laudo-pipeline";
 
@@ -164,6 +166,21 @@ const NovoLaudo = () => {
   const generationRetryCount = useRef(0);
   const lastGenerationAttemptAt = useRef(0);
   useEffect(() => { transcriptRef.current = transcript; }, [transcript]);
+
+  // Aviso discreto, só depois que o documento está pronto: franquia terminou.
+  useEffect(() => {
+    if (pipelineStage !== 'completed') return;
+    fetchFranquia().then((uso) => {
+      if (uso && !uso.assinante && uso.franquia_restante === 0) {
+        toast({
+          title: 'Suas consultas gratuitas terminaram',
+          description: 'Este documento está salvo. Para as próximas consultas, escolha um plano.',
+          action: <ToastAction altText="Ver planos" onClick={() => navigate('/medicos/assinatura-expirada?motivo=limite')}>Ver planos</ToastAction>,
+        });
+      }
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pipelineStage]);
   useEffect(() => { patientDataRef.current = patientData; }, [patientData]);
 
   // ===== POLLING-BASED STATUS TRACKING (Realtime disabled for PHI security) =====
@@ -559,7 +576,7 @@ const NovoLaudo = () => {
         .single();
 
       if (createError) {
-        if (String(createError.message || '').includes('FREE_LIMIT_LAUDOS')) {
+        if (String(createError.message || '').match(/FREE_LIMIT_LAUDOS|FRANQUIA_ESGOTADA/)) {
           setIsSubmitting(false);
           submitLockRef.current = false;
           setPipelineStage('idle');
@@ -643,7 +660,7 @@ const NovoLaudo = () => {
         .single();
 
       if (createError) {
-        if (String(createError.message || '').includes('FREE_LIMIT_LAUDOS')) {
+        if (String(createError.message || '').match(/FREE_LIMIT_LAUDOS|FRANQUIA_ESGOTADA/)) {
           setIsSubmitting(false);
           submitLockRef.current = false;
           setPipelineStage('idle');

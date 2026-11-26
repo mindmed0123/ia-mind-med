@@ -99,6 +99,13 @@
       "when": 1795541522587,
       "tag": "0013_plano_free_limites",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795713192226,
+      "tag": "0014_franquia_5_consultas",
+      "breakpoints": true
     }
   ]
 }

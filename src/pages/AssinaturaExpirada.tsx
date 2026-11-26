@@ -97,11 +97,11 @@ export default function AssinaturaExpirada() {
               )}
             </div>
             <CardTitle className="text-2xl text-foreground">
-              {atLimit ? "Você usou o plano Free deste mês" : "Assine o MindMed Pro"}
+              {atLimit ? "Suas 5 consultas gratuitas foram utilizadas" : "Assine o MindMed Pro"}
             </CardTitle>
             <CardDescription className="text-base mt-2">
               {atLimit
-                ? `O Free inclui ${FREE_PLAN.laudosPorMes} consultas documentadas e ${FREE_PLAN.chatPorMes} mensagens do MindChat por mês. Seus documentos continuam todos disponíveis.`
+                ? `Escolha um plano para continuar. Seus documentos continuam todos disponíveis.`
                 : "Consultas e MindChat ilimitados, com receituário, evolução do paciente e telemedicina."}
             </CardDescription>
           </CardHeader>
@@ -109,8 +109,8 @@ export default function AssinaturaExpirada() {
             <div className="bg-muted/50 rounded-lg p-4 text-center">
               <p className="text-muted-foreground">
                 {atLimit
-                  ? "Assine o Pro para continuar agora, ou espere o limite do Free renovar no início do próximo mês."
-                  : "Você pode continuar no Free (5 consultas e 10 mensagens por mês) ou liberar tudo com o Pro."}
+                  ? "Assine o Pro para continuar gerando documentos."
+                  : "Você pode continuar no Free (5 consultas gratuitas no total) ou liberar tudo com o Pro."}
               </p>
             </div>
 

@@ -744,6 +744,7 @@ export type Database = {
           diagnosis_main: string | null
           editor_last_saved: string | null
           finalized_at: string | null
+          franquia_consumida: boolean
           generation_mode: string | null
           hypotheses: Json | null
           id: string
@@ -786,6 +787,7 @@ export type Database = {
           diagnosis_main?: string | null
           editor_last_saved?: string | null
           finalized_at?: string | null
+          franquia_consumida?: boolean
           generation_mode?: string | null
           hypotheses?: Json | null
           id?: string
@@ -828,6 +830,7 @@ export type Database = {
           diagnosis_main?: string | null
           editor_last_saved?: string | null
           finalized_at?: string | null
+          franquia_consumida?: boolean
           generation_mode?: string | null
           hypotheses?: Json | null
           id?: string
@@ -1462,6 +1465,7 @@ export type Database = {
           address: string | null
           clinic_name: string | null
           conselho: string | null
+          consultas_gratuitas_usadas: number
           created_at: string
           crm: string | null
           crm_uf: string | null
@@ -1505,6 +1509,7 @@ export type Database = {
           address?: string | null
           clinic_name?: string | null
           conselho?: string | null
+          consultas_gratuitas_usadas?: number
           created_at?: string
           crm?: string | null
           crm_uf?: string | null
@@ -1548,6 +1553,7 @@ export type Database = {
           address?: string | null
           clinic_name?: string | null
           conselho?: string | null
+          consultas_gratuitas_usadas?: number
           created_at?: string
           crm?: string | null
           crm_uf?: string | null
